@@ -1,3 +1,4 @@
 from django.db import models
 
-# Create your models here.
+class Order (models.Model):
+    """The main class for the user orders being stored into the database"""

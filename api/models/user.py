@@ -34,6 +34,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         null=False,
         blank=False,
         max_length=42,
+        editable=False,
         unique=True,
         validators=[
             MinLengthValidator(limit_value=42),

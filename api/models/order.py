@@ -36,6 +36,8 @@ class Maker(models.Model):
     # hash
     # signature unique
 
+    # constraint
+
 
 class AbstractTaker(models.Model):
     """The abstract Taker class for regular taker and replaceTaker"""

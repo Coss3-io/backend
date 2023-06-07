@@ -29,12 +29,11 @@ SECRET_KEY = "django-insecure-v@6$=+^kn8dcp8=h-7%1w@^f0=y@g9^kzoh4_d+g&rd9e5(bla
 DEBUG = True
 
 ALLOWED_HOSTS = []
-
+AUTH_USER_MODEL = "api.User"
 
 # Application definition
 
 INSTALLED_APPS = [
-    "api.apps.ApiConfig",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -42,6 +41,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "api.apps.ApiConfig",
 ]
 
 MIDDLEWARE = [

@@ -16,18 +16,20 @@ class MyUserManager(BaseUserManager):
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, address: Address):
+    def create_superuser(self, address: Address, password: str):
         """Method to create a super user
 
-        address -- 42 characters long string"""
+        address -- 42 characters long string
+        password -- the password sent while creating a super user (usused)"""
 
         user = self.create_user(address)
-        user.isAdmin = True
+        user.is_admin = True
         user.save(using=self._db)
         return user
 
 
 class User(AbstractBaseUser, PermissionsMixin):
+    """The main user class for the application"""
     address = models.CharField(
         null=False,
         blank=False,
@@ -35,7 +37,6 @@ class User(AbstractBaseUser, PermissionsMixin):
         unique=True,
         validators=[
             MinLengthValidator(limit_value=42),
-            MaxLengthValidator(limit_value=42),
         ],
     )
     is_active = models.BooleanField(default=True)

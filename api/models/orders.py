@@ -87,12 +87,16 @@ class Maker(models.Model):
     )
 
 
-class AbstractTaker(models.Model):
-    """The abstract Taker class for regular taker and replaceTaker"""
+class Taker(models.Model):
+    """The Taker class for taker orders"""
 
-    class Meta:
-        abstract = True
-
+    maker = models.ForeignKey(
+        "Maker",
+        on_delete=models.PROTECT,
+        null=False,
+        blank=False,
+        editable=False,
+    )
     taker = models.ForeignKey(
         "User",
         on_delete=models.CASCADE,
@@ -115,33 +119,6 @@ class AbstractTaker(models.Model):
     fees = models.DecimalField(
         max_digits=78,
         decimal_places=78,
-        null=False,
-        blank=False,
-        editable=False,
-    )
-
-
-class Taker(AbstractTaker):
-    """The taker order model for regular maker orders"""
-
-    maker = models.ForeignKey(
-        "Maker",
-        on_delete=models.PROTECT,
-        null=False,
-        blank=False,
-        editable=False,
-    )
-
-
-class ReplaceTaker(AbstractTaker):
-    """The class used to describe taker orders"""
-
-    maker = models.ForeignKey(
-        "ReplaceMaker",
-        on_delete=models.PROTECT,
-        editable=False,
-    )
-    mult = models.BigIntegerField(
         null=False,
         blank=False,
         editable=False,

@@ -11,9 +11,11 @@ class Maker(models.Model):
     STATUS_CHOICES = [(OPEN, "OPEN"), (CANCELLED, "CANCELLED"), (FILLED, "FILLED")]
 
     class Meta:
-        constraints = models.CheckConstraint(
-            check=models.Q(filled__lte=models.F("amount")), name="filled_lte_amount"
-        )
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(filled__lte=models.F("amount")), name="filled_lte_amount"
+            )
+        ]
 
     owner = models.ForeignKey("User", on_delete=models.CASCADE, editable=False)
     base_token = models.CharField(
@@ -42,6 +44,13 @@ class Maker(models.Model):
         editable=False,
     )
     filled = models.DecimalField(
+        max_digits=78,
+        decimal_places=78,
+        null=False,
+        blank=False,
+        editable=False,
+    )
+    price = models.DecimalField(
         max_digits=78,
         decimal_places=78,
         null=False,
@@ -142,13 +151,6 @@ class ReplaceTaker(AbstractTaker):
 class ReplaceMaker(Maker):
     """The class used to describe replace maker orders"""
 
-    price = models.DecimalField(
-        max_digits=78,
-        decimal_places=78,
-        null=False,
-        blank=False,
-        editable=False,
-    )
     step = models.DecimalField(
         max_digits=78,
         decimal_places=78,

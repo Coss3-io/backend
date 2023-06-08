@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from models.order import Maker
+from models.orders import Maker
 from models.types import MakerTypedDict
 from rest_framework.validators import ValidationError
 from eth_account import Account

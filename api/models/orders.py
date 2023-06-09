@@ -21,7 +21,7 @@ class Maker(models.Model):
         "User", on_delete=models.CASCADE, editable=False, null=False, blank=False
     )
     bot = models.ForeignKey(
-        "Bot", on_delete=models.CASCADE, editable=False, null=True, blank=True
+        "Bot", on_delete=models.CASCADE, editable=False, null=True, blank=True, related_name="orders"
     )
     base_token = models.CharField(
         null=False,

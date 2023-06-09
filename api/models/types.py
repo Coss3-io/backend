@@ -26,3 +26,8 @@ class MakerTypedDict(TypedDict):
     status: str
     hash: str
     signature: str
+
+class UserTypedDict(TypedDict):
+    address: Address
+    is_admin: bool
+    is_active: bool

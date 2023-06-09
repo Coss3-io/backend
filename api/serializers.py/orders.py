@@ -63,10 +63,13 @@ class MakerSerializer(serializers.ModelSerializer):
 
         orderHash = str(Web3.solidity_keccak([message], ["bytes"]))
 
-        if validate_eth_signed_message(
-            message=f'"\x19Ethereum Signed Message:\n32"{message}',
-            signature=data["signature"],
-            address=data["owner"].address,
+        if (
+            validate_eth_signed_message(
+                message=f'"\x19Ethereum Signed Message:\n32"{message}',
+                signature=data["signature"],
+                address=data["owner"].address,
+            )
+            == False
         ):
             raise ValidationError("The signature sent doesn't match the order owner")
 

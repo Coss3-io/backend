@@ -1,9 +1,10 @@
+from eth_abi.packed import encode_packed
 from rest_framework import serializers
+from rest_framework.validators import ValidationError
 from models.orders import Maker, Taker
 from models.types import MakerTypedDict
-from rest_framework.validators import ValidationError
-from eth_account import Account
-from eth_abi.packed import encode_packed
+from api.utils import validate_eth_signed_message
+from web3 import Web3
 
 
 class MakerListSerializer(serializers.ListSerializer):
@@ -59,14 +60,20 @@ class MakerSerializer(serializers.ModelSerializer):
                 False,  # not a replace order
             ],
         )
-        if (
-            Account.recover_message(
-                f'"\x19Ethereum Signed Message:\n32"{message}',
-                signature=data["signature"],
-            )
-            != data["owner"]
+
+        orderHash = str(Web3.solidity_keccak([message], ["bytes"]))
+
+        if validate_eth_signed_message(
+            message=f'"\x19Ethereum Signed Message:\n32"{message}',
+            signature=data["signature"],
+            address=data["owner"].address,
         ):
             raise ValidationError("The signature sent doesn't match the order owner")
+
+        if orderHash != data["order_hash"]:
+            raise ValidationError(
+                "The provided order hash does not match the computed hash"
+            )
         return super().validate(data)
 
 

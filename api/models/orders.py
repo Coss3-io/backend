@@ -71,7 +71,7 @@ class Maker(models.Model):
     status = models.CharField(
         max_length=2, choices=STATUS_CHOICES, default=OPEN, null=False, blank=False
     )
-    hash = models.CharField(
+    order_hash = models.CharField(
         null=False,
         blank=False,
         editable=False,

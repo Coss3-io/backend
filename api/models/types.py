@@ -1,4 +1,4 @@
-from typing import TypedDict
+from typing import TypedDict, Any
 from decimal import Decimal
 from datetime import date
 
@@ -15,7 +15,7 @@ class Address(str):
 
 
 class MakerTypedDict(TypedDict):
-    owner: object
+    owner: Any
     base_token: Address
     quote_token: Address
     amount: Decimal
@@ -24,7 +24,7 @@ class MakerTypedDict(TypedDict):
     is_buyer: bool
     expiry: date
     status: str
-    hash: str
+    order_hash: str
     signature: str
 
 class UserTypedDict(TypedDict):

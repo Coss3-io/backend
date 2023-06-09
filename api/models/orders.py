@@ -17,7 +17,12 @@ class Maker(models.Model):
             )
         ]
 
-    owner = models.ForeignKey("User", on_delete=models.CASCADE, editable=False)
+    owner = models.ForeignKey(
+        "User", on_delete=models.CASCADE, editable=False, null=False, blank=False
+    )
+    bot = models.ForeignKey(
+        "Bot", on_delete=models.CASCADE, editable=False, null=True, blank=True
+    )
     base_token = models.CharField(
         null=False,
         blank=False,
@@ -125,8 +130,8 @@ class Taker(models.Model):
     )
 
 
-class ReplaceMaker(Maker):
-    """The class used to describe replace maker orders"""
+class Bot(models.Model):
+    """The model used to store replace orders data, and group them to a"""
 
     step = models.DecimalField(
         max_digits=78,
@@ -155,4 +160,8 @@ class ReplaceMaker(Maker):
         null=False,
         blank=False,
         editable=False,
+    )
+    fees_earned = models.DecimalField(
+        max_digits=78,
+        decimal_places=78,
     )

@@ -21,6 +21,7 @@ class MakerListSerializer(serializers.ListSerializer):
 
 class MakerSerializer(serializers.ModelSerializer):
     """The maker order class serializer"""
+
     id = serializers.IntegerField()
 
     class Meta:
@@ -68,12 +69,14 @@ class MakerSerializer(serializers.ModelSerializer):
             raise ValidationError("The signature sent doesn't match the order owner")
         return super().validate(data)
 
+
 class TakerListSerializer(serializers.ListSerializer):
     """List serializer for batch creation of taker orders"""
 
     def create(self, validated_data):
         takers = [Taker(**order) for order in validated_data]
         return Taker.objects.bulk_create(takers)
+
 
 class TakerSerializer(serializers.ModelSerializer):
     """Serializer used for the taker orders creation and deletetion"""

@@ -46,7 +46,7 @@ class MakerSerializer(serializers.ModelSerializer):
                 "bool",
             ],
             [
-                data["owner"],
+                data["user"].address,
                 data["amount"],
                 data["price"],
                 0,  # this is the step field
@@ -67,7 +67,7 @@ class MakerSerializer(serializers.ModelSerializer):
             validate_eth_signed_message(
                 message=f'"\x19Ethereum Signed Message:\n32"{message}',
                 signature=data["signature"],
-                address=data["owner"].address,
+                address=data["user"].address,
             )
             == False
         ):

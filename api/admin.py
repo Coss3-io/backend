@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models.orders import Maker, Taker
+from api.models.orders import Maker, Taker
 
 # Register your models here.
 admin.site.register(Maker)

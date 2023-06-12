@@ -17,7 +17,7 @@ class Maker(models.Model):
             )
         ]
 
-    owner = models.ForeignKey(
+    user = models.ForeignKey(
         "User", on_delete=models.CASCADE, editable=False, null=False, blank=False
     )
     bot = models.ForeignKey(

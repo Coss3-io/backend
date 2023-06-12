@@ -6,7 +6,7 @@ from datetime import date
 class Address(str):
     def __new__(cls, value):
         if len(value) > 42:
-            raise ValueError("The address you gave is more too long")
+            raise ValueError("The address you gave is too long")
         try:
             int(value, 0)
         except ValueError:
@@ -15,7 +15,7 @@ class Address(str):
 
 
 class MakerTypedDict(TypedDict):
-    owner: Any
+    user: Any
     base_token: Address
     quote_token: Address
     amount: Decimal

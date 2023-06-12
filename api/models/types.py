@@ -31,3 +31,11 @@ class UserTypedDict(TypedDict):
     address: Address
     is_admin: bool
     is_active: bool
+
+class BotTypedDict(TypedDict):
+    step: Decimal
+    price: Decimal
+    maker_fees: Decimal
+    upper_bound: Decimal
+    lower_bound: Decimal
+    fees_earned: Decimal

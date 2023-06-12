@@ -140,6 +140,13 @@ class Bot(models.Model):
         blank=False,
         editable=False,
     )
+    price = models.DecimalField(
+        max_digits=78,
+        decimal_places=78,
+        null=False,
+        blank=False,
+        editable=False,
+    )
     maker_fees = models.DecimalField(
         max_digits=78,
         decimal_places=78,

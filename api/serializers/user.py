@@ -7,7 +7,6 @@ from api.models.types import UserTypedDict
 from api.utils import validate_eth_signed_message
 
 
-
 class UserSerializer(serializers.ModelSerializer):
     """The user class serializer"""
 

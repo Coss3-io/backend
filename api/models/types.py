@@ -12,7 +12,7 @@ class Address(str):
             int(value, 0)
         except ValueError:
             raise APIException("the address submitted is hill formed")
-        return value
+        return super().__new__(cls, value)
     
 class Signature(str):
     def __new__(cls, value):
@@ -22,7 +22,7 @@ class Signature(str):
             int(value, 0)
         except ValueError:
             raise APIException("the signature submitted is hill formed")
-        return value
+        return super().__new__(cls, value)
     
 class KeccakHash(str):
     def __new__(cls, value):
@@ -32,7 +32,8 @@ class KeccakHash(str):
             int(value, 0)
         except ValueError:
             raise APIException("the hash submitted is hill formed")
-        return value
+        return super().__new__(cls, value)
+    
 
 
 class MakerTypedDict(TypedDict):

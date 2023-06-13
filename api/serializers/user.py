@@ -1,5 +1,4 @@
 from time import time
-from decimal import Decimal
 from rest_framework import serializers
 from rest_framework.validators import ValidationError
 from api.models import User

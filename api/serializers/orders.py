@@ -2,8 +2,8 @@ from decimal import Decimal
 from eth_abi.packed import encode_packed
 from rest_framework import serializers
 from rest_framework.validators import ValidationError
-from models.orders import Maker, Taker, Bot
-from models.types import MakerTypedDict, BotTypedDict
+from api.models.orders import Maker, Taker, Bot
+from api.models.types import MakerTypedDict, BotTypedDict
 from api.utils import validate_eth_signed_message
 from web3 import Web3
 

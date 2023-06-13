@@ -1,5 +1,5 @@
 from eth_account import Account
-from models.types import Address
+from api.models.types import Address
 from web3 import Web3
 
 

@@ -1,4 +1,5 @@
 from decimal import Decimal, InvalidOperation
+from asgiref.sync import sync_to_async
 from adrf.views import APIView
 from rest_framework import status
 from rest_framework.authentication import SessionAuthentication
@@ -6,7 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from api.models.orders import Maker, Taker
-from api.models.types import Address, Signature, KeccakHash
+from api.models.types import Address
 from api.serializers.orders import MakerSerializer
 
 
@@ -73,7 +74,7 @@ class MakerView(APIView):
         """The method used to create a maker order"""
 
         maker = MakerSerializer(data=request.data, context={"user": request.user})
-        maker.is_valid(raise_exception=True)
+        await sync_to_async(maker.is_valid)(raise_exception=True)
         maker.save(filled=Decimal("0"), status=Maker.OPEN)
 
         return Response(maker.validated_data, status=status.HTTP_200_OK)

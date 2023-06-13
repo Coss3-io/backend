@@ -1,37 +1,37 @@
 from typing import TypedDict, Any
 from decimal import Decimal
 from datetime import date
-from rest_framework.exceptions import APIException
+from rest_framework.validators import ValidationError
 
 
 class Address(str):
-    def __new__(cls, value):
+    def __new__(cls, value, name="address"):
         if len(value) > 42:
-            raise APIException("the address you gave is too long")
+            raise ValidationError(f"the {name} you gave is too long")
         try:
             int(value, 0)
         except ValueError:
-            raise APIException("the address submitted is hill formed")
+            raise ValidationError(f"the {name} submitted is hill formed")
         return super().__new__(cls, value)
     
 class Signature(str):
     def __new__(cls, value):
         if len(value) > 132:
-            raise APIException("the signature you gave is too long")
+            raise ValidationError("the signature you gave is too long")
         try:
             int(value, 0)
         except ValueError:
-            raise APIException("the signature submitted is hill formed")
+            raise ValidationError("the signature submitted is hill formed")
         return super().__new__(cls, value)
     
 class KeccakHash(str):
     def __new__(cls, value):
         if len(value) > 66:
-            raise APIException("the hash you gave is too long")
+            raise ValidationError("the hash you gave is too long")
         try:
             int(value, 0)
         except ValueError:
-            raise APIException("the hash submitted is hill formed")
+            raise ValidationError("the hash submitted is hill formed")
         return super().__new__(cls, value)
     
 

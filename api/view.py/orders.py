@@ -10,6 +10,32 @@ from api.models.types import Address, Signature, KeccakHash
 from api.serializers.orders import MakerSerializer
 
 
+class OrderView(APIView):
+    """View used to retrieve the orders to populate the order books"""
+
+    async def get(self, request: Request):
+        """Function used to get all the orders for a given pair"""
+
+        base_token: Address = Address(
+            request.query_params.get("base_token", Address("0"))
+        )
+        quote_token: Address = Address(
+            request.query_params.get("quote_token", Address("0"))
+        )
+
+        if base_token == Address("0") or quote_token == Address("0"):
+            return Response(
+                {"detail": "base_token and quote_token params are needed"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        queryset = Maker.objects.filter(base_token=base_token, quote_token=quote_token)
+
+        return Response(
+            MakerSerializer(queryset, many=True).data, status=status.HTTP_200_OK
+        )
+
+
 class MakerView(APIView):
     """The views user to retrieve and create Maker Orders"""
 
@@ -22,14 +48,16 @@ class MakerView(APIView):
         if request.query_params.get("all", None):
             queryset = Maker.objects.filter(user=request.user)
         else:
-            base_token: Address = Address(request.query_params.get("base_token", None))
+            base_token: Address = Address(
+                request.query_params.get("base_token", Address("0"))
+            )
             quote_token: Address = Address(
-                request.query_params.get("quote_token", None)
+                request.query_params.get("quote_token", Address("0"))
             )
 
-            if base_token == None or quote_token == None:
+            if base_token == Address("0") or quote_token == Address("0"):
                 return Response(
-                    "mising base_token or quote_token query param",
+                    {"detail": "base_token and quote_token params are needed"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 

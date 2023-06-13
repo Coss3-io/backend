@@ -141,6 +141,7 @@ class MakerView(APIView):
 
         maker = MakerSerializer(
             Maker(
+                amount=amount,
                 user=request.user,
                 expiry=expiry,
                 price=price,

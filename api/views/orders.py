@@ -146,7 +146,7 @@ class MakerView(APIView):
                 expiry=expiry,
                 price=price,
                 base_token=base_token,
-                quote_toke=quote_token,
+                quote_token=quote_token,
                 signature=signature,
                 order_hash=order_hash,
                 is_buyer=is_buyer,

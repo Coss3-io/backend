@@ -7,35 +7,6 @@ from models.types import MakerTypedDict, BotTypedDict
 from api.utils import validate_eth_signed_message
 from web3 import Web3
 
-class BotSerializer(serializers.ModelSerializer):
-    """The model used to serialize bots"""
-
-    class Meta:
-        model: Bot
-
-    def validate_maker_fees(self, data: Decimal):
-        """Validated the maker fees field, maker fees cannot be negative"""
-        if data <= Decimal("0"):
-            raise ValidationError("maker_fees cannot be negative")
-        return data
-    
-    def validate_step(self, data: Decimal):
-        """Validated the step, step cannot be negative"""
-        if data <= Decimal("0"):
-            raise ValidationError("step cannot be negative")
-        return data
-
-    def validate(self, data: BotTypedDict):
-        """Used to validate the bounds of the bot"""
-
-        if data["lower_bound"] >= data["upper_bound"]:
-            raise ValidationError("upper_bound must be higher than the lower_bound")
-        if data["lower_bound"] > data["price"]:
-            raise ValidationError("lower_bound cannot be bigger than price")
-        if data["price"] > data["upper_bound"]:
-            raise ValidationError("price cannot be bigger than upper_bound")
-        return super().validate(data)
-
 
 class MakerListSerializer(serializers.ListSerializer):
     """Used for multiple operation on orders, especially creation, and update"""
@@ -124,3 +95,34 @@ class TakerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Maker
         list_serializer_class = TakerListSerializer
+
+
+class BotSerializer(serializers.ModelSerializer):
+    """The model used to serialize bots"""
+    orders = MakerSerializer()
+
+    class Meta:
+        model: Bot
+
+    def validate_maker_fees(self, data: Decimal):
+        """Validated the maker fees field, maker fees cannot be negative"""
+        if data <= Decimal("0"):
+            raise ValidationError("maker_fees cannot be negative")
+        return data
+    
+    def validate_step(self, data: Decimal):
+        """Validated the step, step cannot be negative"""
+        if data <= Decimal("0"):
+            raise ValidationError("step cannot be negative")
+        return data
+
+    def validate(self, data: BotTypedDict):
+        """Used to validate the bounds of the bot"""
+
+        if data["lower_bound"] >= data["upper_bound"]:
+            raise ValidationError("upper_bound must be higher than the lower_bound")
+        if data["lower_bound"] > data["price"]:
+            raise ValidationError("lower_bound cannot be bigger than price")
+        if data["price"] > data["upper_bound"]:
+            raise ValidationError("price cannot be bigger than upper_bound")
+        return super().validate(data)

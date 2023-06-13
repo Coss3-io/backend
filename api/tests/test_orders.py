@@ -19,9 +19,9 @@ class MakerOrderTestCase(APITestCase):
         self.client.force_authenticate(user)  # type: ignore
 
         data = {
-            "amount": Decimal("173e16"),
+            "amount": '{0:f}'.format(Decimal("173e16")),
             "expiry": "9999999999999999",
-            "price": Decimal("2e20"),
+            "price": '{0:f}'.format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
             "signature": "0x796ee451cdc0b004e494e833a53e6c26b136696bce03a8dc63e2d7df73c09c3f03195e4021cad50bac726364258e024f6f6483eae8fd7b3da5b080717aab24b41c",

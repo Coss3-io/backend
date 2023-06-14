@@ -96,7 +96,7 @@ class Taker(models.Model):
         null=False,
         blank=False,
     )
-    taker = models.ForeignKey(
+    user = models.ForeignKey(
         "User",
         on_delete=models.CASCADE,
         null=True,

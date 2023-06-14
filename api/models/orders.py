@@ -1,7 +1,10 @@
 from django.db import models
 from django.core.validators import MinLengthValidator
 
+class MakerManager(models.Manager):
 
+    def create(self, *args, **kwargs):
+        return self.acreate(*args, **kwargs)
 class Maker(models.Model):
     """The maker order class to store user orders into the database"""
 
@@ -9,6 +12,8 @@ class Maker(models.Model):
     CANCELLED = "CA"
     FILLED = "FI"
     STATUS_CHOICES = [(OPEN, "OPEN"), (CANCELLED, "CANCELLED"), (FILLED, "FILLED")]
+
+    object = MakerManager()
 
     class Meta:
         constraints = [
@@ -39,24 +44,24 @@ class Maker(models.Model):
     )
     amount = models.DecimalField(
         max_digits=78,
-        decimal_places=78,
+        decimal_places=0,
         null=False,
         blank=False,
     )
     filled = models.DecimalField(
         max_digits=78,
-        decimal_places=78,
+        decimal_places=0,
         null=False,
         blank=False,
     )
     price = models.DecimalField(
         max_digits=78,
-        decimal_places=78,
+        decimal_places=0,
         null=False,
         blank=False,
     )
-    is_buyer = models.BooleanField(null=False, blank=False, editable=False)
-    expiry = models.DateField(
+    is_buyer = models.BooleanField(null=False, blank=False)
+    expiry = models.DateTimeField(
         null=False,
         blank=False,
     )
@@ -99,7 +104,7 @@ class Taker(models.Model):
     )
     taker_amount = models.DecimalField(
         max_digits=78,
-        decimal_places=78,
+        decimal_places=0,
         null=False,
         blank=False,
     )
@@ -109,7 +114,7 @@ class Taker(models.Model):
     )
     fees = models.DecimalField(
         max_digits=78,
-        decimal_places=78,
+        decimal_places=0,
         null=False,
         blank=False,
     )
@@ -120,35 +125,35 @@ class Bot(models.Model):
 
     step = models.DecimalField(
         max_digits=78,
-        decimal_places=78,
+        decimal_places=0,
         null=False,
         blank=False,
     )
     price = models.DecimalField(
         max_digits=78,
-        decimal_places=78,
+        decimal_places=0,
         null=False,
         blank=False,
     )
     maker_fees = models.DecimalField(
         max_digits=78,
-        decimal_places=78,
+        decimal_places=0,
         null=False,
         blank=False,
     )
     upper_bound = models.DecimalField(
         max_digits=78,
-        decimal_places=78,
+        decimal_places=0,
         null=False,
         blank=False,
     )
     lower_bound = models.DecimalField(
         max_digits=78,
-        decimal_places=78,
+        decimal_places=0,
         null=False,
         blank=False,
     )
     fees_earned = models.DecimalField(
         max_digits=78,
-        decimal_places=78,
+        decimal_places=0,
     )

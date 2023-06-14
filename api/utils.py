@@ -1,11 +1,11 @@
 from decimal import Decimal, ROUND_DOWN
 from rest_framework.validators import ValidationError
-from eth_account import Account
+from eth_account import Account, messages
 from api.models.types import Address
 from web3 import Web3
 
 
-def validate_eth_signed_message(message: str, signature: str, address: Address) -> bool:
+def validate_eth_signed_message(message: bytes, signature: str, address: Address) -> bool:
     """Function used to validate an eth signed message
 
     Arguments :\n
@@ -22,7 +22,7 @@ def validate_eth_signed_message(message: str, signature: str, address: Address) 
     """
 
     return Web3.to_checksum_address(address) == Account.recover_message(
-        f'"\x19Ethereum Signed Message:\n32"{message}',
+        messages.encode_defunct(message),
         signature=signature,
     )
 

@@ -6,7 +6,7 @@ class Stacking(models.Model):
     """Model used to track the amount stacked by the users"""
 
     amount = models.DecimalField(
-        max_digits=78, decimal_places=78, null=False, blank=False
+        max_digits=78, decimal_places=0, null=False, blank=False
     )
     slot = models.IntegerField(null=False, blank=False)
     # user
@@ -25,6 +25,6 @@ class StakingFees(models.Model):
         ],
     )
     amount = models.DecimalField(
-        max_digits=78, decimal_places=78, null=False, blank=False
+        max_digits=78, decimal_places=0, null=False, blank=False
     )
     slot = models.IntegerField(null=False, blank=False)

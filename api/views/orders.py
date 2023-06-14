@@ -1,4 +1,5 @@
 from decimal import Decimal, InvalidOperation
+from datetime import datetime
 from asgiref.sync import sync_to_async
 from adrf.views import APIView
 from rest_framework import status
@@ -73,8 +74,11 @@ class MakerView(APIView):
     async def post(self, request):
         """The method used to create a maker order"""
 
-        maker = MakerSerializer(data=request.data, context={"user": request.user})
+        data = request.data.copy()
+        data.update({"expiry": datetime.fromtimestamp(int(data.get("expiry", 0)))})
+
+        maker = MakerSerializer(data=data, context={"user": request.user})
         await sync_to_async(maker.is_valid)(raise_exception=True)
-        maker.save(filled=Decimal("0"), status=Maker.OPEN)
+        await maker.save(filled=Decimal("0"), status=Maker.OPEN, user=request.user)
 
         return Response(maker.validated_data, status=status.HTTP_200_OK)

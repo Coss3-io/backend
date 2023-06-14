@@ -1,10 +1,12 @@
 from django.db import models
 from django.core.validators import MinLengthValidator
 
-class MakerManager(models.Manager):
 
+class MakerManager(models.Manager):
     def create(self, *args, **kwargs):
         return self.acreate(*args, **kwargs)
+
+
 class Maker(models.Model):
     """The maker order class to store user orders into the database"""
 
@@ -102,6 +104,7 @@ class Taker(models.Model):
         null=True,
         blank=True,
     )
+    block = models.BigIntegerField(null=False, blank=False)
     taker_amount = models.DecimalField(
         max_digits=78,
         decimal_places=0,

@@ -2,7 +2,7 @@ from django.db import models
 from django.core.validators import MinLengthValidator
 
 
-class MakerManager(models.Manager):
+class AsyncManager(models.Manager):
     def create(self, *args, **kwargs):
         return self.acreate(*args, **kwargs)
 
@@ -15,7 +15,7 @@ class Maker(models.Model):
     FILLED = "FI"
     STATUS_CHOICES = [(OPEN, "OPEN"), (CANCELLED, "CANCELLED"), (FILLED, "FILLED")]
 
-    object = MakerManager()
+    object = AsyncManager()
 
     class Meta:
         constraints = [
@@ -92,6 +92,8 @@ class Maker(models.Model):
 class Taker(models.Model):
     """The Taker class for taker orders"""
 
+    object = AsyncManager()
+    
     maker = models.ForeignKey(
         "Maker",
         on_delete=models.PROTECT,

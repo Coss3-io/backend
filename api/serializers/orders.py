@@ -1,4 +1,6 @@
 from decimal import Decimal, ROUND_DOWN
+from datetime import datetime
+from web3 import Web3
 from eth_abi.packed import encode_packed
 from rest_framework import serializers
 from rest_framework.fields import empty
@@ -10,7 +12,6 @@ from api.utils import (
     validate_decimal_integer,
     validate_address,
 )
-from web3 import Web3
 
 
 class MakerListSerializer(serializers.ListSerializer):
@@ -52,8 +53,9 @@ class MakerSerializer(serializers.ModelSerializer):
     def validate_price(self, value: str):
         return validate_decimal_integer(value, "price")
 
-    def validate_expiry(self, value: str):
-        return validate_decimal_integer(value, "expiry")
+    def validate_expiry(self, value: datetime):
+        validate_decimal_integer(str(int(value.timestamp())), "expiry")
+        return value
 
     def validate_base_token(self, value):
         return validate_address(value, "base_token")
@@ -68,7 +70,7 @@ class MakerSerializer(serializers.ModelSerializer):
         return Signature(value)
 
     def validate(self, data):
-        print(data)
+
         message = encode_packed(
             [
                 "address",
@@ -86,37 +88,37 @@ class MakerSerializer(serializers.ModelSerializer):
             ],
             [
                 self.context["user"].address,
-                self.data["amount"],
-                self.data["price"],
+                int('{0:f}'.format(data["amount"])),
+                int('{0:f}'.format(data["price"])),
                 0,  # this is the step field
                 0,  # this is the maker fees field
                 0,  # this is the upper bound field
                 0,  # this is the lower bound field
-                self.data["base_token"],
-                self.data["quote_token"],
-                self.data["expiry"],
-                0 if self.data["is_buyer"] else 1,
+                data["base_token"],
+                data["quote_token"],
+                int(data["expiry"].timestamp()),
+                0 if data["is_buyer"] else 1,
                 False,  # not a replace order
             ],
         )
 
-        orderHash = str(Web3.solidity_keccak([message], ["bytes"]))
+        orderHash = str(Web3.to_hex(Web3.keccak(message)))
 
         if (
             validate_eth_signed_message(
-                message=f'"\x19Ethereum Signed Message:\n32"{message}',
-                signature=self.data["signature"],
+                message=message,
+                signature=data["signature"],
                 address=self.context["user"].address,
             )
             == False
         ):
             raise ValidationError("The signature sent doesn't match the order owner")
 
-        if orderHash != self.data["order_hash"]:
+        if orderHash != data["order_hash"]:
             raise ValidationError(
                 "The provided order hash does not match the computed hash"
             )
-        return super().validate(self.data)
+        return super().validate(data)
 
 
 class TakerListSerializer(serializers.ListSerializer):

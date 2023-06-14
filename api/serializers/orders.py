@@ -45,7 +45,7 @@ class MakerSerializer(serializers.ModelSerializer):
             "order_hash",
             "signature",
         ]
-        extra_kwargs = {'user': {'write_only': True}}
+        extra_kwargs = {"user": {"write_only": True}}
         list_serializer_class = MakerListSerializer
 
     def validate_amount(self, value: str):
@@ -71,7 +71,6 @@ class MakerSerializer(serializers.ModelSerializer):
         return Signature(value)
 
     def validate(self, data):
-
         message = encode_packed(
             [
                 "address",
@@ -89,8 +88,8 @@ class MakerSerializer(serializers.ModelSerializer):
             ],
             [
                 self.context["user"].address,
-                int('{0:f}'.format(data["amount"])),
-                int('{0:f}'.format(data["price"])),
+                int("{0:f}".format(data["amount"])),
+                int("{0:f}".format(data["price"])),
                 0,  # this is the step field
                 0,  # this is the maker fees field
                 0,  # this is the upper bound field
@@ -136,6 +135,28 @@ class TakerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Maker
         list_serializer_class = TakerListSerializer
+        depth = 1
+        fields = [
+            "maker",
+            "block",
+            "taker_amount",
+            "base_fees",
+            "fees",
+            "is_buyer",
+        ]
+        extra_kwargs = {
+            "user": {"write_only": True},
+            "maker": {"write_only": True},
+        }
+
+        def validate_block(self, data: str) -> str:
+            return validate_decimal_integer(data, "block")
+        
+        def validate_taker_amount(self, data: str) -> str:
+            return validate_decimal_integer(data, "taker_amount")
+        
+        def validate_base_fees(self, data: str) -> str:
+            return validate_decimal_integer(data, "base_fees")
 
 
 class BotSerializer(serializers.ModelSerializer):

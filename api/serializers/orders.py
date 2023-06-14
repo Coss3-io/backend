@@ -19,10 +19,10 @@ class MakerListSerializer(serializers.ListSerializer):
 
     def create(self, validated_data):
         makers = [Maker(**data) for data in validated_data]
-        return Maker.objects.bulk_create(makers)
+        return Maker.objects.abulk_create(makers)
 
     def update(self, validated_data):
-        return Maker.objects.bulk_update(
+        return Maker.objects.abulk_update(  # type: ignore
             [Maker(**data) for data in validated_data], ["filled", "status"]
         )
 

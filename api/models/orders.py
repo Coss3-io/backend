@@ -121,6 +121,7 @@ class Taker(models.Model):
         null=False,
         blank=False,
     )
+    is_buyer = models.BooleanField(null=False, blank=False)
 
 
 class Bot(models.Model):

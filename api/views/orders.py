@@ -1,4 +1,4 @@
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from datetime import datetime
 from asgiref.sync import sync_to_async
 from adrf.views import APIView

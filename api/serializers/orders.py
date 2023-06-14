@@ -45,6 +45,7 @@ class MakerSerializer(serializers.ModelSerializer):
             "order_hash",
             "signature",
         ]
+        extra_kwargs = {'user': {'write_only': True}}
         list_serializer_class = MakerListSerializer
 
     def validate_amount(self, value: str):
@@ -126,7 +127,7 @@ class TakerListSerializer(serializers.ListSerializer):
 
     def create(self, validated_data):
         takers = [Taker(**order) for order in validated_data]
-        return Taker.objects.bulk_create(takers)
+        return Taker.objects.abulk_create(takers)
 
 
 class TakerSerializer(serializers.ModelSerializer):

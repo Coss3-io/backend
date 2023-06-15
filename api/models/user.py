@@ -7,24 +7,24 @@ from api.models.types import Address
 class MyUserManager(BaseUserManager):
     """The custom user manager for user creation"""
 
-    def create_user(self, address: Address):
+    async def create_user(self, address: Address):
         """Method to create a regular user
 
         address -- 42 characters long string"""
 
         user = self.model(address=address)
-        user.save(using=self._db)
+        await user.asave(using=self._db)
         return user
 
-    def create_superuser(self, address: Address, password: str):
+    async def create_superuser(self, address: Address, password: str):
         """Method to create a super user
 
         address -- 42 characters long string
         password -- the password sent while creating a super user (usused)"""
 
-        user = self.create_user(address)
+        user = await self.create_user(address)
         user.is_admin = True
-        user.save(using=self._db)
+        await user.asave(using=self._db)
         return user
 
 

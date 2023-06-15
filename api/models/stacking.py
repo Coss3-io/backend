@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.db import models
 from django.core.validators import MaxLengthValidator, MinLengthValidator
 
@@ -9,11 +10,14 @@ class Stacking(models.Model):
         max_digits=78, decimal_places=0, null=False, blank=False
     )
     slot = models.IntegerField(null=False, blank=False)
-    # user
+    user = models.ForeignKey("User", on_delete=models.CASCADE, null=False, blank=False)
 
 
 class StakingFees(models.Model):
     """Model used to track the fees sent to the stacking contract"""
+
+    class Meta:
+        constraints = [models.constraints.UniqueConstraint(fields=("token", "slot"))]
 
     token = models.CharField(
         null=False,
@@ -25,6 +29,6 @@ class StakingFees(models.Model):
         ],
     )
     amount = models.DecimalField(
-        max_digits=78, decimal_places=0, null=False, blank=False
+        max_digits=78, decimal_places=0, null=False, blank=False, default=Decimal(0)
     )
     slot = models.IntegerField(null=False, blank=False)

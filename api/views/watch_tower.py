@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from adrf.views import APIView
 from api.models import User
 from api.models.orders import Maker
-from api.serializers.orders import TakerSerializer, MakerSerializer
+from api.serializers.orders import TakerSerializer
 
 
 class WatchTowerView(APIView):

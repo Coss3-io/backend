@@ -3,11 +3,10 @@ from datetime import datetime
 from asgiref.sync import sync_to_async
 from adrf.views import APIView
 from rest_framework import status
-from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
-from api.models.orders import Maker, Taker
+from api.models.orders import Maker
 from api.models.types import Address
 from api.serializers.orders import MakerSerializer
 
@@ -41,7 +40,6 @@ class OrderView(APIView):
 class MakerView(APIView):
     """The views user to retrieve and create Maker Orders"""
 
-    authentication_classes = [SessionAuthentication]
     permission_classes = [IsAuthenticated]
 
     async def get(self, request: Request):

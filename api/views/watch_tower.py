@@ -6,10 +6,10 @@ from rest_framework.response import Response
 from adrf.views import APIView
 from api.models import User
 from api.models.orders import Maker
-from api.serializers.orders import TakerSerializer
+from api.serializers.orders import TakerSerializer, MakerSerializer
 
 
-class WatchTowerview(APIView):
+class WatchTowerView(APIView):
     """The view for the watch tower to commit order changes"""
 
     authentication_classes = []  # custom authentication here
@@ -82,4 +82,14 @@ class WatchTowerview(APIView):
         takers_serializer.save(user=(await user)[0])
 
     async def delete(self, request):
-        """Function used for order cancellation"""
+        """Function used for maker order cancellation"""
+        try:
+            maker = Maker.objects.get(order_hash=request.data.get("order_hash", ""))
+        except ObjectDoesNotExist:
+            return Response(
+                {"data": "order_hash field is wrong"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        maker.status = Maker.CANCELLED
+        await maker.asave()
+        return Response({}, status=status.HTTP_200_OK)

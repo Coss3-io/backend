@@ -79,6 +79,6 @@ class MakerView(APIView):
 
         maker = MakerSerializer(data=data, context={"user": request.user})
         await sync_to_async(maker.is_valid)(raise_exception=True)
-        await maker.save(filled=Decimal("0"), status=Maker.OPEN, user=request.user)
+        await maker.save(filled=Decimal("0"), user=request.user)
 
         return Response(maker.validated_data, status=status.HTTP_200_OK)

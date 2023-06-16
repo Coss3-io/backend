@@ -4,7 +4,7 @@ from rest_framework import serializers
 from rest_framework.validators import ValidationError
 from api.models import User
 from api.models.types import UserTypedDict
-from api.utils import validate_eth_signed_message
+from api.utils import validate_eth_signed_message, validate_decimal_integer
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -18,7 +18,9 @@ class UserSerializer(serializers.ModelSerializer):
         return User.objects.create_user(validated_data["address"])
 
     def validate(self, data: UserTypedDict):
-        user_timestamp = self.context["timestamp"]
+        user_timestamp = int(
+            validate_decimal_integer(self.context["timestamp"], "timestamp")
+        )
         signature = self.context["signature"]
         timestamp = int(time())
 

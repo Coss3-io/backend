@@ -71,12 +71,37 @@ class UserCreationTestCase(APITestCase):
             HTTP_400_BAD_REQUEST,
             "The request with a wrong timestamp should fail",
         )
-        print(response.json())
         self.assertDictEqual(
             response.json(),
             {
                 settings.REST_FRAMEWORK["NON_FIELD_ERRORS_KEY"]: [
                     errors.Decimal.WRONG_DECIMAL_ERROR.format("timestamp")
+                ]
+            },
+        )
+
+    def test_user_creation_0_timestamp(self):
+        """Checks sending a 0 timstamp does not allow user creation"""
+
+        signature = "0xacb8299160a6570f56ff85a0ac8f1aebb9bb0d4f19b059ee77bd042888a743445839938aff7ed52acdc433a7d4cc1728a08f4161ff1bcb8ac5a7f6018a6f9d301c"
+        address = "0xf17f52151EbEF6C7334FAD080c5704D77216b732"
+        timestamp = "0"
+
+        response = self.client.post(
+            self.url,
+            data={"signature": signature, "address": address, "timestamp": timestamp},
+        )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request with a 0 timestamp should fail",
+        )
+        self.assertDictEqual(
+            response.json(),
+            {
+                settings.REST_FRAMEWORK["NON_FIELD_ERRORS_KEY"]: [
+                    errors.Decimal.ZERO_DECIMAL_ERROR.format("timestamp")
                 ]
             },
         )

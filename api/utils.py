@@ -7,6 +7,7 @@ from web3 import Web3
 
 
 def validate_eth_signed_message(
+    message: bytes, signature: str, address: Address
     """Function used to validate an eth signed message
 
     Arguments :\n

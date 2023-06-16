@@ -11,6 +11,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
+        fields = ["address"]
 
     def create(self, validated_data: UserTypedDict):
         return User.objects.create_user(validated_data["address"])

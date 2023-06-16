@@ -23,7 +23,7 @@ class UserSerializer(serializers.ModelSerializer):
         timestamp = int(time())
 
         if (timestamp - user_timestamp) > 120:
-            raise ValidationError(errors.USER_TIMESTAMP_ERROR)
+            raise ValidationError(errors.User.USER_TIMESTAMP_ERROR)
 
         if (
             validate_eth_signed_message(
@@ -33,5 +33,5 @@ class UserSerializer(serializers.ModelSerializer):
             )
             == False
         ):
-            raise ValidationError(errors.SIGNATURE_MISMATCH_ERROR)
+            raise ValidationError(errors.Signature.SIGNATURE_MISMATCH_ERROR)
         return super().validate(data)

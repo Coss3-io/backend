@@ -105,3 +105,73 @@ class UserCreationTestCase(APITestCase):
                 ]
             },
         )
+
+    def test_user_creation_short_address(self):
+        """Checks sending a too short address does not allow user creation"""
+
+        signature = "0x740cf934332732702e8f5906a09690b76ff90148f6ba5e014864961a027537e61e8df72ee1e564788219c956a6b84567e0a370da604207e9694f70b94fe141e11c"
+        address = "0xf17f52151EbEF6C7334FAD080c5704D77216b73"
+        timestamp = "2114380800"
+
+        response = self.client.post(
+            self.url,
+            data={"signature": signature, "address": address, "timestamp": timestamp},
+        )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request with a short address shoul fail",
+        )
+        self.assertDictEqual(
+            response.json(),
+            {"address": ["Ensure this field has at least 42 characters."]},
+        )
+
+    def test_user_creation_long_address(self):
+        """Checks sending a too long address does not allow user creation"""
+
+        signature = "0x740cf934332732702e8f5906a09690b76ff90148f6ba5e014864961a027537e61e8df72ee1e564788219c956a6b84567e0a370da604207e9694f70b94fe141e11c"
+        address = "0xf17f52151EbEF6C7334FAD080c5704D77216b73aa"
+        timestamp = "2114380800"
+
+        response = self.client.post(
+            self.url,
+            data={"signature": signature, "address": address, "timestamp": timestamp},
+        )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request with a short address shoul fail",
+        )
+        self.assertDictEqual(
+            response.json(),
+            {"address": ["Ensure this field has no more than 42 characters."]},
+        )
+
+    def test_user_creation_wrong_address(self):
+        """Checks sending a wrong address does not allow user creation"""
+
+        signature = "0x740cf934332732702e8f5906a09690b76ff90148f6ba5e014864961a027537e61e8df72ee1e564788219c956a6b84567e0a370da604207e9694f70b94fe141e11c"
+        address = "0xz17f52151EbEF6C7334FAD080c5704D77216b731"
+        timestamp = "2114380800"
+
+        response = self.client.post(
+            self.url,
+            data={"signature": signature, "address": address, "timestamp": timestamp},
+        )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request with a short address shoul fail",
+        )
+        self.assertDictEqual(
+            response.json(),
+            {
+                settings.REST_FRAMEWORK["NON_FIELD_ERRORS_KEY"]: [
+                    errors.Address.WRONG_ADDRESS_ERROR.format("")
+                ]
+            },
+        )

@@ -27,7 +27,9 @@ class UserView(APIView):
         ```
         """
 
-        timestamp = validate_decimal_integer(request.data.get("timestamp", 0), "timestamp")
+        timestamp = validate_decimal_integer(
+            request.data.get("timestamp", 0), "timestamp"
+        )
         signature = Signature(request.data.get("signature", ""))
         address = Address(request.data.get("address", ""))
 

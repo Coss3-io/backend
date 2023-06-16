@@ -1,6 +1,10 @@
 from django.db import models
-from django.contrib.auth.models import BaseUserManager, AbstractBaseUser, PermissionsMixin
-from django.core.validators import MaxLengthValidator, MinLengthValidator
+from django.contrib.auth.models import (
+    BaseUserManager,
+    AbstractBaseUser,
+    PermissionsMixin,
+)
+from django.core.validators import MinLengthValidator
 from api.models.types import Address
 
 
@@ -30,11 +34,11 @@ class MyUserManager(BaseUserManager):
 
 class User(AbstractBaseUser, PermissionsMixin):
     """The main user class for the application"""
+
     address = models.CharField(
         null=False,
         blank=False,
         max_length=42,
-        editable=False,
         unique=True,
         validators=[
             MinLengthValidator(limit_value=42),

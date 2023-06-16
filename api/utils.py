@@ -1,4 +1,5 @@
-from decimal import Decimal, ROUND_DOWN
+from decimal import Decimal, ROUND_DOWN, InvalidOperation
+import api.errors as errors
 from rest_framework.validators import ValidationError
 from eth_account import Account, messages
 from api.models.types import Address
@@ -35,10 +36,12 @@ def validate_decimal_integer(value: str, name: str):
     `value:` the user supplied number
     `name:` name of the field
     """
-
-    decimal_value = Decimal(value)
+    try:
+        decimal_value = Decimal(value)
+    except InvalidOperation:
+        raise ValidationError(errors.Decimal.WRONG_DECIMAL_ERROR.format(name))
     if decimal_value == Decimal("0"):
-        raise ValidationError(f"the {name} submitted cannot be 0")
+        raise ValidationError(errors.Decimal.ZERO_DECIMAL_ERROR.format(name))
 
     if decimal_value != Decimal(value).quantize(Decimal("1."), rounding=ROUND_DOWN):
         raise ValidationError(f"the {name} must be a integer number")

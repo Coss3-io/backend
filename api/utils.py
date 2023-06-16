@@ -8,6 +8,7 @@ from web3 import Web3
 
 def validate_eth_signed_message(
     message: bytes, signature: str, address: Address
+) -> bool:
     """Function used to validate an eth signed message
 
     Arguments :\n
@@ -45,8 +46,9 @@ def validate_decimal_integer(value: str, name: str):
         raise ValidationError(errors.Decimal.ZERO_DECIMAL_ERROR.format(name))
 
     if decimal_value != Decimal(value).quantize(Decimal("1."), rounding=ROUND_DOWN):
-        raise ValidationError(f"the {name} must be a integer number")
+        raise ValidationError(errors.Decimal.FLOATTING_POINT_NUMBER_ERROR.format(name))
     return value
+
 
 def validate_address(value: str, name: str):
     """Function used to validate the user submitted address like

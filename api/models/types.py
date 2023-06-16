@@ -2,18 +2,22 @@ from typing import TypedDict, Any
 from decimal import Decimal
 from datetime import date
 from rest_framework.validators import ValidationError
+import api.errors as errors
 
 
 class Address(str):
-    def __new__(cls, value, name="address"):
+    def __new__(cls, value, name=""):
+        if len(value) <= 41:
+            raise ValidationError(errors.Address.SHORT_ADDRESS_ERROR.format(name))
         if len(value) > 42:
-            raise ValidationError(f"the {name} you gave is too long")
+            raise ValidationError(errors.Address.LONG_ADDRESS_ERROR.format(name))
         try:
             int(value, 0)
         except ValueError:
-            raise ValidationError(f"the {name} submitted is hill formed")
+            raise ValidationError(errors.Address.WRONG_ADDRESS_ERROR.format(name))
         return super().__new__(cls, value)
-    
+
+
 class Signature(str):
     def __new__(cls, value):
         if len(value) > 132:
@@ -23,7 +27,8 @@ class Signature(str):
         except ValueError:
             raise ValidationError("the signature submitted is hill formed")
         return super().__new__(cls, value)
-    
+
+
 class KeccakHash(str):
     def __new__(cls, value):
         if len(value) > 66:
@@ -33,7 +38,6 @@ class KeccakHash(str):
         except ValueError:
             raise ValidationError("the hash submitted is hill formed")
         return super().__new__(cls, value)
-    
 
 
 class MakerTypedDict(TypedDict):
@@ -49,10 +53,12 @@ class MakerTypedDict(TypedDict):
     order_hash: str
     signature: str
 
+
 class UserTypedDict(TypedDict):
     address: Address
     is_admin: bool
     is_active: bool
+
 
 class BotTypedDict(TypedDict):
     step: Decimal

@@ -11,3 +11,8 @@ class Decimal:
     ZERO_DECIMAL_ERROR = "the {} submitted cannot be zero"
     WRONG_DECIMAL_ERROR = "the {} submitted is not a number"
     FLOATTING_POINT_NUMBER_ERROR = "the {} must be a integer number"
+
+class Address:
+    SHORT_ADDRESS_ERROR = "the {} address you gave is too short"
+    LONG_ADDRESS_ERROR = "the {} address you gave is too long"
+    WRONG_ADDRESS_ERROR = "the {} address submitted is hill formed"

@@ -20,12 +20,14 @@ class Address(str):
 
 class Signature(str):
     def __new__(cls, value):
+        if len(value) <= 132:
+            raise ValidationError(errors.Signature.SHORT_SIGNATURE_ERROR)
         if len(value) > 132:
-            raise ValidationError("the signature you gave is too long")
+            raise ValidationError(errors.Signature.LONG_SIGNATURE_ERROR)
         try:
             int(value, 0)
         except ValueError:
-            raise ValidationError("the signature submitted is hill formed")
+            raise ValidationError(errors.Signature.WRONG_SIGNATURE_ERROR)
         return super().__new__(cls, value)
 
 

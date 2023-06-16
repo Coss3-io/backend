@@ -13,7 +13,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
 
     def create(self, validated_data: UserTypedDict):
-        User.objects.create_user(validated_data["address"])
+        return User.objects.create_user(validated_data["address"])
 
     def validate(self, data: UserTypedDict):
         user_timestamp = self.context["timestamp"]
@@ -27,7 +27,7 @@ class UserSerializer(serializers.ModelSerializer):
 
         if (
             validate_eth_signed_message(
-                message=f"Coss.io account creation with timstamp {user_timestamp}",
+                message=f"coss3.io account creation with timstamp {user_timestamp}".encode(),
                 signature=signature,
                 address=data["address"],
             )

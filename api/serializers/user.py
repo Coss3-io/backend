@@ -1,3 +1,4 @@
+import api.errors as errors
 from time import time
 from rest_framework import serializers
 from rest_framework.validators import ValidationError
@@ -22,9 +23,7 @@ class UserSerializer(serializers.ModelSerializer):
         timestamp = int(time())
 
         if (timestamp - user_timestamp) > 120:
-            raise ValidationError(
-                "The submitted timestamp for account creation is too old"
-            )
+            raise ValidationError(errors.USER_TIMESTAMP_ERROR)
 
         if (
             validate_eth_signed_message(
@@ -34,5 +33,5 @@ class UserSerializer(serializers.ModelSerializer):
             )
             == False
         ):
-            raise ValidationError("The signature provided does not match the address")
+            raise ValidationError(errors.SIGNATURE_MISMATCH_ERROR)
         return super().validate(data)

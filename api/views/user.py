@@ -27,9 +27,7 @@ class UserView(APIView):
         ```
         """
 
-        timestamp = validate_decimal_integer(
-            request.data.get("timestamp", 0), "timestamp"
-        )
+        timestamp = request.data.get("timestamp", 0)
         signature = Signature(request.data.get("signature", ""))
         address = Address(request.data.get("address", ""))
 
@@ -37,7 +35,7 @@ class UserView(APIView):
             data={"address": address},  # type: ignore
             context={
                 "signature": signature,
-                "timestamp": int(timestamp),
+                "timestamp": timestamp,
             },
         )
         await sync_to_async(user.is_valid)(raise_exception=True)

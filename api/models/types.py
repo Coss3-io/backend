@@ -20,7 +20,7 @@ class Address(str):
 
 class Signature(str):
     def __new__(cls, value):
-        if len(value) <= 132:
+        if len(value) <= 131:
             raise ValidationError(errors.Signature.SHORT_SIGNATURE_ERROR)
         if len(value) > 132:
             raise ValidationError(errors.Signature.LONG_SIGNATURE_ERROR)

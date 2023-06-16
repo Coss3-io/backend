@@ -10,3 +10,4 @@ class Signature:
 class Decimal:
     ZERO_DECIMAL_ERROR = "the {} submitted cannot be zero"
     WRONG_DECIMAL_ERROR = "the {} submitted is not a number"
+    FLOATTING_POINT_NUMBER_ERROR = "the {} must be a integer number"

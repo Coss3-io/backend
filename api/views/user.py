@@ -1,11 +1,8 @@
-from time import time
 from adrf.views import APIView
 from asgiref.sync import sync_to_async
 from rest_framework.status import HTTP_200_OK
 from rest_framework.response import Response
 from api.models import User
-from api.utils import validate_decimal_integer
-from api.models.types import Signature, Address
 from api.serializers.user import UserSerializer
 
 
@@ -28,8 +25,8 @@ class UserView(APIView):
         """
 
         timestamp = request.data.get("timestamp", 0)
-        signature = Signature(request.data.get("signature", ""))
-        address = Address(request.data.get("address", ""))
+        signature = request.data.get("signature", "")
+        address = request.data.get("address", "")
 
         user = UserSerializer(
             data={"address": address},  # type: ignore

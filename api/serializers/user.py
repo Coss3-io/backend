@@ -3,7 +3,7 @@ from time import time
 from rest_framework import serializers
 from rest_framework.validators import ValidationError
 from api.models import User
-from api.models.types import UserTypedDict
+from api.models.types import UserTypedDict, Address, Signature
 from api.utils import validate_eth_signed_message, validate_decimal_integer
 
 
@@ -21,7 +21,7 @@ class UserSerializer(serializers.ModelSerializer):
         user_timestamp = int(
             validate_decimal_integer(self.context["timestamp"], "timestamp")
         )
-        signature = self.context["signature"]
+        signature = Signature(self.context["signature"])
         timestamp = int(time())
 
         if (timestamp - user_timestamp) > 120:
@@ -31,7 +31,7 @@ class UserSerializer(serializers.ModelSerializer):
             validate_eth_signed_message(
                 message=f"coss3.io account creation with timstamp {user_timestamp}".encode(),
                 signature=signature,
-                address=data["address"],
+                address=Address(data["address"]),
             )
             == False
         ):

@@ -227,7 +227,6 @@ class UserCreationTestCase(APITestCase):
             },
         )
 
-    
     def test_user_creation_wrong_signature(self):
         """Checks sending a wrong signature does not allow user creation"""
 
@@ -280,3 +279,68 @@ class UserCreationTestCase(APITestCase):
             },
         )
 
+    def test_user_creation_missing_timestamp(self):
+        """Checks we cannot create a user without sending a timestamp"""
+
+        signature = "0x740cf934332732702e8f5906a09690b76ff90148f6ba5e014864961a027537e61e8df72ee1e564788219c956a6b84567e0a370da604207e9694f70b94fe141e11c"
+        address = "0xf17f52151EbEF6C7334FAD080c5704D77216b732"
+        timestamp = "2114380800"
+
+        response = self.client.post(
+            self.url,
+            data={"signature": signature, "address": address},
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The user creation without timestamp should not work",
+        )
+
+        self.assertDictEqual(
+            response.json(),
+            {"error": [errors.Decimal.ZERO_DECIMAL_ERROR.format("timestamp")]},
+        )
+
+    def test_user_creation_missing_address(self):
+        """Checks we cannot create a user without sending an address"""
+
+        signature = "0x740cf934332732702e8f5906a09690b76ff90148f6ba5e014864961a027537e61e8df72ee1e564788219c956a6b84567e0a370da604207e9694f70b94fe141e11c"
+        address = "0xf17f52151EbEF6C7334FAD080c5704D77216b732"
+        timestamp = "2114380800"
+
+        response = self.client.post(
+            self.url,
+            data={"signature": signature, "timestamp": timestamp},
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The user creation without address should not work",
+        )
+
+        self.assertDictEqual(
+            response.json(),
+            {"address": ["This field may not be blank."]},
+        )
+
+    def test_user_creation_missing_signature(self):
+        """Checks we cannot create a user without sending a signature"""
+
+        signature = "0x740cf934332732702e8f5906a09690b76ff90148f6ba5e014864961a027537e61e8df72ee1e564788219c956a6b84567e0a370da604207e9694f70b94fe141e11c"
+        address = "0xf17f52151EbEF6C7334FAD080c5704D77216b732"
+        timestamp = "2114380800"
+
+        response = self.client.post(
+            self.url,
+            data={"address": address, "timestamp": timestamp},
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The user creation without signature should not work",
+        )
+
+        self.assertDictEqual(
+            response.json(),
+            {"error": [errors.Signature.SHORT_SIGNATURE_ERROR]},
+        )

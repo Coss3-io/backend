@@ -29,6 +29,4 @@ class MakerOrderTestCase(APITestCase):
             "order_hash": "0x0e3c530932af2cadc56e2cb633b4a4952b5ebb74888c19e1068c2d0213953e45",
             "is_buyer": False,
         }
-        response = self.client.post(reverse("api:order"), data=data)  # type: ignore
-
-        print(response.content, response.status_code)
+        response = self.client.post(reverse("api:order"), data=data)

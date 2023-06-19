@@ -11,10 +11,10 @@ from rest_framework.test import APITestCase
 class MakerOrderTestCase(APITestCase):
     """Test case for creating an retrieving Maker orders"""
 
-    def test_creating_maker_order_works(self):
+    async def test_creating_maker_order_works(self):
         """Checks we can create an order"""
 
-        user = User.objects.create_user(
+        user = await User.objects.create_user(
             address=Address("0xf17f52151EbEF6C7334FAD080c5704D77216b732")
         )
         self.client.force_authenticate(user)  # type: ignore
@@ -29,6 +29,6 @@ class MakerOrderTestCase(APITestCase):
             "order_hash": "0x0e3c530932af2cadc56e2cb633b4a4952b5ebb74888c19e1068c2d0213953e45",
             "is_buyer": False,
         }
-        response = self.client.post(reverse("api:order"), data=data)
+        response = await self.async_client.post(reverse("api:order"), data=data)  # type: ignore
 
         print(response.content)

@@ -1,7 +1,9 @@
+from asgiref.sync import async_to_sync
 from django.urls import reverse
 from django.conf import settings
 import api.errors as errors
 from api.models import User
+from api.models.types import Address
 from rest_framework.test import APITestCase
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 
@@ -26,6 +28,31 @@ class UserCreationTestCase(APITestCase):
             response.status_code, HTTP_200_OK, "The user creation should not fail"
         )
         User.objects.get(address=address)
+
+    def test_user_creation_twice_fails(self):
+        """Checks we cannot create the same user twice"""
+
+        async_to_sync(User.objects.create_user)(
+            address=Address("0xf17f52151EbEF6C7334FAD080c5704D77216b732")
+        )
+
+        signature = "0x740cf934332732702e8f5906a09690b76ff90148f6ba5e014864961a027537e61e8df72ee1e564788219c956a6b84567e0a370da604207e9694f70b94fe141e11c"
+        address = "0xf17f52151EbEF6C7334FAD080c5704D77216b732"
+        timestamp = "2114380800"
+
+        response = self.client.post(
+            self.url,
+            data={"signature": signature, "address": address, "timestamp": timestamp},
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "User creation twice should not work",
+        )
+
+        self.assertDictEqual(
+            response.json(), {"address": ["user with this address already exists."]}
+        )
 
     def test_user_creation_old_timestamp(self):
         """Checks a user with a too old timestamp cannot be created"""

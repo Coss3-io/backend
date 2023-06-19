@@ -1,6 +1,6 @@
+from decimal import Decimal
 from django.db import models
 from django.core.validators import MinLengthValidator
-
 
 class AsyncManager(models.Manager):
     async def create(self, *args, **kwargs):
@@ -15,7 +15,7 @@ class Maker(models.Model):
     FILLED = "FI"
     STATUS_CHOICES = [(OPEN, "OPEN"), (CANCELLED, "CANCELLED"), (FILLED, "FILLED")]
 
-    object = AsyncManager()
+    objects = AsyncManager()
 
     class Meta:
         constraints = [
@@ -53,6 +53,7 @@ class Maker(models.Model):
     filled = models.DecimalField(
         max_digits=78,
         decimal_places=0,
+        default=Decimal("0"),
         null=False,
         blank=False,
     )

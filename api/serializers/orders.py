@@ -40,7 +40,7 @@ class MakerListSerializer(serializers.ListSerializer):
 class MakerSerializer(serializers.ModelSerializer):
     """The maker order class serializer"""
 
-    id = serializers.IntegerField(required=False)
+    id = serializers.IntegerField(required=False, write_only=True)
     expiry = TimestampField(required=True)
 
     class Meta:
@@ -58,6 +58,12 @@ class MakerSerializer(serializers.ModelSerializer):
         ]
         extra_kwargs = {"user": {"write_only": True}}
         list_serializer_class = MakerListSerializer
+
+    def validate_id(self, value):
+        if value is not None:
+            raise ValidationError(
+                "the id field must not be submitted for orders creation"
+            )
 
     def validate_amount(self, value: str):
         return validate_decimal_integer(value, "amount")
@@ -126,6 +132,9 @@ class MakerSerializer(serializers.ModelSerializer):
                 "The provided order hash does not match the computed hash"
             )
         return super().validate(data)
+
+    def to_representation(self, instance):
+        return super().to_representation(instance)
 
 
 class TakerListSerializer(serializers.ListSerializer):

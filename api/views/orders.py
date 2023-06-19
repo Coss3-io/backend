@@ -17,24 +17,18 @@ class OrderView(APIView):
     async def get(self, request: Request):
         """Function used to get all the orders for a given pair"""
 
-        base_token: Address = Address(
-            request.query_params.get("base_token", Address("0"))
-        )
-        quote_token: Address = Address(
-            request.query_params.get("quote_token", Address("0"))
-        )
+        base_token = Address(request.query_params.get("base_token", "0"))
+        quote_token = Address(request.query_params.get("quote_token", "0"))
 
-        if base_token == Address("0") or quote_token == Address("0"):
+        if base_token == "0" or quote_token == "0":
             return Response(
                 {"detail": "base_token and quote_token params are needed"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         queryset = Maker.objects.filter(base_token=base_token, quote_token=quote_token)
-
-        return Response(
-            MakerSerializer(queryset, many=True).data, status=status.HTTP_200_OK
-        )
+        data = await sync_to_async(lambda: MakerSerializer(queryset, many=True).data)()
+        return Response(data, status=status.HTTP_200_OK)
 
 
 class MakerView(APIView):

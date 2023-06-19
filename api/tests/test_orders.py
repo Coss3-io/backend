@@ -1,7 +1,6 @@
 from decimal import Decimal
 from time import time
 from asgiref.sync import async_to_sync
-from datetime import datetime
 from django.urls import reverse
 from rest_framework import status
 from api.models import User

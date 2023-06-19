@@ -16,7 +16,7 @@ class UserCreationTestCase(APITestCase):
     def test_regular_user_creation(self):
         """Checks the user creation works well"""
 
-        signature = "0x740cf934332732702e8f5906a09690b76ff90148f6ba5e014864961a027537e61e8df72ee1e564788219c956a6b84567e0a370da604207e9694f70b94fe141e11c"
+        signature = "0x41d725e42c47ea30d326e1a8fc48a234ec4445aebe34f3bb3c0547603208a5947365b2de6f777db2982672ed040824500f46253694d176905219354740261c3f1b"
         address = "0xf17f52151EbEF6C7334FAD080c5704D77216b732"
         timestamp = "2114380800"
 
@@ -36,7 +36,7 @@ class UserCreationTestCase(APITestCase):
             address=Address("0xf17f52151EbEF6C7334FAD080c5704D77216b732")
         )
 
-        signature = "0x740cf934332732702e8f5906a09690b76ff90148f6ba5e014864961a027537e61e8df72ee1e564788219c956a6b84567e0a370da604207e9694f70b94fe141e11c"
+        signature = "0x41d725e42c47ea30d326e1a8fc48a234ec4445aebe34f3bb3c0547603208a5947365b2de6f777db2982672ed040824500f46253694d176905219354740261c3f1b"
         address = "0xf17f52151EbEF6C7334FAD080c5704D77216b732"
         timestamp = "2114380800"
 
@@ -57,7 +57,7 @@ class UserCreationTestCase(APITestCase):
     def test_user_creation_old_timestamp(self):
         """Checks a user with a too old timestamp cannot be created"""
 
-        signature = "0xacb8299160a6570f56ff85a0ac8f1aebb9bb0d4f19b059ee77bd042888a743445839938aff7ed52acdc433a7d4cc1728a08f4161ff1bcb8ac5a7f6018a6f9d301c"
+        signature = "0x41d725e42c47ea30d326e1a8fc48a234ec4445aebe34f3bb3c0547603208a5947365b2de6f777db2982672ed040824500f46253694d176905219354740261c3f1b"
         address = "0xf17f52151EbEF6C7334FAD080c5704D77216b732"
         timestamp = "211438080"
 
@@ -74,7 +74,7 @@ class UserCreationTestCase(APITestCase):
         self.assertDictEqual(
             response.json(),
             {
-                settings.REST_FRAMEWORK["NON_FIELD_ERRORS_KEY"]: [
+                "timestamp": [
                     errors.User.USER_TIMESTAMP_ERROR
                 ]
             },
@@ -83,7 +83,7 @@ class UserCreationTestCase(APITestCase):
     def test_user_creation_wrong_timestamp(self):
         """Checks sending a wrong timstamp does not allow user creation"""
 
-        signature = "0xacb8299160a6570f56ff85a0ac8f1aebb9bb0d4f19b059ee77bd042888a743445839938aff7ed52acdc433a7d4cc1728a08f4161ff1bcb8ac5a7f6018a6f9d301c"
+        signature = "0x41d725e42c47ea30d326e1a8fc48a234ec4445aebe34f3bb3c0547603208a5947365b2de6f777db2982672ed040824500f46253694d176905219354740261c3f1b"
         address = "0xf17f52151EbEF6C7334FAD080c5704D77216b732"
         timestamp = "a"
 
@@ -100,7 +100,7 @@ class UserCreationTestCase(APITestCase):
         self.assertDictEqual(
             response.json(),
             {
-                settings.REST_FRAMEWORK["NON_FIELD_ERRORS_KEY"]: [
+                "timestamp": [
                     errors.Decimal.WRONG_DECIMAL_ERROR.format("timestamp")
                 ]
             },
@@ -109,7 +109,7 @@ class UserCreationTestCase(APITestCase):
     def test_user_creation_0_timestamp(self):
         """Checks sending a 0 timstamp does not allow user creation"""
 
-        signature = "0xacb8299160a6570f56ff85a0ac8f1aebb9bb0d4f19b059ee77bd042888a743445839938aff7ed52acdc433a7d4cc1728a08f4161ff1bcb8ac5a7f6018a6f9d301c"
+        signature = "0x41d725e42c47ea30d326e1a8fc48a234ec4445aebe34f3bb3c0547603208a5947365b2de6f777db2982672ed040824500f46253694d176905219354740261c3f1b"
         address = "0xf17f52151EbEF6C7334FAD080c5704D77216b732"
         timestamp = "0"
 
@@ -126,7 +126,7 @@ class UserCreationTestCase(APITestCase):
         self.assertDictEqual(
             response.json(),
             {
-                settings.REST_FRAMEWORK["NON_FIELD_ERRORS_KEY"]: [
+                "timestamp": [
                     errors.Decimal.ZERO_DECIMAL_ERROR.format("timestamp")
                 ]
             },
@@ -135,7 +135,7 @@ class UserCreationTestCase(APITestCase):
     def test_user_creation_short_address(self):
         """Checks sending a too short address does not allow user creation"""
 
-        signature = "0x740cf934332732702e8f5906a09690b76ff90148f6ba5e014864961a027537e61e8df72ee1e564788219c956a6b84567e0a370da604207e9694f70b94fe141e11c"
+        signature = "0x41d725e42c47ea30d326e1a8fc48a234ec4445aebe34f3bb3c0547603208a5947365b2de6f777db2982672ed040824500f46253694d176905219354740261c3f1b"
         address = "0xf17f52151EbEF6C7334FAD080c5704D77216b73"
         timestamp = "2114380800"
 
@@ -157,7 +157,7 @@ class UserCreationTestCase(APITestCase):
     def test_user_creation_long_address(self):
         """Checks sending a too long address does not allow user creation"""
 
-        signature = "0x740cf934332732702e8f5906a09690b76ff90148f6ba5e014864961a027537e61e8df72ee1e564788219c956a6b84567e0a370da604207e9694f70b94fe141e11c"
+        signature = "0x41d725e42c47ea30d326e1a8fc48a234ec4445aebe34f3bb3c0547603208a5947365b2de6f777db2982672ed040824500f46253694d176905219354740261c3f1b"
         address = "0xf17f52151EbEF6C7334FAD080c5704D77216b73aa"
         timestamp = "2114380800"
 
@@ -179,7 +179,7 @@ class UserCreationTestCase(APITestCase):
     def test_user_creation_wrong_address(self):
         """Checks sending a wrong address does not allow user creation"""
 
-        signature = "0x740cf934332732702e8f5906a09690b76ff90148f6ba5e014864961a027537e61e8df72ee1e564788219c956a6b84567e0a370da604207e9694f70b94fe141e11c"
+        signature = "0x41d725e42c47ea30d326e1a8fc48a234ec4445aebe34f3bb3c0547603208a5947365b2de6f777db2982672ed040824500f46253694d176905219354740261c3f1b"
         address = "0xz17f52151EbEF6C7334FAD080c5704D77216b731"
         timestamp = "2114380800"
 
@@ -196,7 +196,7 @@ class UserCreationTestCase(APITestCase):
         self.assertDictEqual(
             response.json(),
             {
-                settings.REST_FRAMEWORK["NON_FIELD_ERRORS_KEY"]: [
+                "address": [
                     errors.Address.WRONG_ADDRESS_ERROR.format("")
                 ]
             },
@@ -205,7 +205,7 @@ class UserCreationTestCase(APITestCase):
     def test_user_creation_short_signature(self):
         """Checks sending a too short signature does not allow user creation"""
 
-        signature = "0x74cf934332732702e8f5906a09690b76ff90148f6ba5e014864961a027537e61e8df72ee1e564788219c956a6b84567e0a370da604207e9694f70b94fe141e11c"
+        signature = "0x41d75e42c47ea30d326e1a8fc48a234ec4445aebe34f3bb3c0547603208a5947365b2de6f777db2982672ed040824500f46253694d176905219354740261c3f1b"
         address = "0xf17f52151EbEF6C7334FAD080c5704D77216b731"
         timestamp = "2114380800"
 
@@ -231,7 +231,7 @@ class UserCreationTestCase(APITestCase):
     def test_user_creation_long_signature(self):
         """Checks sending a too long signature does not allow user creation"""
 
-        signature = "0x7400cf934332732702e8f5906a09690b76ff90148f6ba5e014864961a027537e61e8df72ee1e564788219c956a6b84567e0a370da604207e9694f70b94fe141e11c"
+        signature = "0x41dd725e42c47ea30d326e1a8fc48a234ec4445aebe34f3bb3c0547603208a5947365b2de6f777db2982672ed040824500f46253694d176905219354740261c3f1b"
         address = "0xf17f52151EbEF6C7334FAD080c5704D77216b731"
         timestamp = "2114380800"
 
@@ -257,7 +257,7 @@ class UserCreationTestCase(APITestCase):
     def test_user_creation_wrong_signature(self):
         """Checks sending a wrong signature does not allow user creation"""
 
-        signature = "0x74zcf934332732702e8f5906a09690b76ff90148f6ba5e014864961a027537e61e8df72ee1e564788219c956a6b84567e0a370da604207e9694f70b94fe141e11c"
+        signature = "0x41z725e42c47ea30d326e1a8fc48a234ec4445aebe34f3bb3c0547603208a5947365b2de6f777db2982672ed040824500f46253694d176905219354740261c3f1b"
         address = "0xf17f52151EbEF6C7334FAD080c5704D77216b731"
         timestamp = "2114380800"
 
@@ -283,7 +283,7 @@ class UserCreationTestCase(APITestCase):
     def test_user_creation_mismatch_signature(self):
         """Checks sending a mismatch signature does not allow user creation"""
 
-        signature = "0x741cf934332732702e8f5906a09690b76ff90148f6ba5e014864961a027537e61e8df72ee1e564788219c956a6b84567e0a370da604207e9694f70b94fe141e11c"
+        signature = "0x41a725e42c47ea30d326e1a8fc48a234ec4445aebe34f3bb3c0547603208a5947365b2de6f777db2982672ed040824500f46253694d176905219354740261c3f1b"
         address = "0xf17f52151EbEF6C7334FAD080c5704D77216b731"
         timestamp = "2114380800"
 
@@ -309,7 +309,7 @@ class UserCreationTestCase(APITestCase):
     def test_user_creation_missing_timestamp(self):
         """Checks we cannot create a user without sending a timestamp"""
 
-        signature = "0x740cf934332732702e8f5906a09690b76ff90148f6ba5e014864961a027537e61e8df72ee1e564788219c956a6b84567e0a370da604207e9694f70b94fe141e11c"
+        signature = "0x41d725e42c47ea30d326e1a8fc48a234ec4445aebe34f3bb3c0547603208a5947365b2de6f777db2982672ed040824500f46253694d176905219354740261c3f1b"
         address = "0xf17f52151EbEF6C7334FAD080c5704D77216b732"
         timestamp = "2114380800"
 
@@ -325,13 +325,13 @@ class UserCreationTestCase(APITestCase):
 
         self.assertDictEqual(
             response.json(),
-            {"error": [errors.Decimal.ZERO_DECIMAL_ERROR.format("timestamp")]},
+            {"timestamp": [errors.Decimal.ZERO_DECIMAL_ERROR.format("timestamp")]},
         )
 
     def test_user_creation_missing_address(self):
         """Checks we cannot create a user without sending an address"""
 
-        signature = "0x740cf934332732702e8f5906a09690b76ff90148f6ba5e014864961a027537e61e8df72ee1e564788219c956a6b84567e0a370da604207e9694f70b94fe141e11c"
+        signature = "0x41d725e42c47ea30d326e1a8fc48a234ec4445aebe34f3bb3c0547603208a5947365b2de6f777db2982672ed040824500f46253694d176905219354740261c3f1b"
         address = "0xf17f52151EbEF6C7334FAD080c5704D77216b732"
         timestamp = "2114380800"
 
@@ -353,7 +353,7 @@ class UserCreationTestCase(APITestCase):
     def test_user_creation_missing_signature(self):
         """Checks we cannot create a user without sending a signature"""
 
-        signature = "0x740cf934332732702e8f5906a09690b76ff90148f6ba5e014864961a027537e61e8df72ee1e564788219c956a6b84567e0a370da604207e9694f70b94fe141e11c"
+        signature = "0x41d725e42c47ea30d326e1a8fc48a234ec4445aebe34f3bb3c0547603208a5947365b2de6f777db2982672ed040824500f46253694d176905219354740261c3f1b"
         address = "0xf17f52151EbEF6C7334FAD080c5704D77216b732"
         timestamp = "2114380800"
 

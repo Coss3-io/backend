@@ -29,11 +29,11 @@ class UserView(APIView):
         address = request.data.get("address", "")
 
         user = UserSerializer(
-            data={"address": address},  # type: ignore
-            context={
+            data={
+                "address": address,
                 "signature": signature,
                 "timestamp": timestamp,
-            },
+            },  # type: ignore
         )
         await sync_to_async(user.is_valid)(raise_exception=True)
         await user.save()

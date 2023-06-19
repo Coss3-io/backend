@@ -3,15 +3,25 @@ from datetime import datetime
 from web3 import Web3
 from eth_abi.packed import encode_packed
 from rest_framework import serializers
-from rest_framework.fields import empty
 from rest_framework.validators import ValidationError
 from api.models.orders import Maker, Taker, Bot
-from api.models.types import MakerTypedDict, BotTypedDict, KeccakHash, Signature
+from api.models.types import BotTypedDict, KeccakHash, Signature
 from api.utils import (
     validate_eth_signed_message,
     validate_decimal_integer,
     validate_address,
 )
+
+
+class TimestampField(serializers.Field):
+    """Class used to change from timestamp to datetime"""
+
+    def to_internal_value(self, data):
+        timestamp = int(validate_decimal_integer(data, "expiry"))
+        return datetime.fromtimestamp(timestamp)
+
+    def to_representation(self, value: datetime):
+        return int(datetime.timestamp(value))
 
 
 class MakerListSerializer(serializers.ListSerializer):
@@ -31,6 +41,7 @@ class MakerSerializer(serializers.ModelSerializer):
     """The maker order class serializer"""
 
     id = serializers.IntegerField(required=False)
+    expiry = TimestampField(required=True)
 
     class Meta:
         model = Maker
@@ -53,10 +64,6 @@ class MakerSerializer(serializers.ModelSerializer):
 
     def validate_price(self, value: str):
         return validate_decimal_integer(value, "price")
-
-    def validate_expiry(self, value: datetime):
-        validate_decimal_integer(str(int(value.timestamp())), "expiry")
-        return value
 
     def validate_base_token(self, value):
         return validate_address(value, "base_token")
@@ -152,10 +159,10 @@ class TakerSerializer(serializers.ModelSerializer):
 
         def validate_block(self, data: str) -> str:
             return validate_decimal_integer(data, "block")
-        
+
         def validate_taker_amount(self, data: str) -> str:
             return validate_decimal_integer(data, "taker_amount")
-        
+
         def validate_base_fees(self, data: str) -> str:
             return validate_decimal_integer(data, "base_fees")
 

@@ -3,8 +3,8 @@ from django.core.validators import MinLengthValidator
 
 
 class AsyncManager(models.Manager):
-    def create(self, *args, **kwargs):
-        return self.acreate(*args, **kwargs)
+    async def create(self, *args, **kwargs):
+        return await self.acreate(*args, **kwargs)
 
 
 class Maker(models.Model):

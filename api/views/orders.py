@@ -72,11 +72,11 @@ class MakerView(APIView):
     async def post(self, request):
         """The method used to create a maker order"""
 
-        data = request.data.copy()
-        data.update({"expiry": datetime.fromtimestamp(int(data.get("expiry", 0)))})
-
-        maker = MakerSerializer(data=data, context={"user": request.user})
+        maker = MakerSerializer(data=request.data, context={"user": request.user})
         await sync_to_async(maker.is_valid)(raise_exception=True)
-        await maker.save(filled=Decimal("0"), user=request.user)
+        maker.save(filled=Decimal("0"), user=request.user)
 
-        return Response(maker.validated_data, status=status.HTTP_200_OK)
+        if maker.instance is not None:
+            maker.instance = await maker.instance
+
+        return Response(maker.data, status=status.HTTP_200_OK)

@@ -1,5 +1,6 @@
 from decimal import Decimal
 from time import time
+from asgiref.sync import async_to_sync
 from datetime import datetime
 from django.urls import reverse
 from rest_framework import status
@@ -11,13 +12,13 @@ from rest_framework.test import APITestCase
 class MakerOrderTestCase(APITestCase):
     """Test case for creating an retrieving Maker orders"""
 
-    async def test_creating_maker_order_works(self):
+    def test_creating_maker_order_works(self):
         """Checks we can create an order"""
 
-        user = await User.objects.create_user(
+        user = async_to_sync(User.objects.create_user)(
             address=Address("0xf17f52151EbEF6C7334FAD080c5704D77216b732")
         )
-        self.client.force_authenticate(user)  # type: ignore
+        self.client.force_authenticate(user=user)  # type: ignore
 
         data = {
             "amount": '{0:f}'.format(Decimal("173e16")),
@@ -29,6 +30,6 @@ class MakerOrderTestCase(APITestCase):
             "order_hash": "0x0e3c530932af2cadc56e2cb633b4a4952b5ebb74888c19e1068c2d0213953e45",
             "is_buyer": False,
         }
-        response = await self.async_client.post(reverse("api:order"), data=data)  # type: ignore
+        response = self.client.post(reverse("api:order"), data=data)  # type: ignore
 
-        print(response.content)
+        print(response.content, response.status_code)

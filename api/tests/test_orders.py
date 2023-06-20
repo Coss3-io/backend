@@ -313,10 +313,7 @@ class MakerOrderRetrievingTestCase(APITestCase):
         """Checks retrieving all the orders for a pair works"""
         response = self.client.get(
             reverse("api:orders"),
-            data={
-                "base_token": self.pair_1["base_token"],
-                "quote_token": self.pair_1["quote_token"],
-            },
+            data=self.pair_1,
         )
 
         self.assertEqual(
@@ -328,5 +325,54 @@ class MakerOrderRetrievingTestCase(APITestCase):
             sorted(
                 [hash(frozenset(item.items())) for item in reversed(self.pair_1_orders)]
             ),
-            "The returned orders shold match the orders in DB",
+            "The returned orders should match the orders in DB",
+        )
+
+    def test_retrieving_all_user_orders(self):
+        """Checks retrieving all orders for a particular user works"""
+
+        self.client.force_authenticate(user=self.user_2)  # type: ignore
+
+        response = self.client.get(reverse("api:order"), data={"all": True})
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_200_OK,
+            "The retrieving of all the orders should work",
+        )
+
+        self.assertListEqual(
+            sorted([hash(frozenset(item.items())) for item in response.json()]),
+            sorted(
+                [
+                    hash(frozenset(item.items()))
+                    for item in reversed(
+                        self.user_2_pair_2_orders + self.user_2_pair_1_orders
+                    )
+                ]
+            ),
+            "The returned user orders should match the orders in DB",
+        )
+
+    def test_retriving_user_2_pair_2_orders(self):
+        """Checks retrieving specific user orders for a pair works"""
+
+        self.client.force_authenticate(user=self.user_2)  # type: ignore
+        response = self.client.get(reverse("api:order"), data=self.pair_2)
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_200_OK,
+            "The user orders for pair 2 retrieval should work properly",
+        )
+
+        self.assertListEqual(
+            sorted([hash(frozenset(item.items())) for item in response.json()]),
+            sorted(
+                [
+                    hash(frozenset(item.items()))
+                    for item in reversed(self.user_2_pair_2_orders)
+                ]
+            ),
+            "The returned user 2 pair 2 orders should match the orders in DB",
         )

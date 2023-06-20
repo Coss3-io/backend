@@ -28,3 +28,6 @@ class KeccakHash:
     SHORT_HASH_ERROR = "the order_hash you gave is too short"
     LONG_HASH_ERROR = "the order_hash you gave is too long"
     WRONG_HASH_ERROR = "the order_hash submitted is hill formed"
+
+# Order related Errors
+ID_SUBMITTED_ERROR = "the id field must not be submitted for orders creation"

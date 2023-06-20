@@ -4,6 +4,7 @@ from asgiref.sync import async_to_sync
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 from api.models import User
+from api.errors import ID_SUBMITTED_ERROR
 from api.models.orders import Maker
 from api.models.types import Address
 from rest_framework.test import APITestCase
@@ -114,7 +115,7 @@ class MakerOrderTestCase(APITestCase):
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
         }
 
-        self.client.force_authenticate(user=self.user) # type: ignore
+        self.client.force_authenticate(user=self.user)  # type: ignore
         response = self.client.get(reverse("api:order"), data=query)
 
         self.assertEqual(
@@ -156,9 +157,14 @@ class MakerOrderTestCase(APITestCase):
 
         data["id"] = 1
         data["expiry"] = "2114380800"
-        data["signature"] = "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b"
-        data["order_hash"] = "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6"
+        data[
+            "signature"
+        ] = "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b"
+        data[
+            "order_hash"
+        ] = "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6"
 
         response = self.client.post(reverse("api:order"), data=data)
 
-        print(response.json())
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertDictEqual(response.json(), {"id": [ID_SUBMITTED_ERROR]})

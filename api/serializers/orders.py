@@ -6,6 +6,7 @@ from rest_framework import serializers
 from rest_framework.validators import ValidationError
 from api.models.orders import Maker, Taker, Bot
 from api.models.types import BotTypedDict, KeccakHash, Signature, Address
+from api.errors import ID_SUBMITTED_ERROR
 from api.utils import (
     validate_eth_signed_message,
     validate_decimal_integer,
@@ -63,14 +64,12 @@ class MakerSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        data["address"] = instance.user.address  
+        data["address"] = instance.user.address
         return data
 
     def validate_id(self, value):
         if value is not None:
-            raise ValidationError(
-                "the id field must not be submitted for orders creation"
-            )
+            raise ValidationError(ID_SUBMITTED_ERROR)
 
     def validate_address(self, value):
         return Address(value)

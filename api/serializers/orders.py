@@ -5,7 +5,7 @@ from eth_abi.packed import encode_packed
 from rest_framework import serializers
 from rest_framework.validators import ValidationError
 from api.models.orders import Maker, Taker, Bot
-from api.models.types import BotTypedDict, KeccakHash, Signature
+from api.models.types import BotTypedDict, KeccakHash, Signature, Address
 from api.utils import (
     validate_eth_signed_message,
     validate_decimal_integer,
@@ -41,12 +41,14 @@ class MakerSerializer(serializers.ModelSerializer):
     """The maker order class serializer"""
 
     id = serializers.IntegerField(required=False, write_only=True)
+    address = serializers.CharField(write_only=True)
     expiry = TimestampField(required=True)
 
     class Meta:
         model = Maker
         fields = [
             "id",
+            "address",
             "base_token",
             "quote_token",
             "amount",
@@ -59,11 +61,19 @@ class MakerSerializer(serializers.ModelSerializer):
         extra_kwargs = {"user": {"write_only": True}}
         list_serializer_class = MakerListSerializer
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data["address"] = instance.user.address  
+        return data
+
     def validate_id(self, value):
         if value is not None:
             raise ValidationError(
                 "the id field must not be submitted for orders creation"
             )
+
+    def validate_address(self, value):
+        return Address(value)
 
     def validate_amount(self, value: str):
         return validate_decimal_integer(value, "amount")
@@ -100,7 +110,7 @@ class MakerSerializer(serializers.ModelSerializer):
                 "bool",
             ],
             [
-                self.context["user"].address,
+                data["address"],
                 int("{0:f}".format(data["amount"])),
                 int("{0:f}".format(data["price"])),
                 0,  # this is the step field
@@ -121,7 +131,7 @@ class MakerSerializer(serializers.ModelSerializer):
             validate_eth_signed_message(
                 message=message,
                 signature=data["signature"],
-                address=self.context["user"].address,
+                address=data["address"],
             )
             == False
         ):
@@ -131,10 +141,8 @@ class MakerSerializer(serializers.ModelSerializer):
             raise ValidationError(
                 "The provided order hash does not match the computed hash"
             )
+        del data["address"]
         return super().validate(data)
-
-    def to_representation(self, instance):
-        return super().to_representation(instance)
 
 
 class TakerListSerializer(serializers.ListSerializer):

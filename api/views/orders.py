@@ -38,10 +38,13 @@ class OrderView(APIView):
 class MakerView(APIView):
     """The views user to retrieve and create Maker Orders"""
 
+    def get_permissions(self):
+        data = super().get_permissions()
+        return data + [permission() for permission in getattr(getattr(self, self.request.method.lower(), self.http_method_not_allowed), "permission_classes", [])]  # type: ignore
+
     @permission_classes([IsAuthenticated])
     async def get(self, request: Request):
         """The view to retrieve the orders of a user"""
-
         if request.query_params.get("all", None):
             queryset = Maker.objects.filter(user=request.user).select_related("user")
         else:

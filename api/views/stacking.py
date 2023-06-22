@@ -18,6 +18,11 @@ from api.utils import validate_decimal_integer
 class StackingView(APIView):
     """Class used for retrieve stacking informations"""
 
+    def get_permissions(self):
+        data = super().get_permissions()
+        return data + [permission() for permission in getattr(getattr(self, self.request.method.lower(), self.http_method_not_allowed), "permission_classes", [])]  # type: ignore
+
+
     @permission_classes([IsAuthenticated])
     async def get(self, request: Request):
         """Retrieves a user stacking amount per block"""
@@ -36,7 +41,7 @@ class StackingView(APIView):
             "address": "0x123...",
             "amount": int,
             "token": "0xabc...",
-            "slot": "0xabc...",
+            "slot": int,
         }
         ```"""
 
@@ -63,6 +68,11 @@ class StackingView(APIView):
 
 class StackingFeesView(APIView):
     """View used to update the fees entries per token per slot"""
+
+    def get_permissions(self):
+        data = super().get_permissions()
+        return data + [permission() for permission in getattr(getattr(self, self.request.method.lower(), self.http_method_not_allowed), "permission_classes", [])]  # type: ignore
+
 
     async def get(self, request):
         """Used to get the fees entries for all the slots since the creation of the app"""

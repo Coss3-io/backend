@@ -44,6 +44,7 @@ class MakerSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False, write_only=True)
     address = serializers.CharField(write_only=True)
     expiry = TimestampField(required=True)
+    is_buyer = serializers.BooleanField(allow_null=True, default=None) # type: ignore
 
     class Meta:
         model = Maker
@@ -73,6 +74,11 @@ class MakerSerializer(serializers.ModelSerializer):
 
     def validate_address(self, value):
         return Address(value)
+    
+    def validate_is_buyer(self, value):
+        if value is None:
+            raise ValidationError("This field is required.")
+        return value
 
     def validate_amount(self, value: str):
         return validate_decimal_integer(value, "amount")

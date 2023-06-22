@@ -1,8 +1,9 @@
 from decimal import Decimal
+from collections import Counter
 from datetime import datetime
 from asgiref.sync import async_to_sync
 from django.urls import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
 from api.models import User
 from api.errors import ID_SUBMITTED_ERROR
 from api.models.orders import Maker
@@ -24,21 +25,76 @@ class MakerOrderTestCase(APITestCase):
         data = {
             "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
             "amount": "{0:f}".format(Decimal("173e16")),
-            "expiry": 1696667304,
+            "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xfabfac7f7a8bbb7f87747c940a6a9be667a57c86c145fd2bb91d8286cdbde0253e1cf2c95bdfb87a46669bc8ba0d4f92b4786d00df7f90aea8004d2b953b27cb1b",
-            "order_hash": "0x0e3c530932af2cadc56e2cb633b4a4952b5ebb74888c19e1068c2d0213953e45",
+            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
             "is_buyer": False,
         }
         response = self.client.post(reverse("api:order"), data=data)
+        order = Maker.objects.select_related("user").get(order_hash=data["order_hash"])
 
         self.assertDictEqual(
             data, response.json(), "The returned order should match the order sent"
         )
         self.assertEqual(
             response.status_code, HTTP_200_OK, "The request should work properly"
+        )
+
+        self.assertEqual(
+            order.user.address,
+            data["address"],
+            "The owner of the order should have the same address than sent",
+        )
+
+        self.assertEqual(
+            order.order_hash,
+            data["order_hash"],
+            "The order hash should be reported on the order",
+        )
+
+        self.assertEqual(
+            str(order.amount),
+            data["amount"],
+            "The order amount should be reported on the order",
+        )
+
+        self.assertEqual(
+            str(order.price),
+            data["price"],
+            "The order price should be reported on the order",
+        )
+
+        self.assertEqual(
+            order.base_token,
+            data["base_token"],
+            "The order base_token should be reported on the order",
+        )
+
+        self.assertEqual(
+            order.quote_token,
+            data["quote_token"],
+            "The order quote_token should be reported on the order",
+        )
+
+        self.assertEqual(
+            order.signature,
+            data["signature"],
+            "The order signature should be reported on the order",
+        )
+
+        self.assertEqual(
+            int(order.expiry.timestamp()),
+            data["expiry"],
+            "The order expiry should be reported on the order",
+        )
+
+        self.assertEqual(
+            order.is_buyer,
+            data["is_buyer"],
+            "The order is_buyer should be reported on the order",
         )
 
     def test_retrieve_maker_orders_anon(self):
@@ -168,3 +224,493 @@ class MakerOrderTestCase(APITestCase):
 
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
         self.assertDictEqual(response.json(), {"id": [ID_SUBMITTED_ERROR]})
+
+    def test_creating_maker_order_without_address_fails(self):
+        """Checks sending an order request without address fails"""
+
+        data = {
+            # "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {"address": ["This field is required."]},
+            "The address field should be required",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The order creation without address should fail",
+        )
+
+    def test_creating_maker_order_without_amount_fails(self):
+        """Checks sending an order request without amount fails"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            # "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {"amount": ["This field is required."]},
+            "The amount field should be required",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The order creation without amount should fail",
+        )
+
+    def test_creating_maker_order_without_expiry_fails(self):
+        """Checks sending an order request without expiry fails"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            # "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {"expiry": ["This field is required."]},
+            "The expiry field should be required",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The order creation without expiry should fail",
+        )
+
+    def test_creating_maker_order_without_price_fails(self):
+        """Checks sending an order request without price fails"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            # "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {"price": ["This field is required."]},
+            "The price field should be required",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The order creation without price should fail",
+        )
+
+    def test_creating_maker_order_without_base_token_fails(self):
+        """Checks sending an order request without base_token fails"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            # "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {"base_token": ["This field is required."]},
+            "The base_token field should be required",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The order creation without base_token should fail",
+        )
+
+    def test_creating_maker_order_without_quote_token_fails(self):
+        """Checks sending an order request without quote_token fails"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            # "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {"quote_token": ["This field is required."]},
+            "The quote_token field should be required",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The order creation without quote_token should fail",
+        )
+
+    def test_creating_maker_order_without_signature_fails(self):
+        """Checks sending an order request without signature fails"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            # "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {"signature": ["This field is required."]},
+            "The signature field should be required",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The order creation without signature should fail",
+        )
+
+    def test_creating_maker_order_without_order_hash_fails(self):
+        """Checks sending an order request without order_hash fails"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+            # "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {"order_hash": ["This field is required."]},
+            "The order_hash field should be required",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The order creation without order_hash should fail",
+        )
+
+    def test_creating_maker_order_without_is_buyer_fails(self):
+        """Checks sending an order request without is_buyer fails"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            # "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {"is_buyer": ["This field is required."]},
+            "The is_buyer field should be required",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The order creation without is_buyer should fail",
+        )
+
+    def test_user_creaation_on_order_request(self):
+        """Checks user creation works well on unregistered user order"""
+
+        data = {
+            "address": "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef",
+            "amount": "{0:f}".format(Decimal("189e16")),
+            "expiry": 2114380801,
+            "price": "{0:f}".format(Decimal("28e19")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0x9cc2023e1b0401282c9b8abb371e09f4ef5cf4ff54d08bdfb9bb6d05f14a70f36de2002f2f005cd3dfb5ae42d023b18010a4a234d3ce8ed5b915d0fcb40c4ed91b",
+            "order_hash": "0xddd97cfb8a661a4d513c78874c0ef707909f9a07fcd80d5aa147cbd23dae0aa6",
+            "is_buyer": True,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+        user = User.objects.get(address=data["address"])
+
+        self.assertEqual(
+            response.status_code, HTTP_200_OK, "The order resquest should not fail"
+        )
+        self.assertDictEqual(
+            response.json(), data, "The returned data should match the data sent"
+        )
+
+
+
+class MakerOrderRetrievingTestCase(APITestCase):
+    """Used to checks that the order retrieval works as expected"""
+
+    def setUp(self) -> None:
+        self.user_1: User = async_to_sync(User.objects.create_user)(
+            address=Address("0xf17f52151EbEF6C7334FAD080c5704D77216b732")
+        )
+
+        self.user_2: User = async_to_sync(User.objects.create_user)(
+            address=Address("0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef")
+        )
+
+        self.order_1_1 = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 1696667304,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0xfabfac7f7a8bbb7f87747c940a6a9be667a57c86c145fd2bb91d8286cdbde0253e1cf2c95bdfb87a46669bc8ba0d4f92b4786d00df7f90aea8004d2b953b27cb1b",
+            "order_hash": "0x0e3c530932af2cadc56e2cb633b4a4952b5ebb74888c19e1068c2d0213953e45",
+            "is_buyer": False,
+        }
+
+        self.order_1_2 = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "is_buyer": False,
+        }
+
+        self.order_1_3 = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("171e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("21e19")),
+            "base_token": "0x3Aa5f43c7c4e2C5671A96439F1fbFfe1d58929Cb",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0x139c033404a061eae0d17dbb366f153791569d6a7ad42bc6ad7b902a341bec6d7eca9102499ff60fe566fcd53642fb254c6efa2a8ca933ba917571fbfee73d261c",
+            "order_hash": "0x54532cab462b29052d84773f9f4aef6e063642c8f6d334fc4fe96394b7dbd849",
+            "is_buyer": False,
+        }
+
+        self.order_2_1 = {
+            "address": "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef",
+            "amount": "{0:f}".format(Decimal("111e16")),
+            "expiry": 2114380801,
+            "price": "{0:f}".format(Decimal("24e19")),
+            "base_token": "0x3Aa5f43c7c4e2C5671A96439F1fbFfe1d58929Cb",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0x346d7e67d76b8de75de2c18855818261394323565f0c246bd565ec448f670fa91c3139086f11ef6853fcae56cd67d89cbf4f60916898579836dec681b7f9249d1c",
+            "order_hash": "0x07f5c2584ffbf3b7d14ad3410c1c98fb3b71496a7e5cd14ab22a68f268915bca",
+            "is_buyer": True,
+        }
+
+        self.order_2_2 = {
+            "address": "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef",
+            "amount": "{0:f}".format(Decimal("141e16")),
+            "expiry": 2114380801,
+            "price": "{0:f}".format(Decimal("25e19")),
+            "base_token": "0x3Aa5f43c7c4e2C5671A96439F1fbFfe1d58929Cb",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0xee7433f9f83b59019723f08c8348895a767eb1aae16536847b54de37b3e92ff93f916e4c302309b7317335c9f9aad8e18927371994ef08ce75d8357376e2ef0a1b",
+            "order_hash": "0x43a67aa1f3e53cad7f692f2ac249728f3369290b24a154e364c998fc9788b98f",
+            "is_buyer": True,
+        }
+
+        self.order_2_3 = {
+            "address": "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef",
+            "amount": "{0:f}".format(Decimal("182e16")),
+            "expiry": 2114380801,
+            "price": "{0:f}".format(Decimal("27e19")),
+            "base_token": "0x3Aa5f43c7c4e2C5671A96439F1fbFfe1d58929Cb",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0x69b2da58758a256e2d24a6f04ca5d8dc7d4834b96a6246e18c2b9e8ecba80992145267c18e8add3a7b952121a9ae82ad090fc05ba44688f445e54a5b21caa6a81b",
+            "order_hash": "0xa8a829d6e7ad540c0d3140a37e9fb9408878e5b5b5d7d48e54ba132a5c968e6a",
+            "is_buyer": True,
+        }
+
+        self.order_2_4 = {
+            "address": "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef",
+            "amount": "{0:f}".format(Decimal("189e16")),
+            "expiry": 2114380801,
+            "price": "{0:f}".format(Decimal("29e19")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0x422b8570187908abb3a18a2f224e7fa4870c18944f9b4b86bc4b498c738739b90e6db92a52b994920908d64404482856226065001156ca2dbbe6b330d31116811b",
+            "order_hash": "0x37ec83d93794625c87faa2aa937c3582bd310a147d019f7d1d56bc24b04d45ef",
+            "is_buyer": True,
+        }
+
+        self.pair_1 = {
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+        }
+        self.pair_2 = {
+            "base_token": "0x3Aa5f43c7c4e2C5671A96439F1fbFfe1d58929Cb",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+        }
+        self.pair_1_orders = [self.order_1_1, self.order_1_2, self.order_2_4]
+        self.pair_2_orders = [
+            self.order_1_3,
+            self.order_2_1,
+            self.order_2_2,
+            self.order_2_3,
+        ]
+        self.user_1_pair_1_orders = [self.order_1_1, self.order_1_2]
+        self.user_1_pair_2_orders = [
+            self.order_1_3,
+        ]
+        self.user_2_pair_1_orders = [self.order_2_4]
+        self.user_2_pair_2_orders = [
+            self.order_2_1,
+            self.order_2_2,
+            self.order_2_3,
+        ]
+        self.orders = self.pair_1_orders + self.pair_2_orders
+
+        for data in self.orders:
+            async_to_sync(Maker.objects.create)(
+                user=self.user_1
+                if data["address"] == self.user_1.address
+                else self.user_2,
+                amount=data["amount"],
+                expiry=datetime.fromtimestamp(data["expiry"]),
+                price=data["price"],
+                base_token=data["base_token"],
+                quote_token=data["quote_token"],
+                signature=data["signature"],
+                order_hash=data["order_hash"],
+                is_buyer=data["is_buyer"],
+            )
+
+    def test_retrieving_pair_1_orders_anon(self):
+        """Checks retrieving all the orders for a pair works"""
+        response = self.client.get(
+            reverse("api:orders"),
+            data=self.pair_1,
+        )
+
+        self.assertEqual(
+            response.status_code, HTTP_200_OK, "The retrieval of the orders shoul work"
+        )
+
+        self.assertListEqual(
+            sorted([hash(frozenset(item.items())) for item in response.json()]),
+            sorted(
+                [hash(frozenset(item.items())) for item in reversed(self.pair_1_orders)]
+            ),
+            "The returned orders should match the orders in DB",
+        )
+
+    def test_retrieving_all_user_orders(self):
+        """Checks retrieving all orders for a particular user works"""
+
+        self.client.force_authenticate(user=self.user_2)  # type: ignore
+
+        response = self.client.get(reverse("api:order"), data={"all": True})
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_200_OK,
+            "The retrieving of all the orders should work",
+        )
+
+        self.assertListEqual(
+            sorted([hash(frozenset(item.items())) for item in response.json()]),
+            sorted(
+                [
+                    hash(frozenset(item.items()))
+                    for item in reversed(
+                        self.user_2_pair_2_orders + self.user_2_pair_1_orders
+                    )
+                ]
+            ),
+            "The returned user orders should match the orders in DB",
+        )
+
+    def test_retriving_user_2_pair_2_orders(self):
+        """Checks retrieving specific user orders for a pair works"""
+
+        self.client.force_authenticate(user=self.user_2)  # type: ignore
+        response = self.client.get(reverse("api:order"), data=self.pair_2)
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_200_OK,
+            "The user orders for pair 2 retrieval should work properly",
+        )
+
+        self.assertListEqual(
+            sorted([hash(frozenset(item.items())) for item in response.json()]),
+            sorted(
+                [
+                    hash(frozenset(item.items()))
+                    for item in reversed(self.user_2_pair_2_orders)
+                ]
+            ),
+            "The returned user 2 pair 2 orders should match the orders in DB",
+        )
+
+    def test_anon_user_cant_see_own_orders(self):
+        """An anon user should not be able to use the authenticated endpoint"""
+
+        response = self.client.get(reverse("api:order"), data={"all": True})
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_403_FORBIDDEN,
+            "The request should not be allowed for anonymous users",
+        )
+
+        self.assertDictEqual(
+            response.json(), {"detail": "Authentication credentials were not provided."}
+        )

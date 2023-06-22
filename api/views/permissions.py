@@ -2,29 +2,39 @@ import hmac
 from time import time
 from json import dumps
 from django.conf import settings
+from api.utils import validate_decimal_integer
 from rest_framework.permissions import BasePermission
 
 
 class WatchTowerPermission(BasePermission):
     """Class used to restrict some view only to the watch tower"""
+    message = 'Hash verification failed.'
 
     def has_permission(self, request, view):
         if not (signature := request.data.get("signature", None)):
             return False
-        if not (user_timestamp := request.data.get("timestamp", None)):
+        if not (
+            user_timestamp := int(
+                validate_decimal_integer(
+                    request.data.get("timestamp", 0), name="timestamp"
+                )
+            )
+        ):
+            request.authenticators = []
             return False
 
+        request.data._mutable = True
         del request.data["signature"]
-        del request.data["timestamp"]
-        timestamp = int(time()) * 1000
+        request.data._mutable = False
 
-        if timestamp - user_timestamp > 10000:
+        timestamp = int(time()) * 1000
+        if timestamp - user_timestamp > 3000:
+            request.authenticators = []
             return False
 
         digest = hmac.new(
             key=settings.WATCH_TOWER_KEY.encode(),
             msg=dumps(request.data).encode(),
-            digestmod="SHA256",
+            digestmod="sha256",
         ).hexdigest()
-
         return hmac.compare_digest(digest, signature)

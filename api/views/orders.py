@@ -5,6 +5,7 @@ from adrf.views import APIView
 from rest_framework import status
 from rest_framework.decorators import permission_classes
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import ValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
 from api.models import User
@@ -19,14 +20,21 @@ class OrderView(APIView):
     async def get(self, request: Request):
         """Function used to get all the orders for a given pair"""
 
-        base_token = Address(request.query_params.get("base_token", "0"))
-        quote_token = Address(request.query_params.get("quote_token", "0"))
-
-        if base_token == "0" or quote_token == "0":
-            return Response(
-                {"detail": "base_token and quote_token params are needed"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        if (base_token := request.query_params.get("base_token", "0")) == "0" or (
+                quote_token := request.query_params.get("quote_token", "0")
+            ) == "0":
+                return Response(
+                    {"detail": "base_token and quote_token params are needed"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        try:
+            base_token = Address(base_token, "base_token")
+        except ValidationError as e:
+            raise ValidationError({"base_token": e.detail})
+        try:
+            quote_token = Address(quote_token, "quote_token")
+        except ValidationError as e:
+            raise ValidationError({"quote_token": e.detail})
 
         queryset = Maker.objects.filter(
             base_token=base_token, quote_token=quote_token
@@ -48,14 +56,22 @@ class MakerView(APIView):
         if request.query_params.get("all", None):
             queryset = Maker.objects.filter(user=request.user).select_related("user")
         else:
-            base_token: Address = Address(request.query_params.get("base_token", "0"))
-            quote_token: Address = Address(request.query_params.get("quote_token", "0"))
-
-            if base_token == "0" or quote_token == "0":
+            if (base_token := request.query_params.get("base_token", "0")) == "0" or (
+                quote_token := request.query_params.get("quote_token", "0")
+            ) == "0":
                 return Response(
                     {"detail": "base_token and quote_token params are needed"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
+            
+            try:
+                base_token = Address(base_token, "base_token")
+            except ValidationError as e:
+                raise ValidationError({"base_token": e.detail})
+            try:
+                quote_token = Address(quote_token, "quote_token")
+            except ValidationError as e:
+                raise ValidationError({"quote_token": e.detail})
 
             queryset = Maker.objects.filter(
                 user=request.user, base_token=base_token, quote_token=quote_token

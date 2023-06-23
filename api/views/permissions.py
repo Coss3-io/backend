@@ -3,12 +3,14 @@ from time import time
 from json import dumps
 from django.conf import settings
 from api.utils import validate_decimal_integer
+import api.errors as errors
 from rest_framework.permissions import BasePermission
 
 
 class WatchTowerPermission(BasePermission):
     """Class used to restrict some view only to the watch tower"""
-    message = 'Hash verification failed.'
+
+    message = errors.WATCH_TOWER_AUTH_FAIL
 
     def has_permission(self, request, view):
         if not (signature := request.data.get("signature", None)):
@@ -37,4 +39,9 @@ class WatchTowerPermission(BasePermission):
             msg=dumps(request.data).encode(),
             digestmod="sha256",
         ).hexdigest()
-        return hmac.compare_digest(digest, signature)
+
+        if hmac.compare_digest(digest, signature):
+            return True
+        else:
+            request.authenticators = []
+            return False

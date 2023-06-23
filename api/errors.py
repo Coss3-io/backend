@@ -31,3 +31,6 @@ class KeccakHash:
 
 # Order related Errors
 ID_SUBMITTED_ERROR = "the id field must not be submitted for orders creation"
+
+# Permissions Errors
+WATCH_TOWER_AUTH_FAIL = 'Hash verification failed.'

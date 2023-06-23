@@ -10,7 +10,7 @@ from rest_framework.permissions import BasePermission
 class WatchTowerPermission(BasePermission):
     """Class used to restrict some view only to the watch tower"""
 
-    message = errors.WATCH_TOWER_AUTH_FAIL
+    message = errors.Permissions.WATCH_TOWER_AUTH_FAIL
 
     def has_permission(self, request, view):
         if not (signature := request.data.get("signature", None)):

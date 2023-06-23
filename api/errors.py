@@ -30,7 +30,12 @@ class KeccakHash:
     WRONG_HASH_ERROR = "the order_hash submitted is hill formed"
 
 # Order related Errors
-ID_SUBMITTED_ERROR = "the id field must not be submitted for orders creation"
+class Order:
+    ID_SUBMITTED_ERROR = "the id field must not be submitted for orders creation"
 
 # Permissions Errors
-WATCH_TOWER_AUTH_FAIL = 'Hash verification failed.'
+class Permissions:
+    WATCH_TOWER_AUTH_FAIL = 'Hash verification failed.'
+
+class General:
+    MISSING_FIELD = "This field is required."

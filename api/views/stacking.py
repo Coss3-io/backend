@@ -7,7 +7,7 @@ from rest_framework.decorators import permission_classes
 from rest_framework.permissions import IsAuthenticated
 from adrf.views import APIView
 from api.models import User
-from api.models.stacking import Stacking, StakingFees
+from api.models.stacking import Stacking, StackingFees
 from api.views.permissions import WatchTowerPermission
 from api.serializers.stacking import StackingSerializer, StackingFeesSerializer
 from api.models.types import Address
@@ -82,8 +82,10 @@ class StackingFeesView(APIView):
     async def get(self, request):
         """Used to get the fees entries for all the slots since the creation of the app"""
 
-        stacking_fees = StakingFees.objects.all()
-        data = StackingFeesSerializer(stacking_fees, many=True)
+        queryset = StackingFees.objects.all()
+        data = await sync_to_async(
+            lambda: StackingFeesSerializer(queryset, many=True).data
+        )()
         return Response(data, status=status.HTTP_200_OK)
 
     @permission_classes([WatchTowerPermission])
@@ -99,18 +101,23 @@ class StackingFeesView(APIView):
             "amount": int
         }
         ```"""
+    
+        stacking_fees = StackingFeesSerializer(data=request.data)
+        await sync_to_async(stacking_fees.is_valid)(raise_exception=True)
 
-        if token := request.data.get("token", "") == "":
-            Address(token, "token")
-            # raise APIException("address can't be empty")
+        if not isinstance(stacking_fees.validated_data, dict):
+            # never happens
+            return Response({}, status=status.HTTP_400_BAD_REQUEST)
+        stacking_fees.save()
 
-        amount = validate_decimal_integer(request.data.get("amount", "0"), "amount")
-        slot = validate_decimal_integer(request.data.get("slot", "0"), "slot")
-
-        stacking_fees = (await Stacking.objects.aget_or_create(token=token, slot=slot))[
-            0
-        ]
-
-        stacking_fees.amount = F("amount") + amount
-        await stacking_fees.asave(update_fields=["amount"])
-        return Response({}, status=status.HTTP_200_OK)
+        if stacking_fees.instance:
+            stacking_fees.instance = await stacking_fees.instance
+            stacking_fees.instance.amount = stacking_fees.validated_data["amount"]
+            await stacking_fees.instance.asave(update_fields=["amount"])
+            stacking_fees.validated_data["amount"] = stacking_fees.data["amount"]
+            return Response(
+                {},
+                status=status.HTTP_200_OK,
+            )
+        else:
+            return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

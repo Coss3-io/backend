@@ -5,6 +5,7 @@ from decimal import Decimal
 from asgiref.sync import async_to_sync
 from django.urls import reverse
 from django.conf import settings
+from rest_framework import exceptions
 from rest_framework.test import APITestCase
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
 from api.models.stacking import Stacking
@@ -232,4 +233,90 @@ class StackingTestCase(APITestCase):
 
         response = self.client.post(reverse("api:stacking"), data=data)
 
-        #self.assertDictEqual(response.json(), ) 
+        self.assertDictEqual(
+            response.json(),
+            {"slot": ["A valid integer is required."]},
+            "the response should contain details about the error",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "the request with a wrong slot should fail",
+        )
+
+
+class StackingRetrievalTestCase(APITestCase):
+    """Class used to test the retrieval of stacking behaviour"""
+
+    def setUp(self):
+        self.user = async_to_sync(User.objects.create_user)(
+            address=Address("0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef")
+        )
+
+        self.user_2 = async_to_sync(User.objects.create_user)(
+            address=Address("0xA5fdf4076b8F3A5357c5E395ab970B5B54098Fef")
+        )
+
+        self.stacking_3 = Stacking.objects.create(
+            amount=Decimal("21e18"), slot=21, user=self.user_2
+        )
+
+        self.stacking_1 = Stacking.objects.create(
+            amount=Decimal("23e18"), slot=23, user=self.user
+        )
+        self.stacking_2 = Stacking.objects.create(
+            amount=Decimal("134e17"), slot=12, user=self.user
+        )
+
+    def test_stacking_retrieval_works(self):
+        """Checks stacking retrieval works for authenticated user"""
+
+        self.client.force_authenticate(user=self.user)  # type: ignore
+        response = self.client.get(reverse("api:stacking"))
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_200_OK,
+            "The stacking entries retrieval should work",
+        )
+
+        self.assertEqual(
+            len(response.json()), 2, "Two entries should be returned by the server"
+        )
+
+        response = response.json()
+        if response[0]["slot"] != 23:
+            self.stacking_1, self.stacking_2 = self.stacking_2, self.stacking_1
+
+        self.assertDictEqual(
+            response[0],
+            {
+                "slot": self.stacking_1.slot,
+                "amount": "{0:f}".format(self.stacking_1.amount),
+            },
+            "The first stacking entry should match the one into the database",
+        )
+
+        self.assertDictEqual(
+            response[1],
+            {
+                "slot": self.stacking_2.slot,
+                "amount": "{0:f}".format(self.stacking_2.amount),
+            },
+            "The second stacking entry should match the one into the database",
+        )
+
+    def test_anon_users_cannot_retrieve_stacking(self):
+        """Anonymous users should not be able to retrieve stacking entries"""
+
+        response = self.client.get(reverse("api:stacking"))
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_403_FORBIDDEN,
+            "The request without being authenticated should fail",
+        )
+
+        self.assertDictEqual(
+            response.json(), {"detail": exceptions.NotAuthenticated.default_detail}
+        )

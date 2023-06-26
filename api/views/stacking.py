@@ -27,8 +27,10 @@ class StackingView(APIView):
         """Retrieves a user stacking amount per block"""
 
         stackings = Stacking.objects.filter(user=request.user)
-        stackings = StackingSerializer(stackings, many=True)
-        return Response(stackings.data, status=status.HTTP_200_OK)
+        data = await sync_to_async(
+            lambda: StackingSerializer(stackings, many=True).data
+        )()
+        return Response(data, status=status.HTTP_200_OK)
 
     @permission_classes([WatchTowerPermission])
     async def post(self, request):

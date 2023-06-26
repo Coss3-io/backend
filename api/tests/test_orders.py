@@ -5,7 +5,7 @@ from asgiref.sync import async_to_sync
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
 from api.models import User
-from api.errors import ID_SUBMITTED_ERROR
+import api.errors as errors
 from api.models.orders import Maker
 from api.models.types import Address
 from rest_framework.test import APITestCase
@@ -223,7 +223,7 @@ class MakerOrderTestCase(APITestCase):
         response = self.client.post(reverse("api:order"), data=data)
 
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-        self.assertDictEqual(response.json(), {"id": [ID_SUBMITTED_ERROR]})
+        self.assertDictEqual(response.json(), {"id": [errors.Order.ID_SUBMITTED_ERROR]})
 
     def test_creating_maker_order_without_address_fails(self):
         """Checks sending an order request without address fails"""
@@ -493,7 +493,6 @@ class MakerOrderTestCase(APITestCase):
         )
 
 
-
 class MakerOrderRetrievingTestCase(APITestCase):
     """Used to checks that the order retrieval works as expected"""
 
@@ -713,4 +712,368 @@ class MakerOrderRetrievingTestCase(APITestCase):
 
         self.assertDictEqual(
             response.json(), {"detail": "Authentication credentials were not provided."}
+        )
+
+    def test_getting_own_orders_no_params_fails(self):
+        """Checks getting user own order with no get parameters fails"""
+
+        self.client.force_authenticate(user=self.user_2)  # type: ignore
+        response = self.client.get(reverse("api:order"), data={})
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request without parameters should fail",
+        )
+
+        self.assertDictEqual(
+            response.json(), {"detail": "base_token and quote_token params are needed"}
+        )
+
+    def test_getting_own_orders_without_base_token(self):
+        """Checks getting own orders without base_token params fails"""
+
+        self.client.force_authenticate(user=self.user_2)  # type: ignore
+        response = self.client.get(
+            reverse("api:order"), data={"quote_token": self.pair_2["quote_token"]}
+        )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request without base_token parameter should fail",
+        )
+
+        self.assertDictEqual(
+            response.json(), {"detail": "base_token and quote_token params are needed"}
+        )
+
+    def test_getting_own_orders_without_quote_token(self):
+        """Checks getting own orders without base_token params fails"""
+
+        self.client.force_authenticate(user=self.user_2)  # type: ignore
+        response = self.client.get(
+            reverse("api:order"), data={"base_token": self.pair_2["base_token"]}
+        )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request without quote_token parameter should fail",
+        )
+
+        self.assertDictEqual(
+            response.json(), {"detail": "base_token and quote_token params are needed"}
+        )
+
+    def test_getting_own_orders_wrong_base_token(self):
+        """Checks getting own orders with wrong base token fails"""
+
+        self.client.force_authenticate(user=self.user_2)  # type: ignore
+        response = self.client.get(
+            reverse("api:order"),
+            data={
+                "base_token": "0xZ02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+                "quote_token": self.pair_2["quote_token"],
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request with wrong base_token parameter should fail",
+        )
+
+        self.assertDictEqual(
+            response.json(),
+            {"base_token": [errors.Address.WRONG_ADDRESS_ERROR.format("base_token")]},
+        )
+
+    def test_getting_own_orders_wrong_quote_token(self):
+        """Checks getting own orders with wrong quote token fails"""
+
+        self.client.force_authenticate(user=self.user_2)  # type: ignore
+        response = self.client.get(
+            reverse("api:order"),
+            data={
+                "quote_token": "0xZ02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+                "base_token": self.pair_2["quote_token"],
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request with wrong quote_token parameter should fail",
+        )
+
+        self.assertDictEqual(
+            response.json(),
+            {"quote_token": [errors.Address.WRONG_ADDRESS_ERROR.format("quote_token")]},
+        )
+
+    def test_getting_own_orders_short_base_token(self):
+        """Checks getting own orders with short base token fails"""
+
+        self.client.force_authenticate(user=self.user_2)  # type: ignore
+        response = self.client.get(
+            reverse("api:order"),
+            data={
+                "base_token": "0x02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+                "quote_token": self.pair_2["quote_token"],
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request with short base_token parameter should fail",
+        )
+
+        self.assertDictEqual(
+            response.json(),
+            {"base_token": [errors.Address.SHORT_ADDRESS_ERROR.format("base_token")]},
+        )
+
+    def test_getting_own_orders_short_quote_token(self):
+        """Checks getting own orders with short quote token fails"""
+
+        self.client.force_authenticate(user=self.user_2)  # type: ignore
+        response = self.client.get(
+            reverse("api:order"),
+            data={
+                "quote_token": "0x02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+                "base_token": self.pair_2["quote_token"],
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request with short quote_token parameter should fail",
+        )
+
+        self.assertDictEqual(
+            response.json(),
+            {"quote_token": [errors.Address.SHORT_ADDRESS_ERROR.format("quote_token")]},
+        )
+
+    def test_getting_own_orders_long_base_token(self):
+        """Checks getting own orders with long base token fails"""
+
+        self.client.force_authenticate(user=self.user_2)  # type: ignore
+        response = self.client.get(
+            reverse("api:order"),
+            data={
+                "base_token": "0xAA02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+                "quote_token": self.pair_2["quote_token"],
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request with long base_token parameter should fail",
+        )
+
+        self.assertDictEqual(
+            response.json(),
+            {"base_token": [errors.Address.LONG_ADDRESS_ERROR.format("base_token")]},
+        )
+
+    def test_getting_own_orders_long_quote_token(self):
+        """Checks getting own orders with long quote token fails"""
+
+        self.client.force_authenticate(user=self.user_2)  # type: ignore
+        response = self.client.get(
+            reverse("api:order"),
+            data={
+                "quote_token": "0xAA02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+                "base_token": self.pair_2["quote_token"],
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request with long quote_token parameter should fail",
+        )
+
+        self.assertDictEqual(
+            response.json(),
+            {"quote_token": [errors.Address.LONG_ADDRESS_ERROR.format("quote_token")]},
+        )
+
+    def test_getting_general_orders_without_base_token(self):
+        """Checks getting genral orders without base_token params fails"""
+
+        self.client.force_authenticate(user=self.user_2)  # type: ignore
+        response = self.client.get(
+            reverse("api:orders"), data={"quote_token": self.pair_2["quote_token"]}
+        )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request without base_token parameter should fail",
+        )
+
+        self.assertDictEqual(
+            response.json(), {"detail": "base_token and quote_token params are needed"}
+        )
+
+    def test_getting_general_orders_without_quote_token(self):
+        """Checks getting general orders without base_token params fails"""
+
+        self.client.force_authenticate(user=self.user_2)  # type: ignore
+        response = self.client.get(
+            reverse("api:orders"), data={"base_token": self.pair_2["base_token"]}
+        )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request without quote_token parameter should fail",
+        )
+
+        self.assertDictEqual(
+            response.json(), {"detail": "base_token and quote_token params are needed"}
+        )
+
+    def test_getting_general_orders_wrong_base_token(self):
+        """Checks getting general orders with wrong base token fails"""
+
+        self.client.force_authenticate(user=self.user_2)  # type: ignore
+        response = self.client.get(
+            reverse("api:orders"),
+            data={
+                "base_token": "0xZ02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+                "quote_token": self.pair_2["quote_token"],
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request with wrong base_token parameter should fail",
+        )
+
+        self.assertDictEqual(
+            response.json(),
+            {"base_token": [errors.Address.WRONG_ADDRESS_ERROR.format("base_token")]},
+        )
+
+    def test_getting_general_orders_wrong_quote_token(self):
+        """Checks getting general orders with wrong quote token fails"""
+
+        self.client.force_authenticate(user=self.user_2)  # type: ignore
+        response = self.client.get(
+            reverse("api:orders"),
+            data={
+                "quote_token": "0xZ02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+                "base_token": self.pair_2["quote_token"],
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request with wrong quote_token parameter should fail",
+        )
+
+        self.assertDictEqual(
+            response.json(),
+            {"quote_token": [errors.Address.WRONG_ADDRESS_ERROR.format("quote_token")]},
+        )
+
+    def test_getting_general_orders_short_base_token(self):
+        """Checks getting general orders with short base token fails"""
+
+        self.client.force_authenticate(user=self.user_2)  # type: ignore
+        response = self.client.get(
+            reverse("api:orders"),
+            data={
+                "base_token": "0x02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+                "quote_token": self.pair_2["quote_token"],
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request with short base_token parameter should fail",
+        )
+
+        self.assertDictEqual(
+            response.json(),
+            {"base_token": [errors.Address.SHORT_ADDRESS_ERROR.format("base_token")]},
+        )
+
+    def test_getting_general_orders_short_quote_token(self):
+        """Checks getting general orders with short quote token fails"""
+
+        self.client.force_authenticate(user=self.user_2)  # type: ignore
+        response = self.client.get(
+            reverse("api:orders"),
+            data={
+                "quote_token": "0x02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+                "base_token": self.pair_2["quote_token"],
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request with short quote_token parameter should fail",
+        )
+
+        self.assertDictEqual(
+            response.json(),
+            {"quote_token": [errors.Address.SHORT_ADDRESS_ERROR.format("quote_token")]},
+        )
+
+    def test_getting_general_orders_long_base_token(self):
+        """Checks getting general orders with long base token fails"""
+
+        self.client.force_authenticate(user=self.user_2)  # type: ignore
+        response = self.client.get(
+            reverse("api:orders"),
+            data={
+                "base_token": "0xAA02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+                "quote_token": self.pair_2["quote_token"],
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request with long base_token parameter should fail",
+        )
+
+        self.assertDictEqual(
+            response.json(),
+            {"base_token": [errors.Address.LONG_ADDRESS_ERROR.format("base_token")]},
+        )
+
+    def test_getting_general_orders_long_quote_token(self):
+        """Checks getting general orders with long quote token fails"""
+
+        self.client.force_authenticate(user=self.user_2)  # type: ignore
+        response = self.client.get(
+            reverse("api:orders"),
+            data={
+                "quote_token": "0xAA02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+                "base_token": self.pair_2["quote_token"],
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request with long quote_token parameter should fail",
+        )
+
+        self.assertDictEqual(
+            response.json(),
+            {"quote_token": [errors.Address.LONG_ADDRESS_ERROR.format("quote_token")]},
         )

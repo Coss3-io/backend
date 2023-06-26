@@ -16,7 +16,7 @@ class Stacking(models.Model):
     user = models.ForeignKey("User", on_delete=models.CASCADE, null=False, blank=False)
 
 
-class StakingFees(models.Model):
+class StackingFees(models.Model):
     """Model used to track the fees sent to the stacking contract"""
 
     class Meta:

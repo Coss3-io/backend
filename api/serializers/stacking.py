@@ -1,5 +1,5 @@
 from rest_framework.serializers import ModelSerializer, CharField
-from api.models.stacking import Stacking, StakingFees
+from api.models.stacking import Stacking, StackingFees
 from api.utils import validate_address, validate_decimal_integer
 
 
@@ -30,6 +30,13 @@ class StackingSerializer(ModelSerializer):
 class StackingFeesSerializer(ModelSerializer):
     """Class for serializing stacking fees entries"""
 
+    async def create(self, validated_data):
+        del validated_data["amount"]
+        return (await StackingFees.objects.aget_or_create(**validated_data))[0]
+
     class Meta:
-        model: StakingFees
+        model = StackingFees
         fields = ["token", "amount", "slot"]
+
+    def validate_token(self, value):
+        return validate_address(value, "token")

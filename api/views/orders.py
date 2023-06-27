@@ -21,12 +21,12 @@ class OrderView(APIView):
         """Function used to get all the orders for a given pair"""
 
         if (base_token := request.query_params.get("base_token", "0")) == "0" or (
-                quote_token := request.query_params.get("quote_token", "0")
-            ) == "0":
-                return Response(
-                    {"detail": "base_token and quote_token params are needed"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+            quote_token := request.query_params.get("quote_token", "0")
+        ) == "0":
+            return Response(
+                {"detail": "base_token and quote_token params are needed"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         try:
             base_token = Address(base_token, "base_token")
         except ValidationError as e:
@@ -63,7 +63,7 @@ class MakerView(APIView):
                     {"detail": "base_token and quote_token params are needed"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            
+
             try:
                 base_token = Address(base_token, "base_token")
             except ValidationError as e:
@@ -84,13 +84,26 @@ class MakerView(APIView):
 
         maker = MakerSerializer(data=request.data)
         await sync_to_async(maker.is_valid)(raise_exception=True)
-
-        user = (await User.objects.aget_or_create(address=request.data.get("address")))[
-            0
-        ]
-        maker.save(filled=Decimal("0"), user=user)
+        maker.save(filled=Decimal("0"))
 
         if maker.instance is not None:
             maker.instance = await maker.instance
 
         return Response(maker.data, status=status.HTTP_200_OK)
+
+
+class BotView(APIView):
+    """View used to create and retrieve bots"""
+
+    def get_permissions(self):
+        data = super().get_permissions()
+        return data + [permission() for permission in getattr(getattr(self, self.request.method.lower(), self.http_method_not_allowed), "permission_classes", [])]  # type: ignore
+
+    @permission_classes([IsAuthenticated])
+    async def get(self):
+        """Returns the user bots list, """
+        pass
+
+    async def post(self):
+        """View used to create a new bot"""
+        pass

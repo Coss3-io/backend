@@ -4,6 +4,7 @@ from web3 import Web3
 from eth_abi.packed import encode_packed
 from rest_framework import serializers
 from rest_framework.validators import ValidationError
+from api.models import User
 from api.models.orders import Maker, Taker, Bot
 from api.models.types import BotTypedDict, KeccakHash, Signature, Address
 import api.errors as errors
@@ -63,6 +64,17 @@ class MakerSerializer(serializers.ModelSerializer):
         extra_kwargs = {"user": {"write_only": True}}
         list_serializer_class = MakerListSerializer
 
+    async def create(self, validated_data):
+        validated_data.update(
+            {
+                "user": (
+                    await User.objects.aget_or_create(address=validated_data["address"])
+                )[0]
+            }
+        )
+        del validated_data["address"]
+        return await super().create(validated_data=validated_data)
+
     def to_representation(self, instance):
         data = super().to_representation(instance)
         data["address"] = instance.user.address
@@ -116,8 +128,8 @@ class MakerSerializer(serializers.ModelSerializer):
             ],
             [
                 data["address"],
-                int("{0:f}".format(data["amount"])),
-                int("{0:f}".format(data["price"])),
+                int(data["amount"]),
+                int(data["price"]),
                 0,  # this is the step field
                 0,  # this is the maker fees field
                 0,  # this is the upper bound field
@@ -146,16 +158,15 @@ class MakerSerializer(serializers.ModelSerializer):
             raise ValidationError(
                 "The provided order hash does not match the computed hash"
             )
-        del data["address"]
         return super().validate(data)
 
 
 class TakerListSerializer(serializers.ListSerializer):
     """List serializer for batch creation of taker orders"""
 
-    def create(self, validated_data):
+    async def create(self, validated_data):
         takers = [Taker(**order) for order in validated_data]
-        return Taker.objects.abulk_create(takers)
+        return await Taker.objects.abulk_create(takers)
 
 
 class TakerSerializer(serializers.ModelSerializer):
@@ -192,16 +203,97 @@ class TakerSerializer(serializers.ModelSerializer):
 class BotSerializer(serializers.ModelSerializer):
     """The model used to serialize bots"""
 
-    orders = MakerSerializer()
+    address = serializers.CharField(required=True, allow_blank=False, write_only=True)
+    expiry = TimestampField(required=True, write_only=True)
 
     class Meta:
         model: Bot
 
-    def validate_maker_fees(self, data: Decimal):
+    async def create(self, validated_data):
+        """Used to create the orders for the created bot"""
+        user = (await User.objects.aget_or_create(address=validated_data["address"]))[0]
+        validated_data.update({"user": user})
+        del validated_data["address"]
+
+        bot = await Bot.objects.acreate(**validated_data)
+        orders = [
+            {
+                "bot": bot,
+                "base_token": validated_data["base_token"],
+                "quote_token": validated_data["quote_token"],
+                "amount": validated_data["amount"],
+                "price": str(price),
+                "is_buyer": True if price <= int(validated_data["price"]) else False,
+                "expiry": validated_data["expiry"],
+                "signature": validated_data["signature"],
+            }
+            for price in range(
+                int(validated_data["lower_bound"]),
+                (int(validated_data["upper_bound"]) + int(validated_data["step"])),
+                int(validated_data["step"]),
+            )
+        ]
+
+        orders = [
+            order
+            | {
+                "order_hash": str(
+                    Web3.to_hex(
+                        Web3.keccak(
+                            encode_packed(
+                                [
+                                    "address",
+                                    "uint256",
+                                    "uint256",
+                                    "uint256",
+                                    "uint256",
+                                    "uint256",
+                                    "uint256",
+                                    "address",
+                                    "address",
+                                    "uint64",
+                                    "uint8",
+                                    "bool",
+                                ],
+                                [
+                                    user.address,
+                                    order["amount"],
+                                    order["price"],
+                                    order["step"],
+                                    order["maker_fees"],
+                                    order["upper_bound"],
+                                    order["lower_bound"],
+                                    order["base_token"],
+                                    order["quote_token"],
+                                    int(order["expiry"].timestamp()),
+                                    0 if order["is_buyer"] else 1,
+                                    True,  # a replace order
+                                ],
+                            )
+                        )
+                    )
+                )
+            }
+            for order in orders
+        ]
+        await Maker.objects.abulk_create(orders)
+        return bot
+
+    def validate_address(self, value):
+        """Validates the address format"""
+        return validate_address(value, "")
+
+    def validate_upper_bound(self, value: str):
+        """Validates the upper bound field as integer"""
+        return validate_decimal_integer(value, name="upper_bound")
+
+    def validate_lower_bound(self, value):
+        """Validates the lower bound as integer"""
+        return validate_decimal_integer(value, name="lower_bound")
+
+    def validate_maker_fees(self, value: str):
         """Validated the maker fees field, maker fees cannot be negative"""
-        if data <= Decimal("0"):
-            raise ValidationError("maker_fees cannot be negative")
-        return data
+        return validate_decimal_integer(value, name="maker_fees")
 
     def validate_step(self, data: Decimal):
         """Validated the step, step cannot be negative"""
@@ -212,10 +304,52 @@ class BotSerializer(serializers.ModelSerializer):
     def validate(self, data: BotTypedDict):
         """Used to validate the bounds of the bot"""
 
-        if data["lower_bound"] >= data["upper_bound"]:
+        if Decimal(data["lower_bound"]) >= Decimal(data["upper_bound"]):
             raise ValidationError("upper_bound must be higher than the lower_bound")
-        if data["lower_bound"] > data["price"]:
+        if Decimal(data["lower_bound"]) > Decimal(data["price"]):
             raise ValidationError("lower_bound cannot be bigger than price")
-        if data["price"] > data["upper_bound"]:
+        if Decimal(data["price"]) > Decimal(data["upper_bound"]):
             raise ValidationError("price cannot be bigger than upper_bound")
+
+        message = encode_packed(
+            [
+                "address",
+                "uint256",
+                "uint256",
+                "uint256",
+                "uint256",
+                "uint256",
+                "uint256",
+                "address",
+                "address",
+                "uint64",
+                "uint8",
+                "bool",
+            ],
+            [
+                data["address"],
+                int(data["amount"]),
+                int(data["price"]),
+                int(data["step"]),
+                int(data["maker_fees"]),
+                int(data["upper_bound"]),
+                int(data["lower_bound"]),
+                data["base_token"],
+                data["quote_token"],
+                int(data["expiry"].timestamp()),
+                0 if data["is_buyer"] else 1,
+                True,  # a replace order
+            ],
+        )
+
+        if (
+            validate_eth_signed_message(
+                message=message,
+                signature=data["signature"],
+                address=data["address"],
+            )
+            == False
+        ):
+            raise ValidationError("The signature sent doesn't match the order owner")
+
         return super().validate(data)

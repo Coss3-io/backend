@@ -1,6 +1,6 @@
 from typing import TypedDict, Any
 from decimal import Decimal
-from datetime import date
+from datetime import datetime
 from rest_framework.validators import ValidationError
 import api.errors as errors
 
@@ -48,10 +48,8 @@ class MakerTypedDict(TypedDict):
     quote_token: Address
     amount: Decimal
     price: Decimal
-    filled: Decimal
     is_buyer: bool
-    expiry: date
-    status: str
+    expiry: datetime
     order_hash: str
     signature: str
 
@@ -69,3 +67,11 @@ class BotTypedDict(TypedDict):
     upper_bound: Decimal
     lower_bound: Decimal
     fees_earned: Decimal
+    address: Address
+    base_token: Address
+    quote_token: Address
+    amount: Decimal
+    price: Decimal
+    is_buyer: bool
+    expiry: datetime
+    signature: str

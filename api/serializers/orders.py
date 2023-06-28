@@ -203,30 +203,76 @@ class TakerSerializer(serializers.ModelSerializer):
 class BotSerializer(serializers.ModelSerializer):
     """The model used to serialize bots"""
 
-    address = serializers.CharField(required=True, allow_blank=False, write_only=True)
+    address = serializers.CharField(
+        required=True, allow_blank=False, write_only=True, max_length=42, min_length=42
+    )
+    base_token = serializers.CharField(
+        required=True, allow_blank=False, write_only=True, max_length=42, min_length=42
+    )
+    quote_token = serializers.CharField(
+        required=True, allow_blank=False, write_only=True, max_length=42, min_length=42
+    )
+    quote_token = serializers.CharField(
+        required=True, allow_blank=False, write_only=True
+    )
+    amount = serializers.DecimalField(
+        write_only=True,
+        required=True,
+        max_digits=78,
+        decimal_places=0,
+    )
     expiry = TimestampField(required=True, write_only=True)
+    signature = serializers.CharField(
+        required=True, write_only=True, max_length=132, min_length=132
+    )
+    is_buyer = serializers.BooleanField(write_only=True, required=True)
 
     class Meta:
-        model: Bot
+        model = Bot
+        fields = [
+            "address",
+            "expiry",
+            "signature",
+            "is_buyer",
+            "step",
+            "price",
+            "amount",
+            "base_token",
+            "quote_token",
+            "maker_fees",
+            "upper_bound",
+            "lower_bound",
+            "fees_earned",
+        ]
+        extra_kwargs = {
+            "fees_earned": {"read_only": True},
+        }
 
     async def create(self, validated_data):
         """Used to create the orders for the created bot"""
+
         user = (await User.objects.aget_or_create(address=validated_data["address"]))[0]
         validated_data.update({"user": user})
         del validated_data["address"]
+        amount = validated_data.pop("amount")
+        base_token = validated_data.pop("base_token")
+        quote_token = validated_data.pop("quote_token")
+        signature = validated_data.pop("signature")
+        expiry = validated_data.pop("expiry")
+        is_buyer = validated_data.pop("is_buyer")
 
         bot = await Bot.objects.acreate(**validated_data)
         orders = [
-            {
-                "bot": bot,
-                "base_token": validated_data["base_token"],
-                "quote_token": validated_data["quote_token"],
-                "amount": validated_data["amount"],
-                "price": str(price),
-                "is_buyer": True if price <= int(validated_data["price"]) else False,
-                "expiry": validated_data["expiry"],
-                "signature": validated_data["signature"],
-            }
+            Maker(
+                bot=bot,
+                base_token=base_token,
+                quote_token=quote_token,
+                amount=amount,
+                price=str(price),
+                is_buyer=True if price <= int(validated_data["price"]) else False,
+                expiry=expiry,
+                signature=signature,
+            )
             for price in range(
                 int(validated_data["lower_bound"]),
                 (int(validated_data["upper_bound"]) + int(validated_data["step"])),
@@ -234,50 +280,64 @@ class BotSerializer(serializers.ModelSerializer):
             )
         ]
 
-        orders = [
-            order
-            | {
-                "order_hash": str(
-                    Web3.to_hex(
-                        Web3.keccak(
-                            encode_packed(
-                                [
-                                    "address",
-                                    "uint256",
-                                    "uint256",
-                                    "uint256",
-                                    "uint256",
-                                    "uint256",
-                                    "uint256",
-                                    "address",
-                                    "address",
-                                    "uint64",
-                                    "uint8",
-                                    "bool",
-                                ],
-                                [
-                                    user.address,
-                                    order["amount"],
-                                    order["price"],
-                                    order["step"],
-                                    order["maker_fees"],
-                                    order["upper_bound"],
-                                    order["lower_bound"],
-                                    order["base_token"],
-                                    order["quote_token"],
-                                    int(order["expiry"].timestamp()),
-                                    0 if order["is_buyer"] else 1,
-                                    True,  # a replace order
-                                ],
-                            )
-                        )
-                    )
+        for order in orders:
+            order_hash = Web3.keccak(
+                encode_packed(
+                    [
+                        "address",
+                        "uint256",
+                        "uint256",
+                        "uint256",
+                        "uint256",
+                        "uint256",
+                        "uint256",
+                        "address",
+                        "address",
+                        "uint64",
+                        "uint8",
+                        "bool",
+                    ],
+                    [
+                        user.address,
+                        int(order.amount),
+                        int(order.price),
+                        int(validated_data["step"]),
+                        int(validated_data["maker_fees"]),
+                        int(validated_data["upper_bound"]),
+                        int(validated_data["lower_bound"]),
+                        order.base_token,
+                        order.quote_token,
+                        int(order.expiry.timestamp()),
+                        0 if is_buyer else 1,
+                        True,  # a replace order
+                    ],
                 )
-            }
-            for order in orders
-        ]
+            )
+            order.order_hash = Web3.to_hex(
+                Web3.solidity_keccak(
+                    ["bytes", "uint256"],
+                    [order_hash, int(order.price)],
+                )
+            )
+
         await Maker.objects.abulk_create(orders)
         return bot
+
+    def validate_price(self, value):
+        """Validates that the price sent is an integer"""
+        return validate_decimal_integer(value, "price")
+
+    def validate_amount(self, value):
+        """Validates that the amount sent is an integer"""
+        return validate_decimal_integer(value, "amount")
+
+    def validate_base_token(self, value):
+        """Validates the base_token format"""
+        return validate_address(value, "base_token")
+
+    def validate_quote_token(self, value):
+        """Validates the quote_token format"""
+        return validate_address(value, "quote_token")
 
     def validate_address(self, value):
         """Validates the address format"""
@@ -301,6 +361,10 @@ class BotSerializer(serializers.ModelSerializer):
             raise ValidationError("step cannot be negative")
         return data
 
+    def validate_signature(self, data: str):
+        """Validated the signature send by the user"""
+        return Signature(data)
+
     def validate(self, data: BotTypedDict):
         """Used to validate the bounds of the bot"""
 
@@ -310,7 +374,6 @@ class BotSerializer(serializers.ModelSerializer):
             raise ValidationError("lower_bound cannot be bigger than price")
         if Decimal(data["price"]) > Decimal(data["upper_bound"]):
             raise ValidationError("price cannot be bigger than upper_bound")
-
         message = encode_packed(
             [
                 "address",

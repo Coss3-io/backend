@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from api.models import User
 from api.models.orders import Maker
 from api.models.types import Address
-from api.serializers.orders import MakerSerializer
+from api.serializers.orders import MakerSerializer, BotSerializer
 
 
 class OrderView(APIView):
@@ -100,10 +100,19 @@ class BotView(APIView):
         return data + [permission() for permission in getattr(getattr(self, self.request.method.lower(), self.http_method_not_allowed), "permission_classes", [])]  # type: ignore
 
     @permission_classes([IsAuthenticated])
-    async def get(self):
+    async def get(self, request):
         """Returns the user bots list, """
         pass
 
-    async def post(self):
+    async def post(self, request):
         """View used to create a new bot"""
-        pass
+        
+        bot = BotSerializer(data=request.data)
+        await sync_to_async(bot.is_valid)(raise_exception=True)
+        bot.save()
+
+        if bot.instance is not None:
+            bot.instance = await bot.instance
+
+        return Response(bot.data, status=status.HTTP_200_OK)
+

@@ -168,7 +168,5 @@ class Bot(models.Model):
         blank=False,
     )
     fees_earned = models.DecimalField(
-        max_digits=78,
-        decimal_places=0,
-        default=Decimal("0")
+        max_digits=78, decimal_places=0, default=Decimal("0")
     )

@@ -38,7 +38,7 @@ class OrderView(APIView):
 
         queryset = Maker.objects.filter(
             base_token=base_token, quote_token=quote_token
-        ).select_related("user")
+        ).select_related("user", "bot", "bot__user")
         data = await sync_to_async(lambda: MakerSerializer(queryset, many=True).data)()
         return Response(data, status=status.HTTP_200_OK)
 
@@ -101,12 +101,12 @@ class BotView(APIView):
 
     @permission_classes([IsAuthenticated])
     async def get(self, request):
-        """Returns the user bots list, """
+        """Returns the user bots list,"""
         pass
 
     async def post(self, request):
         """View used to create a new bot"""
-        
+
         bot = BotSerializer(data=request.data)
         await sync_to_async(bot.is_valid)(raise_exception=True)
         bot.save()
@@ -115,4 +115,3 @@ class BotView(APIView):
             bot.instance = await bot.instance
 
         return Response(bot.data, status=status.HTTP_200_OK)
-

@@ -77,7 +77,13 @@ class MakerSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        data["address"] = instance.user.address
+        if not instance.user:
+            data["address"] = instance.bot.user.address
+            data["lower_bound"] = "{0:f}".format(instance.bot.lower_bound)
+            data["maker_fees"] = "{0:f}".format(instance.bot.maker_fees)
+            data["step"] = "{0:f}".format(instance.bot.step)
+        else:
+            data["address"] = instance.user.address
         return data
 
     def validate_id(self, value):
@@ -203,14 +209,12 @@ class TakerSerializer(serializers.ModelSerializer):
 class BotSerializer(serializers.ModelSerializer):
     """The model used to serialize bots"""
 
-    address = serializers.CharField(
-        required=True, allow_blank=False, write_only=True, max_length=42, min_length=42
-    )
+    address = serializers.CharField(required=True, allow_blank=False, write_only=True)
     base_token = serializers.CharField(
-        required=True, allow_blank=False, write_only=True, max_length=42, min_length=42
+        required=True, allow_blank=False, write_only=True
     )
     quote_token = serializers.CharField(
-        required=True, allow_blank=False, write_only=True, max_length=42, min_length=42
+        required=True, allow_blank=False, write_only=True
     )
     quote_token = serializers.CharField(
         required=True, allow_blank=False, write_only=True
@@ -223,9 +227,10 @@ class BotSerializer(serializers.ModelSerializer):
     )
     expiry = TimestampField(required=True, write_only=True)
     signature = serializers.CharField(
-        required=True, write_only=True, max_length=132, min_length=132
+        required=True,
+        write_only=True,
     )
-    is_buyer = serializers.BooleanField(write_only=True, required=True)
+    is_buyer = serializers.BooleanField(allow_null=True, default=None)  # type: ignore
 
     class Meta:
         model = Bot
@@ -323,6 +328,11 @@ class BotSerializer(serializers.ModelSerializer):
         await Maker.objects.abulk_create(orders)
         return bot
 
+    def validate_is_buyer(self, value):
+        if value is None:
+            raise ValidationError("This field is required.")
+        return value
+
     def validate_price(self, value):
         """Validates that the price sent is an integer"""
         return validate_decimal_integer(value, "price")
@@ -355,11 +365,9 @@ class BotSerializer(serializers.ModelSerializer):
         """Validated the maker fees field, maker fees cannot be negative"""
         return validate_decimal_integer(value, name="maker_fees")
 
-    def validate_step(self, data: Decimal):
+    def validate_step(self, data: str):
         """Validated the step, step cannot be negative"""
-        if data <= Decimal("0"):
-            raise ValidationError("step cannot be negative")
-        return data
+        return validate_decimal_integer(data, name="step")
 
     def validate_signature(self, data: str):
         """Validated the signature send by the user"""
@@ -413,6 +421,6 @@ class BotSerializer(serializers.ModelSerializer):
             )
             == False
         ):
-            raise ValidationError("The signature sent doesn't match the order owner")
+            raise ValidationError(errors.Signature.SIGNATURE_MISMATCH_ERROR)
 
         return super().validate(data)

@@ -158,12 +158,10 @@ class MakerSerializer(serializers.ModelSerializer):
             )
             == False
         ):
-            raise ValidationError("The signature sent doesn't match the order owner")
+            raise ValidationError(errors.Signature.SIGNATURE_MISMATCH_ERROR)
 
         if orderHash != data["order_hash"]:
-            raise ValidationError(
-                "The provided order hash does not match the computed hash"
-            )
+            raise ValidationError(errors.KeccakHash.MISMATCH_HASH_ERROR)
         return super().validate(data)
 
 

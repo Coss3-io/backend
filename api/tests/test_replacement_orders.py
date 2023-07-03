@@ -440,7 +440,7 @@ class ReplacementOrdersCreationTestCase(APITestCase):
 
         self.assertEqual(
             response.json(),
-            {"is_buyer": [BooleanField.default_error_messages["invalid"]]},
+            {"is_buyer": [BooleanField.error_messages["invalid"]]},  # type:ignore
         )
 
     def test_create_a_bot_without_signature_fails(self):
@@ -657,7 +657,7 @@ class ReplacementOrdersCreationTestCase(APITestCase):
 
         self.assertEqual(
             response.json(),
-            {"step": [DecimalField.default_error_messages["invalid"]]},
+            {"step": [DecimalField.error_messages["invalid"]]},  # type:ignore
         )
 
     def test_create_a_bot_without_price_fails(self):
@@ -719,7 +719,7 @@ class ReplacementOrdersCreationTestCase(APITestCase):
 
         self.assertEqual(
             response.json(),
-            {"price": [DecimalField.default_error_messages["invalid"]]},
+            {"price": [DecimalField.error_messages["invalid"]]},  # type:ignore
         )
 
     def test_create_a_bot_without_maker_fees_fails(self):
@@ -781,7 +781,7 @@ class ReplacementOrdersCreationTestCase(APITestCase):
 
         self.assertEqual(
             response.json(),
-            {"maker_fees": [DecimalField.default_error_messages["invalid"]]},
+            {"maker_fees": [DecimalField.error_messages["invalid"]]},  # type:ignore
         )
 
     def test_create_a_bot_without_upper_bound_fails(self):
@@ -843,7 +843,7 @@ class ReplacementOrdersCreationTestCase(APITestCase):
 
         self.assertEqual(
             response.json(),
-            {"upper_bound": [DecimalField.default_error_messages["invalid"]]},
+            {"upper_bound": [DecimalField.error_messages["invalid"]]},  # type:ignore
         )
 
     def test_create_a_bot_without_lower_bound_fails(self):
@@ -905,7 +905,7 @@ class ReplacementOrdersCreationTestCase(APITestCase):
 
         self.assertEqual(
             response.json(),
-            {"lower_bound": [DecimalField.default_error_messages["invalid"]]},
+            {"lower_bound": [DecimalField.error_messages["invalid"]]},  # type:ignore
         )
 
     def test_create_a_bot_without_amount_fails(self):
@@ -967,7 +967,7 @@ class ReplacementOrdersCreationTestCase(APITestCase):
 
         self.assertEqual(
             response.json(),
-            {"amount": [DecimalField.default_error_messages["invalid"]]},
+            {"amount": [DecimalField.error_messages["invalid"]]},  # type:ignore
         )
 
     def test_create_a_bot_without_base_token_fails(self):

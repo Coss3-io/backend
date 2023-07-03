@@ -28,14 +28,18 @@ class KeccakHash:
     SHORT_HASH_ERROR = "the order_hash you gave is too short"
     LONG_HASH_ERROR = "the order_hash you gave is too long"
     WRONG_HASH_ERROR = "the order_hash submitted is hill formed"
+    MISMATCH_HASH_ERROR = "the provided order hash does not match the computed hash"
+
 
 # Order related Errors
 class Order:
     ID_SUBMITTED_ERROR = "the id field must not be submitted for orders creation"
 
+
 # Permissions Errors
 class Permissions:
-    WATCH_TOWER_AUTH_FAIL = 'Hash verification failed.'
+    WATCH_TOWER_AUTH_FAIL = "Hash verification failed."
+
 
 class General:
     MISSING_FIELD = "This field is required."

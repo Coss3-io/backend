@@ -33,12 +33,14 @@ class Signature(str):
 
 class KeccakHash(str):
     def __new__(cls, value):
+        if len(value) <= 65:
+            raise ValidationError(errors.KeccakHash.SHORT_HASH_ERROR)
         if len(value) > 66:
-            raise ValidationError("the hash you gave is too long")
+            raise ValidationError(errors.KeccakHash.LONG_HASH_ERROR)
         try:
             int(value, 0)
         except ValueError:
-            raise ValidationError("the hash submitted is hill formed")
+            raise ValidationError(errors.KeccakHash.WRONG_HASH_ERROR)
         return super().__new__(cls, value)
 
 

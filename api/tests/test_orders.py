@@ -1,8 +1,8 @@
 from decimal import Decimal
-from collections import Counter
 from datetime import datetime
 from asgiref.sync import async_to_sync
 from django.urls import reverse
+from rest_framework import serializers
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
 from api.models import User
 import api.errors as errors
@@ -243,13 +243,94 @@ class MakerOrderTestCase(APITestCase):
 
         self.assertDictEqual(
             response.json(),
-            {"address": ["This field is required."]},
+            {"address": [errors.General.MISSING_FIELD]},
             "The address field should be required",
         )
         self.assertEqual(
             response.status_code,
             HTTP_400_BAD_REQUEST,
             "The order creation without address should fail",
+        )
+
+    def test_creating_maker_order_with_wrong_address_fails(self):
+        """Checks sending an order request with wrong address fails"""
+
+        data = {
+            "address": "0xz17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {"address": [errors.Address.WRONG_ADDRESS_ERROR.format("")]},
+            "The address field should be valid",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The order creation with wrong address should fail",
+        )
+
+    def test_creating_maker_order_with_short_address_fails(self):
+        """Checks sending an order request with short address fails"""
+
+        data = {
+            "address": "0x17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {"address": [errors.Address.SHORT_ADDRESS_ERROR.format("")]},
+            "The address field should be 42 chars length",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The order creation with short address should fail",
+        )
+
+    def test_creating_maker_order_with_long_address_fails(self):
+        """Checks sending an order request with long address fails"""
+
+        data = {
+            "address": "0xff17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {"address": [errors.Address.LONG_ADDRESS_ERROR.format("")]},
+            "The address field should be 42 chars length",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The order creation with long address should fail",
         )
 
     def test_creating_maker_order_without_amount_fails(self):
@@ -270,13 +351,40 @@ class MakerOrderTestCase(APITestCase):
 
         self.assertDictEqual(
             response.json(),
-            {"amount": ["This field is required."]},
+            {"amount": [errors.General.MISSING_FIELD]},
             "The amount field should be required",
         )
         self.assertEqual(
             response.status_code,
             HTTP_400_BAD_REQUEST,
             "The order creation without amount should fail",
+        )
+
+    def test_creating_maker_order_with_wrong_amount_fails(self):
+        """Checks sending an order request with wrong amount fails"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "a" + "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {"amount": [serializers.DecimalField.default_error_messages["invalid"]]},
+            "The amount field should be valid",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The order creation with wrong amount should fail",
         )
 
     def test_creating_maker_order_without_expiry_fails(self):
@@ -306,6 +414,33 @@ class MakerOrderTestCase(APITestCase):
             "The order creation without expiry should fail",
         )
 
+    def test_creating_maker_order_with_wrong_expiry_fails(self):
+        """Checks sending an order request with wrong expiry fails"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": "2114380800a",
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {"expiry": [errors.Decimal.WRONG_DECIMAL_ERROR.format("expiry")]},
+            "The expiry field should be valid",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The order creation with wrong expiry should fail",
+        )
+
     def test_creating_maker_order_without_price_fails(self):
         """Checks sending an order request without price fails"""
 
@@ -331,6 +466,33 @@ class MakerOrderTestCase(APITestCase):
             response.status_code,
             HTTP_400_BAD_REQUEST,
             "The order creation without price should fail",
+        )
+
+    def test_creating_maker_order_with_wrong_price_fails(self):
+        """Checks sending an order request with wrong price fails"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "a" + "{0:f}".format(Decimal("2e20")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {"price": [serializers.DecimalField.default_error_messages["invalid"]]},
+            "The price field should be valid",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The order creation with wrong price should fail",
         )
 
     def test_creating_maker_order_without_base_token_fails(self):
@@ -360,6 +522,99 @@ class MakerOrderTestCase(APITestCase):
             "The order creation without base_token should fail",
         )
 
+    def test_creating_maker_order_with_wrong_base_token_fails(self):
+        """Checks sending an order request with wrong base_token fails"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0xzbbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {"base_token": [errors.Address.WRONG_ADDRESS_ERROR.format("base_token")]},
+            "The base_token field should be valid",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The order creation with wrong base_token should fail",
+        )
+
+    def test_creating_maker_order_with_short_base_token_fails(self):
+        """Checks sending an order request with short base_token fails"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0xbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {
+                "base_token": [
+                    serializers.CharField.default_error_messages.get(
+                        "min_length", ""
+                    ).format(min_length=42)
+                ]
+            },
+            "The base_token field should not be less than 42 chars",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The order creation with short base_token should fail",
+        )
+
+    def test_creating_maker_order_with_long_base_token_fails(self):
+        """Checks sending an order request with long base_token fails"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0xffbbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {
+                "base_token": [
+                    serializers.CharField.default_error_messages.get(
+                        "max_length", ""
+                    ).format(max_length=42)
+                ]
+            },
+            "The base_token field should not be more than 42 chars",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The order creation with long base_token should fail",
+        )
+
     def test_creating_maker_order_without_quote_token_fails(self):
         """Checks sending an order request without quote_token fails"""
 
@@ -378,13 +633,106 @@ class MakerOrderTestCase(APITestCase):
 
         self.assertDictEqual(
             response.json(),
-            {"quote_token": ["This field is required."]},
+            {"quote_token": [errors.General.MISSING_FIELD]},
             "The quote_token field should be required",
         )
         self.assertEqual(
             response.status_code,
             HTTP_400_BAD_REQUEST,
             "The order creation without quote_token should fail",
+        )
+
+    def test_creating_maker_order_with_wrong_quote_token_fails(self):
+        """Checks sending an order request with wrong quote_token fails"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xZ02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {"quote_token": [errors.Address.WRONG_ADDRESS_ERROR.format("quote_token")]},
+            "The quote_token field should be valid",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The order creation with wrong quote_token should fail",
+        )
+
+    def test_creating_maker_order_with_short_quote_token_fails(self):
+        """Checks sending an order request with short quote_token fails"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0x02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {
+                "quote_token": [
+                    serializers.CharField.default_error_messages.get(
+                        "min_length", ""
+                    ).format(min_length=42)
+                ]
+            },
+            "The quote_token field should not be less than 42 chars",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The order creation with short quote_token should fail",
+        )
+
+    def test_creating_maker_order_with_long_quote_token_fails(self):
+        """Checks sending an order request with long quote_token fails"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xCC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {
+                "quote_token": [
+                    serializers.CharField.default_error_messages.get(
+                        "max_length", ""
+                    ).format(max_length=42)
+                ]
+            },
+            "The quote_token field should not be more than 42 chars",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The order creation with long quote_token should fail",
         )
 
     def test_creating_maker_order_without_signature_fails(self):
@@ -405,13 +753,133 @@ class MakerOrderTestCase(APITestCase):
 
         self.assertDictEqual(
             response.json(),
-            {"signature": ["This field is required."]},
+            {"signature": [errors.General.MISSING_FIELD]},
             "The signature field should be required",
         )
         self.assertEqual(
             response.status_code,
             HTTP_400_BAD_REQUEST,
             "The order creation without signature should fail",
+        )
+
+    def test_creating_maker_order_with_wrong_signature_fails(self):
+        """Checks sending an order request with wrong signature fails"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0xz49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {"signature": [errors.Signature.WRONG_SIGNATURE_ERROR]},
+            "The signature field should be valid",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The order creation with wrong signature should fail",
+        )
+
+    def test_creating_maker_order_with_mismatch_signature_fails(self):
+        """Checks sending an order request with mismatch signature fails"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1d",
+            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {"error": [errors.Signature.SIGNATURE_MISMATCH_ERROR]},
+            "The signature field should be valid",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The order creation with mismatch signature should fail",
+        )
+
+    def test_creating_maker_order_with_short_signature_fails(self):
+        """Checks sending an order request with short signature fails"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0x49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {
+                "signature": [
+                    serializers.CharField.default_error_messages.get(
+                        "min_length", ""
+                    ).format(min_length=132)
+                ]
+            },
+            "The signature field should not be less than 132",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The order creation with short signature should fail",
+        )
+
+    def test_creating_maker_order_with_long_signature_fails(self):
+        """Checks sending an order request with long signature fails"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0xcc49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {
+                "signature": [
+                    serializers.CharField.default_error_messages.get(
+                        "max_length", ""
+                    ).format(max_length=132)
+                ]
+            },
+            "The signature field should not be more than 132",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The order creation with long signature should fail",
         )
 
     def test_creating_maker_order_without_order_hash_fails(self):
@@ -432,13 +900,133 @@ class MakerOrderTestCase(APITestCase):
 
         self.assertDictEqual(
             response.json(),
-            {"order_hash": ["This field is required."]},
+            {"order_hash": [errors.General.MISSING_FIELD]},
             "The order_hash field should be required",
         )
         self.assertEqual(
             response.status_code,
             HTTP_400_BAD_REQUEST,
             "The order creation without order_hash should fail",
+        )
+
+    def test_creating_maker_order_mismatch_order_hash_fails(self):
+        """Checks sending an order request mismatch order_hash fails"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+            "order_hash": "0x2b156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {"error": [errors.KeccakHash.MISMATCH_HASH_ERROR]},
+            "The order_hash computed should match the order hash sent",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The order creation without order_hash should fail",
+        )
+
+    def test_creating_maker_order_with_wrong_order_hash_fails(self):
+        """Checks sending an order request with wrong order_hash fails"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+            "order_hash": "0xZa156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {"order_hash": [errors.KeccakHash.WRONG_HASH_ERROR]},
+            "The order_hash field should be valid",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The order creation with wrong order_hash should fail",
+        )
+
+    def test_creating_maker_order_with_short_order_hash_fails(self):
+        """Checks sending an order request with short order_hash fails"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+            "order_hash": "0x156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {
+                "order_hash": [
+                    serializers.CharField.default_error_messages.get(
+                        "min_length", "{}"
+                    ).format(min_length="66")
+                ]
+            },
+            "The order_hash field should not be less than 42 chars",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The order creation with short order_hash should fail",
+        )
+
+    def test_creating_maker_order_with_long_order_hash_fails(self):
+        """Checks sending an order request with long order_hash fails"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+            "order_hash": "0x2aa156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {
+                "order_hash": [
+                    serializers.CharField.default_error_messages.get(
+                        "max_length", "{}"
+                    ).format(max_length="66")
+                ]
+            },
+            "The order_hash field should not be more than 42 chars",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The order creation with long order_hash should fail",
         )
 
     def test_creating_maker_order_without_is_buyer_fails(self):
@@ -459,7 +1047,7 @@ class MakerOrderTestCase(APITestCase):
 
         self.assertDictEqual(
             response.json(),
-            {"is_buyer": ["This field is required."]},
+            {"is_buyer": [errors.General.MISSING_FIELD]},
             "The is_buyer field should be required",
         )
         self.assertEqual(
@@ -468,7 +1056,34 @@ class MakerOrderTestCase(APITestCase):
             "The order creation without is_buyer should fail",
         )
 
-    def test_user_creaation_on_order_request(self):
+    def test_creating_maker_order_with_wrong_is_buyer_fails(self):
+        """Checks sending an order request with wrong is_buyer fails"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "is_buyer": "Fgrtalse",
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {"is_buyer": [serializers.BooleanField.default_error_messages["invalid"]]},
+            "The is_buyer field should be valid",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The order creation with wrong is_buyer should fail",
+        )
+
+    def test_user_creation_on_order_request(self):
         """Checks user creation works well on unregistered user order"""
 
         data = {

@@ -126,6 +126,130 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             prices, [], "All the prices of the range should be into the orders"
         )
 
+    def test_creating_a_bot_same_base_and_quote_fails(self):
+        """Checks that creating a bot with the same base and the same quote fails"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "expiry": 2114380800,
+            "signature": "0x99afc3b74a0a04cbbaa84479ee95a4cb2f5527bb491fc85b6178596b28944bc55f3b1438a6d8963c2b9421e6cc5942c340eea8924c3f23d384a0f204729ad5121c",
+            "is_buyer": False,
+            "step": "{0:f}".format(Decimal("1e17")),
+            "price": "{0:f}".format(Decimal("1e18")),
+            "maker_fees": "{0:f}".format(Decimal("50")),
+            "upper_bound": "{0:f}".format(Decimal("15e17")),
+            "lower_bound": "{0:f}".format(Decimal("5e17")),
+            "amount": "{0:f}".format(Decimal("2e18")),
+            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+        }
+
+        response = self.client.post(reverse("api:bot"), data=data)
+        self.assertDictEqual(
+            response.json(),
+            {"error": [errors.Order.SAME_BASE_QUOTE_ERROR]},
+            "The bot creation should fail with same base and same quote token",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "the response status code should be 400",
+        )
+
+    def test_creating_a_bot_with_price_gt_upper_bound(self):
+        """The creation of a bot with price gt upper bound should fail"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "expiry": 2114380800,
+            "signature": "0xb35fef1442e7a63a165f4da7c6d460f94c3d090596f7b3323ef14ada90ffa7f7209565892d4673247595a4ced71ce2b940dc126f9b40c198bc0a12e3b4ca6fc11c",
+            "is_buyer": False,
+            "step": "{0:f}".format(Decimal("1e17")),
+            "price": "{0:f}".format(Decimal("1e19")),
+            "maker_fees": "{0:f}".format(Decimal("50")),
+            "upper_bound": "{0:f}".format(Decimal("15e17")),
+            "lower_bound": "{0:f}".format(Decimal("5e17")),
+            "amount": "{0:f}".format(Decimal("2e18")),
+            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+        }
+
+        response = self.client.post(reverse("api:bot"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {"error": [errors.Order.PRICE_GT_UPPER_BOUND]},
+            "A bot with price greater than upper bound should not be created",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request should fail when price is greater than upper bound",
+        )
+
+    def test_creating_a_bot_with_lower_bound_gt_price(self):
+        """The creation of a bot with price gt upper bound should fail"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "expiry": 2114380800,
+            "signature": "0x5434e66fb93872d2779023d9b706f8181bcbc07a808e37ac0846ef6587daf0c86893375542b606ab11f9276be23f0a144d5818a3eb5054efa2ab740a54a0ad361c",
+            "is_buyer": False,
+            "step": "{0:f}".format(Decimal("1e17")),
+            "price": "{0:f}".format(Decimal("1e18")),
+            "maker_fees": "{0:f}".format(Decimal("50")),
+            "upper_bound": "{0:f}".format(Decimal("15e17")),
+            "lower_bound": "{0:f}".format(Decimal("11e17")),
+            "amount": "{0:f}".format(Decimal("2e18")),
+            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+        }
+
+        response = self.client.post(reverse("api:bot"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {"error": [errors.Order.LOWER_BOUND_GT_PRICE]},
+            "A bot with lower bound greater than price should not be created",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request should fail when lower bound is greater than price",
+        )
+
+    def test_creating_a_bot_with_lower_bound_gte_upper_bound_fails(self):
+        """Checks creating a bot with lower bound greater or equal to upper bound fails"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "expiry": 2114380800,
+            "signature": "0x363bfa68e74b9351338923fa184f09a536fbb9ac59342e2bd73f526159e301ef03982a522aade72cb3e90f808aee53d73ee2a710d1de153bfaac07fdf8a7a62b1c",
+            "is_buyer": False,
+            "step": "{0:f}".format(Decimal("1e17")),
+            "price": "{0:f}".format(Decimal("1e18")),
+            "maker_fees": "{0:f}".format(Decimal("50")),
+            "upper_bound": "{0:f}".format(Decimal("1e18")),
+            "lower_bound": "{0:f}".format(Decimal("1e18")),
+            "amount": "{0:f}".format(Decimal("2e18")),
+            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+        }
+
+        response = self.client.post(reverse("api:bot"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {"error": [errors.Order.LOWER_BOUND_GTE_UPPER_BOUND]},
+            "A bot with lower bound greater than upper_bound should not be created",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request should fail when lower_bound is greater than upper_bound",
+        )
+
     def test_bot_orders_and_regular_orders(self):
         """Checks with bot orders and regular order we can get all of them at once"""
 

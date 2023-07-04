@@ -8,8 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import ValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
-from api.models import User
-from api.models.orders import Maker
+from api.models.orders import Maker, Bot
 from api.models.types import Address
 from api.serializers.orders import MakerSerializer, BotSerializer
 
@@ -102,7 +101,9 @@ class BotView(APIView):
     @permission_classes([IsAuthenticated])
     async def get(self, request):
         """Returns the user bots list,"""
-        pass
+        bots = Bot.objects.filter(user=request.user).prefetch_related("orders")
+        data = await sync_to_async(lambda: BotSerializer(bots, many=True).data)()
+        return Response(data, status=status.HTTP_200_OK)
 
     async def post(self, request):
         """View used to create a new bot"""

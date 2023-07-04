@@ -1,7 +1,9 @@
 from decimal import Decimal
+from functools import partial
 from datetime import datetime
 from asgiref.sync import async_to_sync
 from django.urls import reverse
+from django.db.utils import IntegrityError
 from rest_framework import serializers
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
 from api.models import User
@@ -95,6 +97,24 @@ class MakerOrderTestCase(APITestCase):
             order.is_buyer,
             data["is_buyer"],
             "The order is_buyer should be reported on the order",
+        )
+
+    def test_creating_an_order_without_user_or_bot_should_fail(self):
+        """Checks the creation of an order need at bot or user"""
+
+        self.assertRaises(
+            IntegrityError,
+            partial(
+                async_to_sync(Maker.objects.create),
+                amount="1",
+                expiry=datetime.fromtimestamp(2114380800),
+                price="1",
+                base_token="0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+                quote_token="0xf17f52151EbEF6C7334FAD080c5704D77216b731",
+                signature="0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+                order_hash="0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+                is_buyer=False,
+            ),
         )
 
     def test_retrieve_maker_orders_anon(self):

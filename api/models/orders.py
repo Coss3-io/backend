@@ -24,6 +24,10 @@ class Maker(models.Model):
                 check=models.Q(filled__lte=models.F("amount")), name="filled_lte_amount"
             ),
             models.CheckConstraint(
+                check=~models.Q(base_token=models.F("quote_token")),
+                name="base_token_difference_quote_token",
+            ),
+            models.CheckConstraint(
                 check=models.Q(bot__isnull=False) | models.Q(user__isnull=False),
                 name="bot_or_user_must_be_set",
             ),

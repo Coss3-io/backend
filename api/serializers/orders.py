@@ -117,6 +117,8 @@ class MakerSerializer(serializers.ModelSerializer):
         return Signature(value)
 
     def validate(self, data):
+        if data["base_token"].lower() == data["quote_token"].lower():
+            raise ValidationError(errors.Order.SAME_BASE_QUOTE_ERROR)
         message = encode_packed(
             [
                 "address",
@@ -375,11 +377,13 @@ class BotSerializer(serializers.ModelSerializer):
         """Used to validate the bounds of the bot"""
 
         if Decimal(data["lower_bound"]) >= Decimal(data["upper_bound"]):
-            raise ValidationError("upper_bound must be higher than the lower_bound")
+            raise ValidationError(errors.Order.LOWER_BOUND_GTE_UPPER_BOUND)
         if Decimal(data["lower_bound"]) > Decimal(data["price"]):
-            raise ValidationError("lower_bound cannot be bigger than price")
+            raise ValidationError(errors.Order.LOWER_BOUND_GT_PRICE)
         if Decimal(data["price"]) > Decimal(data["upper_bound"]):
-            raise ValidationError("price cannot be bigger than upper_bound")
+            raise ValidationError(errors.Order.PRICE_GT_UPPER_BOUND)
+        if data["base_token"].lower() == data["quote_token"].lower():
+            raise ValidationError(errors.Order.SAME_BASE_QUOTE_ERROR)
         message = encode_packed(
             [
                 "address",

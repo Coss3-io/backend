@@ -37,7 +37,7 @@ class Order:
     SAME_BASE_QUOTE_ERROR = "the base_token and quote_token fields must be different"
     LOWER_BOUND_GTE_UPPER_BOUND = "the lower_bound must be smaller than the upper_bound"
     LOWER_BOUND_GT_PRICE = "the lower_bound must be smaller or equal to the price"
-    PRICE_GT_UPPER_BOUND = "the price cannot be grater than the lower bound"
+    PRICE_GT_UPPER_BOUND = "the price cannot be greater than the lower bound"
 
 
 # Permissions Errors

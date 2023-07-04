@@ -99,6 +99,34 @@ class MakerOrderTestCase(APITestCase):
             "The order is_buyer should be reported on the order",
         )
 
+    def test_creating_an_order_with_same_base_and_quote_fails(self):
+        """Checks we cannot create an order with the same base and the same quote token"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "signature": "0x415229a73d001cadbf6765dfff0ee94c67fcca3e6b6697241373aacf32e44c6218450c66d07a5ca1426244f64493a0bc83b0dbdab9e5a72dfe43d26eb96cf82f1c",
+            "order_hash": "0x20126b2fcf1333c5efd0a330741e587f527573980114eb983fbeba0afc58e4a6",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {"error": [errors.Order.SAME_BASE_QUOTE_ERROR]},
+            "The order creation should fail with same base and same quote token",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "the response status code should be 400",
+        )
+
     def test_creating_an_order_without_user_or_bot_should_fail(self):
         """Checks the creation of an order need at bot or user"""
 

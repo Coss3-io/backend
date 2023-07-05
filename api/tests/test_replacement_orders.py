@@ -1,9 +1,13 @@
 from decimal import Decimal
+from asgiref.sync import async_to_sync
 from django.urls import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
 from rest_framework.test import APITestCase
 from rest_framework.serializers import DecimalField, BooleanField
+from rest_framework.exceptions import NotAuthenticated
 from api.models import User
+from api.models.orders import Bot
+from api.models.types import Address
 import api.errors as errors
 
 
@@ -12,7 +16,6 @@ class ReplacementOrdersCreationTestCase(APITestCase):
 
     def test_create_a_bot(self):
         """Checks the bot creation works well"""
-
         data = {
             "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
             "expiry": 2114380800,
@@ -29,6 +32,9 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
+        base_token_amount = Decimal("0")
+        quote_token_amount = Decimal("0")
+
         User.objects.get(address=data.get("address"))
         orders = self.client.get(
             reverse("api:orders"),
@@ -76,12 +82,18 @@ class ReplacementOrdersCreationTestCase(APITestCase):
                     True,
                     "If the price of the order is below the thresold price, the order should be a buyer",
                 )
+                quote_token_amount += (
+                    Decimal(order.get("amount"))
+                    * Decimal(order.get("price"))
+                    / Decimal("1e18")
+                ).quantize(Decimal("1."))
             else:
                 self.assertEqual(
                     order.get("is_buyer"),
                     False,
                     "If the price is strictly above the threesold price, the order should be a sell",
                 )
+                base_token_amount += Decimal(order.get("amount"))
 
             self.assertEqual(
                 order.get("step"),
@@ -124,6 +136,155 @@ class ReplacementOrdersCreationTestCase(APITestCase):
 
         self.assertListEqual(
             prices, [], "All the prices of the range should be into the orders"
+        )
+
+        del data["expiry"]
+        del data["signature"]
+        del data["address"]
+        del data["amount"]
+        del data["is_buyer"]
+
+        data.update(
+            {
+                "base_token_amount": "{0:f}".format(base_token_amount),
+                "quote_token_amount": "{0:f}".format(quote_token_amount),
+                "fees_earned": "0",
+            }
+        )
+
+        self.assertDictEqual(
+            response.json(),
+            data,
+            "The returned bot data should hold all the bot informations",
+        )
+
+    def test_creating_twice_the_same_bot_fails(self):
+        """A user should not be able to create the same bot twice"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "expiry": 2114380800,
+            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "is_buyer": False,
+            "step": "{0:f}".format(Decimal("1e17")),
+            "price": "{0:f}".format(Decimal("1e18")),
+            "maker_fees": "{0:f}".format(Decimal("50")),
+            "upper_bound": "{0:f}".format(Decimal("15e17")),
+            "lower_bound": "{0:f}".format(Decimal("5e17")),
+            "amount": "{0:f}".format(Decimal("2e18")),
+            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+        }
+
+        self.client.post(reverse("api:bot"), data=data)
+        response = self.client.post(reverse("api:bot"), data=data)
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "Creating a bot twice should fail",
+        )
+
+        self.assertDictEqual(
+            response.json(),
+            {"error": [errors.Order.BOT_EXISTING_ORDER]},
+            "Creating a bot with already existing orders should fail",
+        )
+
+    def test_creating_bot_with_0_step_fails(self):
+        """Creating a bot with a 0 step should not be allowed"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "expiry": 2114380800,
+            "signature": "0x0b0219373a4ae66877534990dad2e3376de8a456bc2a6bdf694fb8914456f1110a23d44fa11a5f025be0ebed89c56e41da70f42803dc70e858c7ad010f64cc641b",
+            "is_buyer": False,
+            "step": "0",
+            "price": "{0:f}".format(Decimal("1e18")),
+            "maker_fees": "{0:f}".format(Decimal("50")),
+            "upper_bound": "{0:f}".format(Decimal("15e17")),
+            "lower_bound": "{0:f}".format(Decimal("5e17")),
+            "amount": "{0:f}".format(Decimal("2e18")),
+            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+        }
+
+        response = self.client.post(reverse("api:bot"), data=data)
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request with a 0 step field should fail",
+        )
+
+        self.assertDictEqual(
+            response.json(),
+            {"step": [errors.Decimal.ZERO_DECIMAL_ERROR.format("step")]},
+            "the error returned should be about the 0 step field",
+        )
+
+    def test_creating_bot_with_0_amount_fails(self):
+        """Creating a bot with a 0 amount should not be allowed"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "expiry": 2114380800,
+            "signature": "0xe85fcb21e2409140501d4864c76f2dbe85e3bd22627ea596cb84ef5fdbf4cfd41650d2270fe33577415cb3204c3ede0818bc22b81853b94231abfaa926a7da6e1c",
+            "is_buyer": False,
+            "step": "{0:f}".format(Decimal("1e17")),
+            "price": "{0:f}".format(Decimal("1e18")),
+            "maker_fees": "{0:f}".format(Decimal("50")),
+            "upper_bound": "{0:f}".format(Decimal("15e17")),
+            "lower_bound": "{0:f}".format(Decimal("5e17")),
+            "amount": "0",  # "{0:f}".format(Decimal("2e18")),
+            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+        }
+
+        response = self.client.post(reverse("api:bot"), data=data)
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request with a 0 amount field should fail",
+        )
+
+        self.assertDictEqual(
+            response.json(),
+            {"amount": [errors.Decimal.ZERO_DECIMAL_ERROR.format("amount")]},
+            "the error returned should be about the 0 amount field",
+        )
+
+    def test_creating_bot_with_0_maker_fees_fails(self):
+        """Creating a bot with a 0 price should not be allowed"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "expiry": 2114380800,
+            "signature": "0xcbd9aab47e61f1dfeea5ab2ab67d74a5ad327dc727890fbd0b94baee1aa2c0542bcb5d6ebc07dbbbffa568ead302511d2c83781c287cf95b849956df177d09b01b",
+            "is_buyer": False,
+            "step": "{0:f}".format(Decimal("1e17")),
+            "price": "0",  # "{0:f}".format(Decimal("1e18")),
+            "maker_fees": "{0:f}".format(Decimal("50")),
+            "upper_bound": "{0:f}".format(Decimal("15e17")),
+            "lower_bound": "{0:f}".format(Decimal("5e17")),
+            "amount": "{0:f}".format(Decimal("2e18")),
+            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+        }
+
+        response = self.client.post(reverse("api:bot"), data=data)
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request with a 0 price field should fail",
+        )
+
+        self.assertDictEqual(
+            response.json(),
+            {"price": [errors.Decimal.ZERO_DECIMAL_ERROR.format("price")]},
+            "the error returned should be about the 0 amount field",
         )
 
     def test_creating_a_bot_same_base_and_quote_fails(self):
@@ -1341,3 +1502,82 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             response.json(),
             {"quote_token": [errors.Address.LONG_ADDRESS_ERROR.format("quote_token")]},
         )
+
+
+class BotRetrievalTestCase(APITestCase):
+    """Class used to test the retrieval of the users bots"""
+
+    def setUp(self):
+        self.user = async_to_sync(User.objects.create_user)(
+            address=Address("0xf17f52151EbEF6C7334FAD080c5704D77216b732")
+        )
+
+        self.data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "expiry": 2114380800,
+            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "is_buyer": False,
+            "step": "{0:f}".format(Decimal("1e17")),
+            "price": "{0:f}".format(Decimal("1e18")),
+            "maker_fees": "{0:f}".format(Decimal("50")),
+            "upper_bound": "{0:f}".format(Decimal("15e17")),
+            "lower_bound": "{0:f}".format(Decimal("5e17")),
+            "amount": "{0:f}".format(Decimal("2e18")),
+            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+        }
+        self.client.post(reverse("api:bot"), data=self.data)
+
+    def test_retrieving_user_bots_works(self):
+        """Checks retrieving the bots of a user works"""
+
+        self.client.force_authenticate(user=self.user)  # type: ignore
+        response = self.client.get(reverse("api:bot"))
+        data = response.json()
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_200_OK,
+            "The bot retrieval request should be successfull",
+        )
+
+        del self.data["expiry"]
+        del self.data["signature"]
+        del self.data["address"]
+        del self.data["amount"]
+        del self.data["is_buyer"]
+
+        self.data.update(
+            {
+                "base_token_amount": "{0:f}".format(Decimal("10e18")),
+                "quote_token_amount": "{0:f}".format(Decimal("9e18")),
+                "fees_earned": "0",
+            }
+        )
+
+        self.assertEqual(len(data), 1, "only one bot should be available for the user")
+        self.assertDictEqual(
+            data[0], self.data, "The returned data shold contain the bot informations"
+        )
+
+    def test_retrieving_bots_anon_fails(self):
+        """Checks that a non authenticated user cannot get his bots list"""
+
+        response = self.client.get(reverse("api:bot"))
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_403_FORBIDDEN,
+            "The non auth user should not be able to view bots ",
+        )
+
+        self.assertDictEqual(
+            response.json(), {"detail": NotAuthenticated.default_detail}
+        )
+
+    def test_retrieving_user_bots_with_consummed_orders_works(self):
+        """
+        Checks a bot with some orders being consummed
+        are returned with the right balances
+        """
+        pass

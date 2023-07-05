@@ -230,7 +230,7 @@ class BotSerializer(serializers.ModelSerializer):
         required=True,
         write_only=True,
     )
-    is_buyer = serializers.BooleanField(allow_null=True, default=None)  # type: ignore
+    is_buyer = serializers.BooleanField(allow_null=True, default=None, write_only=True)  # type: ignore
 
     class Meta:
         model = Bot
@@ -324,7 +324,6 @@ class BotSerializer(serializers.ModelSerializer):
                     [order_hash, int(order.price)],
                 )
             )
-
         await Maker.objects.abulk_create(orders)
         return bot
 
@@ -426,3 +425,24 @@ class BotSerializer(serializers.ModelSerializer):
             raise ValidationError(errors.Signature.SIGNATURE_MISMATCH_ERROR)
 
         return super().validate(data)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        base_token_amount = Decimal("0")
+        quote_token_amount = Decimal("0")
+        for order in instance.orders.all():
+            if order.is_buyer:
+                quote_token_amount += (
+                    (order.amount - order.filled) * order.price / Decimal("1e18")
+                ).quantize(Decimal("1."))
+            else:
+                base_token_amount += order.amount - order.filled
+        data.update(
+            {
+                "base_token": instance.orders.all()[0].base_token,
+                "quote_token": instance.orders.all()[0].quote_token,
+                "base_token_amount": "{0:f}".format(base_token_amount),
+                "quote_token_amount": "{0:f}".format(quote_token_amount),
+            }
+        )
+        return data

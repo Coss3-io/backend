@@ -38,6 +38,7 @@ class Order:
     LOWER_BOUND_GTE_UPPER_BOUND = "the lower_bound must be smaller than the upper_bound"
     LOWER_BOUND_GT_PRICE = "the lower_bound must be smaller or equal to the price"
     PRICE_GT_UPPER_BOUND = "the price cannot be greater than the lower bound"
+    BOT_EXISTING_ORDER = "this bot has already existing orders"
 
 
 # Permissions Errors

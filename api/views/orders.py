@@ -2,6 +2,7 @@ from decimal import Decimal
 from datetime import datetime
 from asgiref.sync import sync_to_async
 from adrf.views import APIView
+from django.db.utils import IntegrityError
 from rest_framework import status
 from rest_framework.decorators import permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -10,6 +11,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from api.models.orders import Maker, Bot
 from api.models.types import Address
+import api.errors as errors
 from api.serializers.orders import MakerSerializer, BotSerializer
 
 
@@ -112,7 +114,14 @@ class BotView(APIView):
         await sync_to_async(bot.is_valid)(raise_exception=True)
         bot.save()
 
-        if bot.instance is not None:
-            bot.instance = await bot.instance
+        try:
+            if bot.instance is not None:
+                bot.instance = await bot.instance
+        except IntegrityError as e:
+            return Response(
+                {"error": [errors.Order.BOT_EXISTING_ORDER]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        return Response(bot.data, status=status.HTTP_200_OK)
+        data = await sync_to_async(lambda: bot.data)()
+        return Response(data, status=status.HTTP_200_OK)

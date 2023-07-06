@@ -28,14 +28,23 @@ class KeccakHash:
     SHORT_HASH_ERROR = "the order_hash you gave is too short"
     LONG_HASH_ERROR = "the order_hash you gave is too long"
     WRONG_HASH_ERROR = "the order_hash submitted is hill formed"
+    MISMATCH_HASH_ERROR = "the provided order hash does not match the computed hash"
+
 
 # Order related Errors
 class Order:
     ID_SUBMITTED_ERROR = "the id field must not be submitted for orders creation"
+    SAME_BASE_QUOTE_ERROR = "the base_token and quote_token fields must be different"
+    LOWER_BOUND_GTE_UPPER_BOUND = "the lower_bound must be smaller than the upper_bound"
+    LOWER_BOUND_GT_PRICE = "the lower_bound must be smaller or equal to the price"
+    PRICE_GT_UPPER_BOUND = "the price cannot be greater than the lower bound"
+    BOT_EXISTING_ORDER = "this bot has already existing orders"
+
 
 # Permissions Errors
 class Permissions:
-    WATCH_TOWER_AUTH_FAIL = 'Hash verification failed.'
+    WATCH_TOWER_AUTH_FAIL = "Hash verification failed."
+
 
 class General:
     MISSING_FIELD = "This field is required."

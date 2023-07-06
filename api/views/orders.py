@@ -2,16 +2,17 @@ from decimal import Decimal
 from datetime import datetime
 from asgiref.sync import sync_to_async
 from adrf.views import APIView
+from django.db.utils import IntegrityError
 from rest_framework import status
 from rest_framework.decorators import permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import ValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
-from api.models import User
-from api.models.orders import Maker
+from api.models.orders import Maker, Bot
 from api.models.types import Address
-from api.serializers.orders import MakerSerializer
+import api.errors as errors
+from api.serializers.orders import MakerSerializer, BotSerializer
 
 
 class OrderView(APIView):
@@ -21,12 +22,12 @@ class OrderView(APIView):
         """Function used to get all the orders for a given pair"""
 
         if (base_token := request.query_params.get("base_token", "0")) == "0" or (
-                quote_token := request.query_params.get("quote_token", "0")
-            ) == "0":
-                return Response(
-                    {"detail": "base_token and quote_token params are needed"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+            quote_token := request.query_params.get("quote_token", "0")
+        ) == "0":
+            return Response(
+                {"detail": "base_token and quote_token params are needed"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         try:
             base_token = Address(base_token, "base_token")
         except ValidationError as e:
@@ -38,7 +39,7 @@ class OrderView(APIView):
 
         queryset = Maker.objects.filter(
             base_token=base_token, quote_token=quote_token
-        ).select_related("user")
+        ).select_related("user", "bot", "bot__user")
         data = await sync_to_async(lambda: MakerSerializer(queryset, many=True).data)()
         return Response(data, status=status.HTTP_200_OK)
 
@@ -63,7 +64,7 @@ class MakerView(APIView):
                     {"detail": "base_token and quote_token params are needed"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            
+
             try:
                 base_token = Address(base_token, "base_token")
             except ValidationError as e:
@@ -84,13 +85,43 @@ class MakerView(APIView):
 
         maker = MakerSerializer(data=request.data)
         await sync_to_async(maker.is_valid)(raise_exception=True)
-
-        user = (await User.objects.aget_or_create(address=request.data.get("address")))[
-            0
-        ]
-        maker.save(filled=Decimal("0"), user=user)
+        maker.save(filled=Decimal("0"))
 
         if maker.instance is not None:
             maker.instance = await maker.instance
 
         return Response(maker.data, status=status.HTTP_200_OK)
+
+
+class BotView(APIView):
+    """View used to create and retrieve bots"""
+
+    def get_permissions(self):
+        data = super().get_permissions()
+        return data + [permission() for permission in getattr(getattr(self, self.request.method.lower(), self.http_method_not_allowed), "permission_classes", [])]  # type: ignore
+
+    @permission_classes([IsAuthenticated])
+    async def get(self, request):
+        """Returns the user bots list,"""
+        bots = Bot.objects.filter(user=request.user).prefetch_related("orders")
+        data = await sync_to_async(lambda: BotSerializer(bots, many=True).data)()
+        return Response(data, status=status.HTTP_200_OK)
+
+    async def post(self, request):
+        """View used to create a new bot"""
+
+        bot = BotSerializer(data=request.data)
+        await sync_to_async(bot.is_valid)(raise_exception=True)
+        bot.save()
+
+        try:
+            if bot.instance is not None:
+                bot.instance = await bot.instance
+        except IntegrityError as e:
+            return Response(
+                {"error": [errors.Order.BOT_EXISTING_ORDER]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        data = await sync_to_async(lambda: bot.data)()
+        return Response(data, status=status.HTTP_200_OK)

@@ -23,11 +23,17 @@ def validate_eth_signed_message(
     result = validate_eth_signed_message(message=message, signature=signature, address=address)
     ```
     """
-
-    return Web3.to_checksum_address(address) == Account.recover_message(
-        messages.encode_defunct(message),
-        signature=signature,
-    )
+    try:
+        match = Web3.to_checksum_address(address) == Account.recover_message(
+            messages.encode_defunct(message),
+            signature=signature,
+        )
+    except Exception as e:
+        if e == "Invalid signature":
+            raise e
+        else:
+            return False
+    return match
 
 
 def validate_decimal_integer(value: str, name: str):

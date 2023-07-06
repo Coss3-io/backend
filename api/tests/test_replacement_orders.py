@@ -1,12 +1,13 @@
 from decimal import Decimal
 from asgiref.sync import async_to_sync
 from django.urls import reverse
+from django.db.models import F
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
 from rest_framework.test import APITestCase
 from rest_framework.serializers import DecimalField, BooleanField
 from rest_framework.exceptions import NotAuthenticated
 from api.models import User
-from api.models.orders import Bot
+from api.models.orders import Maker, Bot
 from api.models.types import Address
 import api.errors as errors
 
@@ -1580,4 +1581,122 @@ class BotRetrievalTestCase(APITestCase):
         Checks a bot with some orders being consummed
         are returned with the right balances
         """
-        pass
+        bot = Bot.objects.get(user=self.user)
+        buyer: Maker = Maker.objects.filter(
+            bot=bot,
+            is_buyer=True,
+            base_token=self.data.get("base_token"),
+            quote_token=self.data.get("quote_token"),
+        ).first()  # type: ignore
+
+        seller: Maker = Maker.objects.filter(
+            bot=bot,
+            is_buyer=False,
+            base_token=self.data.get("base_token"),
+            quote_token=self.data.get("quote_token"),
+        ).first()  # type: ignore
+
+        buyer.filled = F("amount") / 2
+        seller.filled = F("amount") / 2
+        Maker.objects.bulk_update([buyer, seller], fields=["filled"])
+
+        self.client.force_authenticate(user=self.user)  # type: ignore
+        response = self.client.get(reverse("api:bot"))
+        data = response.json()
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_200_OK,
+            "The bot retrieval request should be successfull",
+        )
+
+        del self.data["expiry"]
+        del self.data["signature"]
+        del self.data["address"]
+        del self.data["amount"]
+        del self.data["is_buyer"]
+
+        self.data.update(
+            {
+                "base_token_amount": "{0:f}".format(Decimal("9e18")),
+                "quote_token_amount": "{0:f}".format(
+                    Decimal("9e18")
+                    - ((buyer.price * buyer.amount / 2) / Decimal("1e18")).quantize(
+                        Decimal("1.")
+                    )
+                ),
+                "fees_earned": "0",
+            }
+        )
+
+        self.assertEqual(len(data), 1, "only one bot should be available for the user")
+        self.assertDictEqual(
+            data[0],
+            self.data,
+            "The returned data shold contain the bot informations with the filled update",
+        )
+
+    def test_bot_retrieval_with_two_bots_works(self):
+        """Checks getting the user bot while having two bots works"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "expiry": 2114380801,
+            "signature": "0x201a1a4decd1b648366cd1c3577f3f7e21f8064836b8b8543bd93fbe6be33f2104935687856f2fd5dd355b277ac5f826e14e068c3e63b15f0d8412665cbcdced1c",
+            "is_buyer": False,
+            "step": "{0:f}".format(Decimal("1e17")),
+            "price": "{0:f}".format(Decimal("1e18")),
+            "maker_fees": "{0:f}".format(Decimal("50")),
+            "upper_bound": "{0:f}".format(Decimal("15e17")),
+            "lower_bound": "{0:f}".format(Decimal("5e17")),
+            "amount": "{0:f}".format(Decimal("1e18")),
+            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+        }
+        self.client.post(reverse("api:bot"), data=data)
+
+        self.client.force_authenticate(user=self.user)  # type: ignore
+        response = self.client.get(reverse("api:bot"))
+        self.assertEqual(
+            response.status_code,
+            HTTP_200_OK,
+            "the request with the user having two bots should works",
+        )
+
+        del self.data["expiry"], data["expiry"]
+        del self.data["signature"], data["signature"]
+        del self.data["address"], data["address"]
+        del self.data["amount"], data["amount"]
+        del self.data["is_buyer"], data["is_buyer"]
+
+        self.data.update(
+            {
+                "base_token_amount": "{0:f}".format(Decimal("10e18")),
+                "quote_token_amount": "{0:f}".format(Decimal("9e18")),
+                "fees_earned": "0",
+            }
+        )
+
+        data.update(
+            {
+                "base_token_amount": "{0:f}".format(Decimal("5e18")),
+                "quote_token_amount": "{0:f}".format(Decimal("45e17")),
+                "fees_earned": "0",
+            }
+        )
+
+        (bot1, bot2) = sorted(
+            response.json(), key=lambda b: int(b["base_token_amount"])
+        )
+
+        self.assertDictEqual(
+            bot1,
+            data,
+            "The first bot should have the right amounts of base and quote token",
+        )
+
+        self.assertDictEqual(
+            bot2,
+            self.data,
+            "The second bot should have the right amounts of base and quote token",
+        )

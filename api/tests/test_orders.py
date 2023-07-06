@@ -99,6 +99,33 @@ class MakerOrderTestCase(APITestCase):
             "The order is_buyer should be reported on the order",
         )
 
+    def test_creating_maker_with_0_amount_fails(self):
+        """Checks we can't create an order with a 0 amount"""
+
+        data = {
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "0",
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0xf9170415347c6ef632eb640c498ef0b1376473fd690de5a56d60cc295c8361b7724e6d7b997bef12c2d73a2eafb894cba6589686744a78c85616e594e38128351b",
+            "order_hash": "0xb979428423525d098b0a9c351dff840fc31df5c71e8944f29523a243c24147d7",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request with a 0 amount should fail",
+        )
+
+        self.assertDictEqual(
+            response.json(),
+            {"amount": [errors.Decimal.ZERO_DECIMAL_ERROR.format("amount")]},
+        )
+
     def test_creating_an_order_with_same_base_and_quote_fails(self):
         """Checks we cannot create an order with the same base and the same quote token"""
 

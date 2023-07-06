@@ -5,6 +5,7 @@ from decimal import Decimal
 from asgiref.sync import async_to_sync
 from django.urls import reverse
 from django.conf import settings
+from web3 import Web3
 from rest_framework import exceptions
 from rest_framework.test import APITestCase
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
@@ -21,14 +22,14 @@ class StackingTestCase(APITestCase):
 
     def setUp(self) -> None:
         self.user = async_to_sync(User.objects.create_user)(
-            address=Address("0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef")
+            address=Address("0xC5Fdf4076b8F3A5357c5E395ab970B5B54098Fef")
         )
 
     def test_stacking_entries_creation_from_wt_work(self):
         """Checks stacking entries creation works well"""
 
         data = {
-            "address": "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef",
+            "address": "0xC5fdF4076b8F3A5357c5E395ab970B5B54098Fef",
             "amount": "{0:f}".format(Decimal("173e16")),
             "slot": "23",
         }
@@ -41,7 +42,9 @@ class StackingTestCase(APITestCase):
         ).hexdigest()
 
         response = self.client.post(reverse("api:stacking"), data=data)
-        stack_entry = Stacking.objects.get(user__address=data["address"])
+        stack_entry = Stacking.objects.get(
+            user__address=Web3.to_checksum_address(data["address"])
+        )
 
         self.assertEqual(
             response.status_code, HTTP_200_OK, "the stacking entry creation should work"
@@ -65,7 +68,7 @@ class StackingTestCase(APITestCase):
         """Checks the stacking entry update from watch tower works"""
 
         data = {
-            "address": "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef",
+            "address": "0xC5FdF4076b8F3A5357c5E395ab970B5B54098Fef",
             "amount": "{0:f}".format(Decimal("173e16")),
             "slot": "23",
         }
@@ -80,7 +83,9 @@ class StackingTestCase(APITestCase):
         ).hexdigest()
 
         response = self.client.post(reverse("api:stacking"), data=data)
-        stack_entry = Stacking.objects.get(user__address=data["address"])
+        stack_entry = Stacking.objects.get(
+            user__address=Web3.to_checksum_address(data["address"])
+        )
 
         self.assertEqual(
             response.status_code, HTTP_200_OK, "the stacking entry update should work"
@@ -106,7 +111,7 @@ class StackingTestCase(APITestCase):
         """
 
         data = {
-            "address": "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef",
+            "address": "0xC5fdf4076B8F3A5357c5E395ab970B5B54098Fef",
             "amount": "{0:f}".format(Decimal("173e16")),
             "slot": "23",
         }
@@ -139,7 +144,7 @@ class StackingTestCase(APITestCase):
         """
 
         data = {
-            "address": "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fea",
+            "address": "0xC5fdf4076b8f3A5357c5E395ab970B5B54098Fea",
             "amount": "{0:f}".format(Decimal("173e16")),
             "slot": "23",
         }
@@ -159,13 +164,13 @@ class StackingTestCase(APITestCase):
             "The request with a non existing user should work",
         )
 
-        User.objects.get(address=data["address"])
+        User.objects.get(address=Web3.to_checksum_address(data["address"]))
 
     def test_stacking_entry_creation_wrong_address_fails(self):
         """Checks creating a stacking entry with a wrong address fails"""
 
         data = {
-            "address": "0xZ5fdf4076b8F3A5357c5E395ab970B5B54098Fef",
+            "address": "0xZ5fdf4076b8F3A5357C5E395ab970B5B54098Fef",
             "amount": "{0:f}".format(Decimal("193e16")),
             "slot": "23",
         }
@@ -223,7 +228,7 @@ class StackingTestCase(APITestCase):
         """Checks stacking creation with a wrong slot does not work"""
 
         data = {
-            "address": "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef",
+            "address": "0xC5fdf4076b8F3A5357c5e395ab970B5B54098Fef",
             "amount": "{0:f}".format(Decimal("193e16")),
             "slot": "a23",
         }
@@ -252,7 +257,7 @@ class StackingTestCase(APITestCase):
         """Checks stacking creation with a empty slot does not work"""
 
         data = {
-            "address": "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef",
+            "address": "0xC5fdf4076b8F3a5357c5E395ab970B5B54098Fef",
             "amount": "{0:f}".format(Decimal("193e16")),
             # "slot": "a23",
         }
@@ -283,11 +288,11 @@ class StackingRetrievalTestCase(APITestCase):
 
     def setUp(self):
         self.user = async_to_sync(User.objects.create_user)(
-            address=Address("0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef")
+            address=Address("0xC5fdF4076b8F3A5357c5E395ab970B5B54098Fef")
         )
 
         self.user_2 = async_to_sync(User.objects.create_user)(
-            address=Address("0xA5fdf4076b8F3A5357c5E395ab970B5B54098Fef")
+            address=Address("0xA5fdf4076b8F3A5357C5E395ab970B5B54098Fef")
         )
 
         self.stacking_3 = Stacking.objects.create(
@@ -364,7 +369,7 @@ class StackingFeesTestCase(APITestCase):
         """Checks stacking fees entries creation works well"""
 
         data = {
-            "token": "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef",
+            "token": "0xC5FDf4076b8F3A5357c5E395ab970B5B54098Fef",
             "amount": "{0:f}".format(Decimal("173e16")),
             "slot": "23",
         }
@@ -377,7 +382,9 @@ class StackingFeesTestCase(APITestCase):
         ).hexdigest()
 
         response = self.client.post(reverse("api:stacking-fees"), data=data)
-        stack_fees_entry = StackingFees.objects.get(token=data["token"])
+        stack_fees_entry = StackingFees.objects.get(
+            token=Web3.to_checksum_address(data["token"])
+        )
 
         self.assertEqual(
             response.status_code,
@@ -405,13 +412,15 @@ class StackingFeesTestCase(APITestCase):
         """Checks the stacking fees entry update from watch tower works"""
 
         data = {
-            "token": "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef",
+            "token": "0xC5FDf4076b8F3A5357c5E395ab970B5B54098Fef",
             "amount": "{0:f}".format(Decimal("173e16")),
             "slot": "23",
         }
 
         StackingFees.objects.create(
-            amount=Decimal("23e18"), slot=23, token=data["token"]
+            amount=Decimal("23e18"),
+            slot=23,
+            token=Web3.to_checksum_address(data["token"]),
         )
 
         data["timestamp"] = str(int(time()) * 1000)
@@ -422,7 +431,9 @@ class StackingFeesTestCase(APITestCase):
         ).hexdigest()
 
         response = self.client.post(reverse("api:stacking-fees"), data=data)
-        stack_fees_entry = StackingFees.objects.get(token=data["token"])
+        stack_fees_entry = StackingFees.objects.get(
+            token=Web3.to_checksum_address(data["token"])
+        )
 
         self.assertEqual(
             response.status_code,
@@ -452,7 +463,7 @@ class StackingFeesTestCase(APITestCase):
         """
 
         data = {
-            "token": "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef",
+            "token": "0xC5FDf4076b8F3A5357c5E395ab970B5B54098Fef",
             "amount": "{0:f}".format(Decimal("173e16")),
             "slot": "23",
         }
@@ -483,7 +494,7 @@ class StackingFeesTestCase(APITestCase):
         """Checks creating a stacking fees entry with a wrong address fails"""
 
         data = {
-            "token": "0xZ5fdf4076b8F3A5357c5E395ab970B5B54098Fef",
+            "token": "0xZ5FDf4076b8F3A5357c5E395ab970B5B54098Fef",
             "amount": "{0:f}".format(Decimal("193e16")),
             "slot": "23",
         }
@@ -541,7 +552,7 @@ class StackingFeesTestCase(APITestCase):
         """Checks stacking fees creation with a wrong slot does not work"""
 
         data = {
-            "token": "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef",
+            "token": "0xC5FDf4076b8F3A5357c5E395ab970B5B54098Fef",
             "amount": "{0:f}".format(Decimal("193e16")),
             "slot": "a23",
         }
@@ -570,7 +581,7 @@ class StackingFeesTestCase(APITestCase):
         """Checks stacking fees creation with an empty slot does not work"""
 
         data = {
-            "token": "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef",
+            "token": "0xC5FDf4076b8F3A5357c5E395ab970B5B54098Fef",
             "amount": "{0:f}".format(Decimal("193e16")),
             # "slot": "23",
         }
@@ -600,8 +611,12 @@ class StackingFeesRetrievalTestCase(APITestCase):
     """Class used to test the retrieval of stacking fees behaviour"""
 
     def setUp(self):
-        self.address_1 = "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520"
-        self.address_2 = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+        self.address_1 = Web3.to_checksum_address(
+            "0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520"
+        )
+        self.address_2 = Web3.to_checksum_address(
+            "0xC02aaA39b223fe8D0A0e5C4F27eAD9083C756Cc2"
+        )
 
         self.stacking_fees_3 = StackingFees.objects.create(
             amount=Decimal("21e18"), slot=21, token=self.address_1

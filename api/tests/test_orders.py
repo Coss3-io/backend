@@ -101,6 +101,37 @@ class MakerOrderTestCase(APITestCase):
             "The order is_buyer should be reported on the order",
         )
 
+    def test_creating_maker_twice_fails(self):
+        """Checks creating the same order twice fails"""
+
+        data = {
+            "address": "0xF17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        data["base_token"] = "0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520"
+        data["quote_token"] = "0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+
+        response = self.client.post(reverse("api:order"), data=data)
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request for a duplicate order shoud fail",
+        )
+
+        self.assertEqual(
+            response.json(),
+            {"order_hash": ["maker with this order hash already exists."]},
+        )
+
     def test_creating_maker_with_0_amount_fails(self):
         """Checks we can't create an order with a 0 amount"""
 
@@ -137,6 +168,37 @@ class MakerOrderTestCase(APITestCase):
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "signature": "0x415229a73d001cadbf6765dfff0ee94c67fcca3e6b6697241373aacf32e44c6218450c66d07a5ca1426244f64493a0bc83b0dbdab9e5a72dfe43d26eb96cf82f1c",
+            "order_hash": "0x20126b2fcf1333c5efd0a330741e587f527573980114eb983fbeba0afc58e4a6",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {"error": [errors.Order.SAME_BASE_QUOTE_ERROR]},
+            "The order creation should fail with same base and same quote token",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "the response status code should be 400",
+        )
+
+    def test_creating_an_order_with_same_base_and_quote_different_case_fails(self):
+        """
+        Checks we cannot create an order with the same base
+        and the same quote token but with different cases fails
+        """
+
+        data = {
+            "address": "0xF17f52151EbEF6C7334FAD080c5704D77216b732",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0xf25186b5081Ff5cE73482AD761DB0eB0d25abfBF",
             "quote_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
             "signature": "0x415229a73d001cadbf6765dfff0ee94c67fcca3e6b6697241373aacf32e44c6218450c66d07a5ca1426244f64493a0bc83b0dbdab9e5a72dfe43d26eb96cf82f1c",
             "order_hash": "0x20126b2fcf1333c5efd0a330741e587f527573980114eb983fbeba0afc58e4a6",

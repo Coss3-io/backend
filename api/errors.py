@@ -49,3 +49,5 @@ class Permissions:
 class General:
     MISSING_FIELD = "This field is required."
     DUPLICATE_USER = "user with this address already exists."
+    TOO_OLD_TIMESTAMP = "the timestamp provided is too old for logging in"
+    CHECKSUM_ADDRESS_NEEDED = "a checksum address is needed to log in"

@@ -1,11 +1,12 @@
 from asgiref.sync import async_to_sync
 from django.urls import reverse
+from unittest.mock import patch, MagicMock
 from django.conf import settings
 import api.errors as errors
 from api.models import User
 from api.models.types import Address
 from rest_framework.test import APITestCase
-from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
 
 
 class UserCreationTestCase(APITestCase):
@@ -379,4 +380,77 @@ class UserCreationTestCase(APITestCase):
         self.assertDictEqual(
             response.json(),
             {"error": [errors.Signature.SHORT_SIGNATURE_ERROR]},
+        )
+
+
+class UserLogInTestCase(APITestCase):
+    """Test the behaviour of the user log in"""
+
+    def test_user_log_in_works(self):
+        """Checks a well formed request allows the user to log in"""
+
+        address = "0xf17f52151EbEF6C7334FAD080c5704D77216b732"
+        timestamp = "2114380800"
+        signature = "0xcd831a961d3c4d71a7abc6dc83a0cb3ab130c4894a668873907bef9ec6be285e6da54e6955bfa95bd5e4c94f0859b82a8dd5ad534b1b567a9d5704945d86b9551c"
+
+        response = self.client.get(reverse("api:order"), data={"all": True})
+        self.assertEqual(
+            response.status_code,
+            HTTP_403_FORBIDDEN,
+            "The request without being logged in should be forbodde",
+        )
+
+        with patch("api.views.user.time", return_value=2114380800):
+            response = self.client.post(
+                reverse("api:login"),
+                data={
+                    "address": address,
+                    "timestamp": timestamp,
+                    "signature": signature,
+                },
+            )
+
+        self.assertDictEqual(
+            response.json(), {}, "The response on log in should be empty"
+        )
+        self.assertEqual(
+            response.status_code, HTTP_200_OK, "The request should be succesfull"
+        )
+
+        response = self.client.get(reverse("api:order"), data={"all": True})
+        self.assertEqual(
+            response.status_code, HTTP_200_OK, "The user should be logged in "
+        )
+
+    def test_user_log_in_missing_address(self):
+        """Checks the user log in without address fails"""
+
+        address = "0xf17f52151EbEF6C7334FAD080c5704D77216b732"
+        timestamp = "2114380800"
+        signature = "0xcd831a961d3c4d71a7abc6dc83a0cb3ab130c4894a668873907bef9ec6be285e6da54e6955bfa95bd5e4c94f0859b82a8dd5ad534b1b567a9d5704945d86b9551c"
+
+        response = self.client.get(reverse("api:order"), data={"all": True})
+        self.assertEqual(
+            response.status_code,
+            HTTP_403_FORBIDDEN,
+            "The request without being logged in should be forbodde",
+        )
+
+        with patch("api.views.user.time", return_value=2114380800):
+            response = self.client.post(
+                reverse("api:login"),
+                data={
+                    # "address": address,
+                    "timestamp": timestamp,
+                    "signature": signature,
+                },
+            )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The login request without address should fail",
+        )
+        self.assertDictEqual(
+            response.json(), {"address": [errors.General.MISSING_FIELD]}
         )

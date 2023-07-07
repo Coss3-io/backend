@@ -2,6 +2,7 @@ from decimal import Decimal
 from asgiref.sync import async_to_sync
 from django.urls import reverse
 from django.db.models import F
+from web3 import Web3
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
 from rest_framework.test import APITestCase
 from rest_framework.serializers import DecimalField, BooleanField
@@ -18,7 +19,7 @@ class ReplacementOrdersCreationTestCase(APITestCase):
     def test_create_a_bot(self):
         """Checks the bot creation works well"""
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0xF17f52151EbEF6C7334FAD080c5704D77216b732",
             "expiry": 2114380800,
             "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
             "is_buyer": False,
@@ -28,15 +29,15 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
         base_token_amount = Decimal("0")
         quote_token_amount = Decimal("0")
 
-        User.objects.get(address=data.get("address"))
+        User.objects.get(address=Web3.to_checksum_address(data.get("address", "")))
         orders = self.client.get(
             reverse("api:orders"),
             data={
@@ -61,7 +62,7 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         for order in orders:
             self.assertEqual(
                 order["address"],
-                data.get("address"),
+                Web3.to_checksum_address(data.get("address", "")),
                 "The address on the returned order should match the bot creator address",
             )
 
@@ -126,12 +127,12 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             )
             self.assertEqual(
                 order.get("base_token"),
-                data.get("base_token"),
+                Web3.to_checksum_address(data.get("base_token", "")),
                 "The orders base_token should match the bot base_token",
             )
             self.assertEqual(
                 order.get("quote_token"),
-                data.get("quote_token"),
+                Web3.to_checksum_address(data.get("quote_token", "")),
                 "The orders quote_token should match the bot quote_token",
             )
 
@@ -144,6 +145,8 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         del data["address"]
         del data["amount"]
         del data["is_buyer"]
+        data["base_token"] = Web3.to_checksum_address(data.get("base_token", ""))
+        data["quote_token"] = Web3.to_checksum_address(data.get("quote_token", ""))
 
         data.update(
             {
@@ -1514,7 +1517,7 @@ class BotRetrievalTestCase(APITestCase):
         )
 
         self.data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0xF17f52151EbEF6C7334FAD080c5704D77216b732",
             "expiry": 2114380800,
             "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
             "is_buyer": False,
@@ -1524,8 +1527,8 @@ class BotRetrievalTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
         self.client.post(reverse("api:bot"), data=self.data)
 
@@ -1547,6 +1550,13 @@ class BotRetrievalTestCase(APITestCase):
         del self.data["address"]
         del self.data["amount"]
         del self.data["is_buyer"]
+
+        self.data["base_token"] = Web3.to_checksum_address(
+            self.data.get("base_token", "")
+        )
+        self.data["quote_token"] = Web3.to_checksum_address(
+            self.data.get("quote_token", "")
+        )
 
         self.data.update(
             {
@@ -1585,15 +1595,15 @@ class BotRetrievalTestCase(APITestCase):
         buyer: Maker = Maker.objects.filter(
             bot=bot,
             is_buyer=True,
-            base_token=self.data.get("base_token"),
-            quote_token=self.data.get("quote_token"),
+            base_token=Web3.to_checksum_address(self.data.get("base_token", "")),
+            quote_token=Web3.to_checksum_address(self.data.get("quote_token", "")),
         ).first()  # type: ignore
 
         seller: Maker = Maker.objects.filter(
             bot=bot,
             is_buyer=False,
-            base_token=self.data.get("base_token"),
-            quote_token=self.data.get("quote_token"),
+            base_token=Web3.to_checksum_address(self.data.get("base_token", "")),
+            quote_token=Web3.to_checksum_address(self.data.get("quote_token", "")),
         ).first()  # type: ignore
 
         buyer.filled = F("amount") / 2
@@ -1629,6 +1639,13 @@ class BotRetrievalTestCase(APITestCase):
             }
         )
 
+        self.data["base_token"] = Web3.to_checksum_address(
+            self.data.get("base_token", "")
+        )
+        self.data["quote_token"] = Web3.to_checksum_address(
+            self.data.get("quote_token", "")
+        )
+
         self.assertEqual(len(data), 1, "only one bot should be available for the user")
         self.assertDictEqual(
             data[0],
@@ -1640,7 +1657,7 @@ class BotRetrievalTestCase(APITestCase):
         """Checks getting the user bot while having two bots works"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0xF17f52151EbEF6C7334FAD080c5704D77216b732",
             "expiry": 2114380801,
             "signature": "0x201a1a4decd1b648366cd1c3577f3f7e21f8064836b8b8543bd93fbe6be33f2104935687856f2fd5dd355b277ac5f826e14e068c3e63b15f0d8412665cbcdced1c",
             "is_buyer": False,
@@ -1650,8 +1667,8 @@ class BotRetrievalTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("1e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345cA3E014Aaf5dcA488057592ee47305D9B3e10",
         }
         self.client.post(reverse("api:bot"), data=data)
 
@@ -1687,6 +1704,15 @@ class BotRetrievalTestCase(APITestCase):
 
         (bot1, bot2) = sorted(
             response.json(), key=lambda b: int(b["base_token_amount"])
+        )
+
+        data["base_token"] = Web3.to_checksum_address(data.get("base_token", ""))
+        self.data["base_token"] = Web3.to_checksum_address(
+            self.data.get("base_token", "")
+        )
+        data["quote_token"] = Web3.to_checksum_address(data.get("quote_token", ""))
+        self.data["quote_token"] = Web3.to_checksum_address(
+            self.data.get("quote_token", "")
         )
 
         self.assertDictEqual(

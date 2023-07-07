@@ -174,7 +174,6 @@ class TakerListSerializer(serializers.ListSerializer):
         takers = [Taker(**order) for order in validated_data]
         return await Taker.objects.abulk_create(takers)
 
-
 class TakerSerializer(serializers.ModelSerializer):
     """Serializer used for the taker orders creation and deletetion"""
 

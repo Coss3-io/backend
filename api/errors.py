@@ -48,3 +48,4 @@ class Permissions:
 
 class General:
     MISSING_FIELD = "This field is required."
+    DUPLICATE_USER = "user with this address already exists."

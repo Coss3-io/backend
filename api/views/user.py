@@ -1,9 +1,11 @@
 from adrf.views import APIView
 from asgiref.sync import sync_to_async
-from rest_framework.status import HTTP_200_OK
+from django.db.utils import IntegrityError
+from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 from rest_framework.response import Response
 from api.models import User
 from api.serializers.user import UserSerializer
+import api.errors as errors
 
 
 class UserView(APIView):
@@ -36,5 +38,11 @@ class UserView(APIView):
             },  # type: ignore
         )
         await sync_to_async(user.is_valid)(raise_exception=True)
-        await user.save()
+        try:
+            await user.save()
+        except IntegrityError as e:
+            return Response(
+                {"address": [errors.General.DUPLICATE_USER]},
+                status=HTTP_400_BAD_REQUEST,
+            )
         return Response({}, status=HTTP_200_OK)

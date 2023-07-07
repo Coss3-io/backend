@@ -2,6 +2,7 @@ from typing import TypedDict, Any
 from decimal import Decimal
 from datetime import datetime
 from rest_framework.validators import ValidationError
+from web3 import Web3
 import api.errors as errors
 
 
@@ -15,7 +16,7 @@ class Address(str):
             int(value, 0)
         except ValueError:
             raise ValidationError(errors.Address.WRONG_ADDRESS_ERROR.format(name))
-        return super().__new__(cls, value)
+        return super().__new__(cls, Web3.to_checksum_address(value))
 
 
 class Signature(str):

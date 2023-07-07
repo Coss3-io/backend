@@ -29,7 +29,7 @@ class UserCreationTestCase(APITestCase):
         )
         User.objects.get(address=address)
 
-    def test_user_creation_twice_fails(self):
+    def test_user_creation_twice_fails_identical_address(self):
         """Checks we cannot create the same user twice"""
 
         async_to_sync(User.objects.create_user)(
@@ -48,6 +48,31 @@ class UserCreationTestCase(APITestCase):
             response.status_code,
             HTTP_400_BAD_REQUEST,
             "User creation twice should not work",
+        )
+
+        self.assertDictEqual(
+            response.json(), {"address": ["user with this address already exists."]}
+        )
+
+    def test_user_creation_twice_fails_case_different_address(self):
+        """Checks we cannot create the same user twice event with address of different case"""
+
+        async_to_sync(User.objects.create_user)(
+            address=Address("0xf17f52151EbEF6C7334FAD080c5704D77216b732")
+        )
+
+        signature = "0x41d725e42c47ea30d326e1a8fc48a234ec4445aebe34f3bb3c0547603208a5947365b2de6f777db2982672ed040824500f46253694d176905219354740261c3f1b"
+        address = "0xf17f52151EbEF6C7334FAD080c5704D77216B732"
+        timestamp = "2114380800"
+
+        response = self.client.post(
+            self.url,
+            data={"signature": signature, "address": address, "timestamp": timestamp},
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "User creation twice should not work even with different case address",
         )
 
         self.assertDictEqual(
@@ -73,11 +98,7 @@ class UserCreationTestCase(APITestCase):
         )
         self.assertDictEqual(
             response.json(),
-            {
-                "timestamp": [
-                    errors.User.USER_TIMESTAMP_ERROR
-                ]
-            },
+            {"timestamp": [errors.User.USER_TIMESTAMP_ERROR]},
         )
 
     def test_user_creation_wrong_timestamp(self):
@@ -99,11 +120,7 @@ class UserCreationTestCase(APITestCase):
         )
         self.assertDictEqual(
             response.json(),
-            {
-                "timestamp": [
-                    errors.Decimal.WRONG_DECIMAL_ERROR.format("timestamp")
-                ]
-            },
+            {"timestamp": [errors.Decimal.WRONG_DECIMAL_ERROR.format("timestamp")]},
         )
 
     def test_user_creation_0_timestamp(self):
@@ -125,11 +142,7 @@ class UserCreationTestCase(APITestCase):
         )
         self.assertDictEqual(
             response.json(),
-            {
-                "timestamp": [
-                    errors.Decimal.ZERO_DECIMAL_ERROR.format("timestamp")
-                ]
-            },
+            {"timestamp": [errors.Decimal.ZERO_DECIMAL_ERROR.format("timestamp")]},
         )
 
     def test_user_creation_short_address(self):
@@ -195,11 +208,7 @@ class UserCreationTestCase(APITestCase):
         )
         self.assertDictEqual(
             response.json(),
-            {
-                "address": [
-                    errors.Address.WRONG_ADDRESS_ERROR.format("")
-                ]
-            },
+            {"address": [errors.Address.WRONG_ADDRESS_ERROR.format("")]},
         )
 
     def test_user_creation_short_signature(self):

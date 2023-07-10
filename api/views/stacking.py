@@ -3,7 +3,7 @@ from django.db.models import F
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.request import Request
-from rest_framework.decorators import permission_classes
+from rest_framework.decorators import permission_classes, authentication_classes
 from rest_framework.permissions import IsAuthenticated
 from adrf.views import APIView
 from api.models import User
@@ -13,18 +13,27 @@ from api.serializers.stacking import StackingSerializer, StackingFeesSerializer
 from api.models.types import Address
 import api.errors as errors
 from api.utils import validate_decimal_integer
+from api.views.authentications import ApiAuthentication
 
 
 class StackingView(APIView):
     """Class used for retrieve stacking informations"""
 
+    def get_authenticators(self):
+        data = super().get_authenticators()
+        return data + [auth() for auth in getattr(getattr(self, self.request.method.lower(), self.http_method_not_allowed), "authentication_classes", [])]  # type: ignore
+
     def get_permissions(self):
         data = super().get_permissions()
         return data + [permission() for permission in getattr(getattr(self, self.request.method.lower(), self.http_method_not_allowed), "permission_classes", [])]  # type: ignore
 
+    @authentication_classes([ApiAuthentication])
     @permission_classes([IsAuthenticated])
     async def get(self, request: Request):
         """Retrieves a user stacking amount per block"""
+
+        if request.auth == "awaitable":
+            request.user = (await User.objects.aget_or_create(address=request.user))[0]
 
         stackings = Stacking.objects.filter(user=request.user)
         data = await sync_to_async(

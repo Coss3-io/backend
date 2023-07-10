@@ -55,12 +55,13 @@ class MakerView(APIView):
 
     def get_permissions(self):
         data = super().get_permissions()
-        return data + [permission() for permission in getattr(getattr(self, self.request.method.lower(), self.http_method_not_allowed), "permission_classes", [])]  # type: ignore
+        return data + [permission() for permission in getattr(getattr(self, self.request.method.lower(), self.http_method_not_allowed), "permission_classes", [])]  # type: ignore   
 
     @authentication_classes([ApiAuthentication])
     @permission_classes([IsAuthenticated])
     async def get(self, request: Request):
         """The view to retrieve the orders of a user"""
+        
         if request.auth == "awaitable":
             request.user = (await User.objects.aget_or_create(address=request.user))[0]
 

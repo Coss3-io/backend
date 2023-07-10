@@ -400,7 +400,7 @@ class UserLogInTestCase(APITestCase):
             "The request without being logged in should be forbodde",
         )
 
-        with patch("api.views.user.time", return_value=2114380800):
+        with patch("api.utils.time", return_value=2114380800):
             response = self.client.post(
                 reverse("api:login"),
                 data={
@@ -429,7 +429,7 @@ class UserLogInTestCase(APITestCase):
         timestamp = "2114380800"
         signature = "0xcd831a961d3c4d71a7abc6dc83a0cb3ab130c4894a668873907bef9ec6be285e6da54e6955bfa95bd5e4c94f0859b82a8dd5ad534b1b567a9d5704945d86b9551c"
 
-        with patch("api.views.user.time", return_value=2114380800):
+        with patch("api.utils.time", return_value=2114380800):
             response = self.client.post(
                 reverse("api:login"),
                 data={
@@ -455,7 +455,7 @@ class UserLogInTestCase(APITestCase):
         timestamp = "2114380800"
         signature = "0xcd831a961d3c4d71a7abc6dc83a0cb3ab130c4894a668873907bef9ec6be285e6da54e6955bfa95bd5e4c94f0859b82a8dd5ad534b1b567a9d5704945d86b9551c"
 
-        with patch("api.views.user.time", return_value=2114380800):
+        with patch("api.utils.time", return_value=2114380800):
             response = self.client.post(
                 reverse("api:login"),
                 data={
@@ -481,7 +481,7 @@ class UserLogInTestCase(APITestCase):
         timestamp = "2114380800"
         signature = "0xcd831a961d3c4d71a7abc6dc83a0cb3ab130c4894a668873907bef9ec6be285e6da54e6955bfa95bd5e4c94f0859b82a8dd5ad534b1b567a9d5704945d86b9551c"
 
-        with patch("api.views.user.time", return_value=2114380800):
+        with patch("api.utils.time", return_value=2114380800):
             response = self.client.post(
                 reverse("api:login"),
                 data={
@@ -507,7 +507,7 @@ class UserLogInTestCase(APITestCase):
         timestamp = "2114380800"
         signature = "0xcd831a961d3c4d71a7abc6dc83a0cb3ab130c4894a668873907bef9ec6be285e6da54e6955bfa95bd5e4c94f0859b82a8dd5ad534b1b567a9d5704945d86b9551c"
 
-        with patch("api.views.user.time", return_value=2114380800):
+        with patch("api.utils.time", return_value=2114380800):
             response = self.client.post(
                 reverse("api:login"),
                 data={
@@ -533,7 +533,7 @@ class UserLogInTestCase(APITestCase):
         timestamp = "2114300800"
         signature = "0xcd831a961d3c4d71a7abc6dc83a0cb3ab130c4894a668873907bef9ec6be285e6da54e6955bfa95bd5e4c94f0859b82a8dd5ad534b1b567a9d5704945d86b9551c"
 
-        with patch("api.views.user.time", return_value=2114380800):
+        with patch("api.utils.time", return_value=2114380800):
             response = self.client.post(
                 reverse("api:login"),
                 data={
@@ -559,7 +559,7 @@ class UserLogInTestCase(APITestCase):
         timestamp = "2114380800"
         signature = "0xcd831a961d3c4d71a7abc6dc83a0cb3ab130c4894a668873907bef9ec6be285e6da54e6955bfa95bd5e4c94f0859b82a8dd5ad534b1b567a9d5704945d86b9551c"
 
-        with patch("api.views.user.time", return_value=2114380800):
+        with patch("api.utils.time", return_value=2114380800):
             response = self.client.post(
                 reverse("api:login"),
                 data={
@@ -585,7 +585,7 @@ class UserLogInTestCase(APITestCase):
         timestamp = "2114380800"
         signature = "0xcd831a961d3c4d71a7abc6dc83a0cb3ab130c4894a668873907bef9ec6be285e6da54e6955bfa95bd5e4c94f0859b82a8dd5ad534b1b567a9d5704945d86b9551c"
 
-        with patch("api.views.user.time", return_value=2114380800):
+        with patch("api.utils.time", return_value=2114380800):
             response = self.client.post(
                 reverse("api:login"),
                 data={
@@ -611,7 +611,7 @@ class UserLogInTestCase(APITestCase):
         timestamp = "2114380800"
         signature = "0xcd831a961d3c4d71a7abc6dc83a0cb3ab130c4894a668873907bef9ec6be285e6da54e6955bfa95bd5e4c94f0859b82a8dd5ad534b1b567a9d5704945d86b9551c"
 
-        with patch("api.views.user.time", return_value=2114380800):
+        with patch("api.utils.time", return_value=2114380800):
             response = self.client.post(
                 reverse("api:login"),
                 data={
@@ -637,7 +637,7 @@ class UserLogInTestCase(APITestCase):
         timestamp = "a2114380800"
         signature = "0xcd831a961d3c4d71a7abc6dc83a0cb3ab130c4894a668873907bef9ec6be285e6da54e6955bfa95bd5e4c94f0859b82a8dd5ad534b1b567a9d5704945d86b9551c"
 
-        with patch("api.views.user.time", return_value=2114380800):
+        with patch("api.utils.time", return_value=2114380800):
             response = self.client.post(
                 reverse("api:login"),
                 data={
@@ -663,7 +663,7 @@ class UserLogInTestCase(APITestCase):
         timestamp = "2114380800"
         signature = "0xzd831a961d3c4d71a7abc6dc83a0cb3ab130c4894a668873907bef9ec6be285e6da54e6955bfa95bd5e4c94f0859b82a8dd5ad534b1b567a9d5704945d86b9551c"
 
-        with patch("api.views.user.time", return_value=2114380800):
+        with patch("api.utils.time", return_value=2114380800):
             response = self.client.post(
                 reverse("api:login"),
                 data={
@@ -689,7 +689,7 @@ class UserLogInTestCase(APITestCase):
         timestamp = "2114380800"
         signature = "0xd831a961d3c4d71a7abc6dc83a0cb3ab130c4894a668873907bef9ec6be285e6da54e6955bfa95bd5e4c94f0859b82a8dd5ad534b1b567a9d5704945d86b9551c"
 
-        with patch("api.views.user.time", return_value=2114380800):
+        with patch("api.utils.time", return_value=2114380800):
             response = self.client.post(
                 reverse("api:login"),
                 data={
@@ -715,7 +715,7 @@ class UserLogInTestCase(APITestCase):
         timestamp = "2114380800"
         signature = "0xccd831a961d3c4d71a7abc6dc83a0cb3ab130c4894a668873907bef9ec6be285e6da54e6955bfa95bd5e4c94f0859b82a8dd5ad534b1b567a9d5704945d86b9551c"
 
-        with patch("api.views.user.time", return_value=2114380800):
+        with patch("api.utils.time", return_value=2114380800):
             response = self.client.post(
                 reverse("api:login"),
                 data={
@@ -741,7 +741,7 @@ class UserLogInTestCase(APITestCase):
         timestamp = "2114380800"
         signature = "0xdd831a961d3c4d71a7abc6dc83a0cb3ab130c4894a668873907bef9ec6be285e6da54e6955bfa95bd5e4c94f0859b82a8dd5ad534b1b567a9d5704945d86b9551c"
 
-        with patch("api.views.user.time", return_value=2114380800):
+        with patch("api.utils.time", return_value=2114380800):
             response = self.client.post(
                 reverse("api:login"),
                 data={

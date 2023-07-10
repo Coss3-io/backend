@@ -71,18 +71,18 @@ def validate_address(value: str, name: str):
 
     return Address(value, name)
 
-def validate_user(request, message):
+def validate_user(data, message):
     """Function used to validate a user from 
     the provided signature and address
     """
 
     field_errors = {}
     success = False
-    if (address := request.data.get("address", "")) == "":
+    if (address := data.get("address", "")) == "":
         field_errors["address"] = [errors.General.MISSING_FIELD]
-    if (timestamp := request.data.get("timestamp", "")) == "":
+    if (timestamp := data.get("timestamp", "")) == "":
         field_errors["timestamp"] = [errors.General.MISSING_FIELD]
-    if (signature := request.data.get("signature", "")) == "":
+    if (signature := data.get("signature", "")) == "":
         field_errors["signature"] = [errors.General.MISSING_FIELD]
 
     if field_errors:

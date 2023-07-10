@@ -65,7 +65,7 @@ class UserLogInView(APIView):
     async def post(self, request):
         """Method used for a user to log in into the app"""
 
-        success, result = validate_user(request, settings.LOG_IN_MESSAGE)
+        success, result = validate_user(request.data, settings.LOG_IN_MESSAGE)
 
         if not success:
             return Response(result, status=HTTP_400_BAD_REQUEST)

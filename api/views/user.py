@@ -9,7 +9,7 @@ from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from api.models import User
-from api.utils import validate_eth_signed_message
+from api.utils import validate_eth_signed_message, validate_decimal_integer
 from api.models.types import Address, Signature
 from api.serializers.user import UserSerializer
 import api.errors as errors
@@ -72,13 +72,8 @@ class UserLogInView(APIView):
         if field_errors:
             return Response(field_errors, status=HTTP_400_BAD_REQUEST)
 
-        if int(time()) - int(timestamp) > 5000:
-            return Response(
-                {"error": [errors.General.TOO_OLD_TIMESTAMP]},
-                status=HTTP_400_BAD_REQUEST,
-            )
-
         try:
+            validate_decimal_integer(timestamp, "timestamp")
             checksum_address = Address(address)
             Signature(signature)
         except ValidationError as e:
@@ -86,10 +81,16 @@ class UserLogInView(APIView):
                 {"error": e.detail},
                 status=HTTP_400_BAD_REQUEST,
             )
+        
+        if int(time()) - int(timestamp) > 5000:
+            return Response(
+                {"timestamp": [errors.General.TOO_OLD_TIMESTAMP]},
+                status=HTTP_400_BAD_REQUEST,
+            )
 
         if checksum_address != address:
             return Response(
-                {"error": [errors.General.CHECKSUM_ADDRESS_NEEDED]},
+                {"address": [errors.General.CHECKSUM_ADDRESS_NEEDED]},
                 status=HTTP_400_BAD_REQUEST,
             )
 
@@ -104,7 +105,7 @@ class UserLogInView(APIView):
             == False
         ):
             return Response(
-                {"error": [errors.Signature.SIGNATURE_MISMATCH_ERROR]},
+                {"signature": [errors.Signature.SIGNATURE_MISMATCH_ERROR]},
                 status=HTTP_400_BAD_REQUEST,
             )
 

@@ -1,5 +1,6 @@
 from decimal import Decimal
 from functools import partial
+from unittest.mock import patch
 from datetime import datetime
 from asgiref.sync import async_to_sync
 from django.urls import reverse
@@ -1888,3 +1889,26 @@ class MakerOrderRetrievingTestCase(APITestCase):
             response.json(),
             {"quote_token": [errors.Address.LONG_ADDRESS_ERROR.format("quote_token")]},
         )
+
+
+class MakerAPILogInTestCase(APITestCase):
+    """Class used to check the API authentication works"""
+
+    def test_regular_API_log_in_works(self):
+        """Checks the api log in work"""
+        signature = "0x2d11ff301b38ac81e95bc3bbf70055ba7352a786aacbbbff2753200343010000519a3d6d33077de548b66f8f18c40450b97259df914d5999a3cc9f7131d7829b1b"
+        address = "0xf17f52151EbEF6C7334FAD080c5704D77216b732"
+        timestamp = 2114380800
+
+        with patch("api.utils.time", return_value=2114380800):
+            response = self.client.get(
+                reverse("api:order"),
+                data={
+                    "all": True,
+                    "signature": signature,
+                    "address": address,
+                    "timestamp": timestamp,
+                },
+            )
+
+            print(response.json()) 

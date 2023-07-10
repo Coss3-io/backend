@@ -1,6 +1,6 @@
 from asgiref.sync import async_to_sync
 from django.urls import reverse
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from django.conf import settings
 import api.errors as errors
 from api.models import User

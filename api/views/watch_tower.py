@@ -3,8 +3,13 @@ from asgiref.sync import sync_to_async
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import status
 from rest_framework.response import Response
+from rest_framework.exceptions import ValidationError
 from adrf.views import APIView
 from api.models import User
+import api.errors as errors
+from api.models.types import Address
+from api.utils import validate_decimal_integer
+from api.views.permissions import WatchTowerPermission
 from api.models.orders import Maker
 from api.serializers.orders import TakerSerializer
 
@@ -12,7 +17,7 @@ from api.serializers.orders import TakerSerializer
 class WatchTowerView(APIView):
     """The view for the watch tower to commit order changes"""
 
-    authentication_classes = []  # custom authentication here
+    permission_classes = [WatchTowerPermission]
 
     async def post(self, request):
         """Function used to update several orders at once\n
@@ -32,26 +37,29 @@ class WatchTowerView(APIView):
             }
         }
         ```"""
-        trades = request.data.get("trades", {})
-        block = request.data.get("block", 0)
-
-        if trades == {}:
+        if (trades := request.data.get("trades", {})) == {}:
             return Response(
-                {"detail": "the trade field cannot be empty"},
+                {"trade": [errors.General.MISSING_FIELD.format("trade")]},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
+        
+        if not (block := request.data.get("block", False)):
+            return Response(
+                {"block": [errors.General.MISSING_FIELD.format("block")]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
         if not isinstance(trades, dict):
             return Response(
-                {"detail": "the trade field must be json"},
+                {"trades": [errors.Order.TRADE_FIELD_FORMAT_ERROR]},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if block == 0:
-            return Response(
-                {"detail": "the block field is missing"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        try:
+            checksum_address = Address(request.data.get("taker", ""))
+            validate_decimal_integer(block, "block")
+        except ValidationError as e:
+            return Response({"error": e.detail})
 
         try:
             makers_hash_list = [maker_hash for maker_hash in trades.keys()]
@@ -62,7 +70,7 @@ class WatchTowerView(APIView):
             )
 
         takers: Any = []
-        user = User.objects.aget_or_create(address=request.data["taker"])
+        user = User.objects.aget_or_create(address=checksum_address)
         makers = Maker.objects.filter(order_hash__in=[makers_hash_list])
 
         async for maker in makers:
@@ -80,6 +88,9 @@ class WatchTowerView(APIView):
         takers_serializer = TakerSerializer(data=takers, many=True)
         await sync_to_async(takers_serializer.is_valid)(raise_exception=True)
         takers_serializer.save(user=(await user)[0])
+        if takers_serializer.instance:
+            await takers_serializer.instance
+        return Response({}, status=status.HTTP_200_OK)
 
     async def delete(self, request):
         """Function used for maker order cancellation"""

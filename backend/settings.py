@@ -139,5 +139,7 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+LOG_IN_MESSAGE = "log in into coss3.io as {address} at {timestamp}"
+API_LOG_IN_MESSAGE = "api request into coss3.io as {{address}} at {{timestamp}} {method}{path}"
 
 from .local_settings import *

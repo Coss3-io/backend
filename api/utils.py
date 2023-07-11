@@ -1,9 +1,13 @@
 from decimal import Decimal, ROUND_DOWN, InvalidOperation
-import api.errors as errors
+from time import time
 from rest_framework.validators import ValidationError
-from eth_account import Account, messages
-from api.models.types import Address
+from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.response import Response
 from web3 import Web3
+from eth_account import Account, messages
+import api.errors as errors
+from api.models import User
+from api.models.types import Address, Signature
 
 
 def validate_eth_signed_message(
@@ -66,3 +70,46 @@ def validate_address(value: str, name: str):
     """
 
     return Address(value, name)
+
+def validate_user(data, message):
+    """Function used to validate a user from 
+    the provided signature and address
+    """
+
+    field_errors = {}
+    success = False
+    if (address := data.get("address", "")) == "":
+        field_errors["address"] = [errors.General.MISSING_FIELD]
+    if (timestamp := data.get("timestamp", "")) == "":
+        field_errors["timestamp"] = [errors.General.MISSING_FIELD]
+    if (signature := data.get("signature", "")) == "":
+        field_errors["signature"] = [errors.General.MISSING_FIELD]
+
+    if field_errors:
+        return success, field_errors
+
+    try:
+        validate_decimal_integer(timestamp, "timestamp")
+        checksum_address = Address(address)
+        Signature(signature)
+    except ValidationError as e:
+        return success, {"error": e.detail}
+
+    if int(time()) - int(timestamp) > 5000:
+        return success, {"timestamp": [errors.General.TOO_OLD_TIMESTAMP]}
+
+    if checksum_address != address:
+        return success, {"address": [errors.General.CHECKSUM_ADDRESS_NEEDED]}
+    
+    message = message.format(timestamp=timestamp, address=checksum_address)
+
+    if (
+        validate_eth_signed_message(
+            message=message.encode(),
+            signature=signature,
+            address=address,
+        )
+        == False
+    ):
+        return success, {"signature": [errors.Signature.SIGNATURE_MISMATCH_ERROR]}
+    return True, checksum_address

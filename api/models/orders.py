@@ -102,7 +102,7 @@ class Maker(models.Model):
 class Taker(models.Model):
     """The Taker class for taker orders"""
 
-    object = AsyncManager()
+    objects = AsyncManager()
 
     maker = models.ForeignKey(
         "Maker",

@@ -1911,4 +1911,96 @@ class MakerAPILogInTestCase(APITestCase):
                 },
             )
 
-            print(response.json()) 
+        self.assertEqual(
+            response.status_code,
+            HTTP_200_OK,
+            "the request with right log in should work",
+        )
+        self.assertEqual(
+            response.json(), [], "The response should not contain any orders"
+        )
+
+    def test_API_log_in_no_timestamp(self):
+        """Checks the API log in fails without timestamp param"""
+
+        signature = "0x2d11ff301b38ac81e95bc3bbf70055ba7352a786aacbbbff2753200343010000519a3d6d33077de548b66f8f18c40450b97259df914d5999a3cc9f7131d7829b1b"
+        address = "0xf17f52151EbEF6C7334FAD080c5704D77216b732"
+        timestamp = 2114380800
+
+        with patch("api.utils.time", return_value=2114380800):
+            response = self.client.get(
+                reverse("api:order"),
+                data={
+                    "all": True,
+                    "signature": signature,
+                    "address": address,
+                    # "timestamp": timestamp,
+                },
+            )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_403_FORBIDDEN,
+            "The request without being authenticated should be rejected",
+        )
+
+        self.assertDictEqual(
+            response.json(),
+            {"timestamp": [errors.General.MISSING_FIELD.format("timestamp")]},
+        )
+
+    def test_API_log_in_wrong_timestamp(self):
+        """Checks the API log in fails with wrong timestamp param"""
+
+        signature = "0x2d11ff301b38ac81e95bc3bbf70055ba7352a786aacbbbff2753200343010000519a3d6d33077de548b66f8f18c40450b97259df914d5999a3cc9f7131d7829b1b"
+        address = "0xf17f52151EbEF6C7334FAD080c5704D77216b732"
+        timestamp = "a2114380800"
+
+        with patch("api.utils.time", return_value=2114380800):
+            response = self.client.get(
+                reverse("api:order"),
+                data={
+                    "all": True,
+                    "signature": signature,
+                    "address": address,
+                    "timestamp": timestamp,
+                },
+            )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_403_FORBIDDEN,
+            "The request without being authenticated should be rejected",
+        )
+
+        self.assertDictEqual(
+            response.json(),
+            {"error": [errors.Decimal.WRONG_DECIMAL_ERROR.format("timestamp")]},
+        )
+
+    def test_regular_API_log_in_wrogn_signature(self):
+        """Checks the api log in fails with wrong signature"""
+        signature = "0x3d11ff301b38ac81e95bc3bbf70055ba7352a786aacbbbff2753200343010000519a3d6d33077de548b66f8f18c40450b97259df914d5999a3cc9f7131d7829b1b"
+        address = "0xf17f52151EbEF6C7334FAD080c5704D77216b732"
+        timestamp = 2114380800
+
+        with patch("api.utils.time", return_value=2114380800):
+            response = self.client.get(
+                reverse("api:order"),
+                data={
+                    "all": True,
+                    "signature": signature,
+                    "address": address,
+                    "timestamp": timestamp,
+                },
+            )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_403_FORBIDDEN,
+            "the resquest with a wrong signature should not be authenticated",
+        )
+
+        self.assertDictEqual(
+            response.json(), {"signature": [errors.Signature.SIGNATURE_MISMATCH_ERROR]}
+        )

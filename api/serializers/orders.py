@@ -165,7 +165,8 @@ class TakerListSerializer(serializers.ListSerializer):
 class TakerSerializer(serializers.ModelSerializer):
     """Serializer used for the taker orders creation and deletetion"""
 
-    maker = MakerSerializer()
+    maker = MakerSerializer(required=False)
+    maker_id = serializers.IntegerField(required=True, write_only=True)
 
     class Meta:
         model = Taker
@@ -173,6 +174,7 @@ class TakerSerializer(serializers.ModelSerializer):
         depth = 1
         fields = [
             "maker",
+            "maker_id",
             "block",
             "taker_amount",
             "base_fees",
@@ -181,6 +183,7 @@ class TakerSerializer(serializers.ModelSerializer):
         ]
         extra_kwargs = {
             "user": {"write_only": True},
+            "maker": {"read_only": True},
         }
 
         def validate_block(self, data: str) -> str:

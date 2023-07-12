@@ -146,7 +146,7 @@ def encode_order(order: dict):
             order.get("base_token", ""),
             order.get("quote_token", ""),
             int(order.get("expiry", "")),
-            0 if order.get("is_buyer") else 1,
+            order.get("is_buyer"),
             order.get("replace_order"),  # a replace order
         ],
     )
@@ -155,14 +155,12 @@ def encode_order(order: dict):
 def compute_order_hash(order: dict):
     """Function used to compute the order hash of a given order"""
 
-    encoded_order = Web3.keccak(
-        encode_order(order)
-    )
+    encoded_order = encode_order(order)
     return encoded_order, (
         Web3.to_hex(
             Web3.solidity_keccak(
                 ["bytes", "uint256"],
-                [encoded_order, int(order.get("price", ""))],
+                [Web3.keccak(encoded_order), int(order.get("price", ""))],
             )
         )
         if order.get("replace_order")

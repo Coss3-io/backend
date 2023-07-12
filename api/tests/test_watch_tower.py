@@ -6,7 +6,7 @@ from web3 import Web3
 from django.urls import reverse
 from rest_framework.test import APITestCase
 from api.models import User
-from api.models.orders import Maker, Bot
+from api.models.orders import Maker, Bot, Taker
 from api.models.types import Address
 
 
@@ -47,6 +47,16 @@ class MakerCommitTestCase(APITestCase):
         """Checks the watch tower commiting function works"""
 
         taker = "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef"
+        block = 12
+
+        trades = {
+            self.data["order_hash"]: {
+                "taker_amount": "{0:f}".format(Decimal("73e16")),
+                "base_fees": True,
+                "fees": "{0:f}".format(Decimal("365e15")),
+                "is_buyer": True,
+            }
+        }
 
         with patch("api.views.watch_tower.WatchTowerView.permission_classes", []):
             response = self.client.post(
@@ -55,13 +65,14 @@ class MakerCommitTestCase(APITestCase):
                 data={
                     "taker": taker,
                     "block": 12,
-                    "trades": {
-                        "orderhash": {
-                            "taker_amount": 0,
-                            "base_fees": True,
-                            "fees": 0,
-                            "is_buyer": True,
-                        }
-                    },
+                    "trades": trades,
                 },
             )
+
+        maker = Maker.objects.get(order_hash=self.data["order_hash"])
+
+        self.assertEqual(
+            maker.filled,
+            Decimal(trades[self.data["order_hash"]]["taker_amount"]),
+            "The filled amount should be increased by the trade amount",
+        )

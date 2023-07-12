@@ -1,5 +1,6 @@
 from decimal import Decimal, ROUND_DOWN, InvalidOperation
 from time import time
+from eth_abi.packed import encode_packed
 from rest_framework.validators import ValidationError
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.response import Response
@@ -71,8 +72,9 @@ def validate_address(value: str, name: str):
 
     return Address(value, name)
 
+
 def validate_user(data, message):
-    """Function used to validate a user from 
+    """Function used to validate a user from
     the provided signature and address
     """
 
@@ -100,7 +102,7 @@ def validate_user(data, message):
 
     if checksum_address != address:
         return success, {"address": [errors.General.CHECKSUM_ADDRESS_NEEDED]}
-    
+
     message = message.format(timestamp=timestamp, address=checksum_address)
 
     if (
@@ -113,3 +115,56 @@ def validate_user(data, message):
     ):
         return success, {"signature": [errors.Signature.SIGNATURE_MISMATCH_ERROR]}
     return True, checksum_address
+
+
+def encode_order(order: dict):
+    """Function used to encode an order as solidity would do"""
+
+    return encode_packed(
+        [
+            "address",
+            "uint256",
+            "uint256",
+            "uint256",
+            "uint256",
+            "uint256",
+            "uint256",
+            "address",
+            "address",
+            "uint64",
+            "uint8",
+            "bool",
+        ],
+        [
+            order.get("address"),
+            int(order.get("amount", "")),
+            int(order.get("price", "")),
+            int(order.get("step", "")),
+            int(order.get("maker_fees", "")),
+            int(order.get("upper_bound", "")),
+            int(order.get("lower_bound", "")),
+            order.get("base_token", ""),
+            order.get("quote_token", ""),
+            int(order.get("expiry", "")),
+            0 if order.get("is_buyer") else 1,
+            order.get("replace_order"),  # a replace order
+        ],
+    )
+
+
+def compute_order_hash(order: dict):
+    """Function used to compute the order hash of a given order"""
+
+    encoded_order = Web3.keccak(
+        encode_order(order)
+    )
+    return encoded_order, (
+        Web3.to_hex(
+            Web3.solidity_keccak(
+                ["bytes", "uint256"],
+                [encoded_order, int(order.get("price", ""))],
+            )
+        )
+        if order.get("replace_order")
+        else str(Web3.to_hex(Web3.keccak(encoded_order)))
+    )

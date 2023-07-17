@@ -3,6 +3,7 @@ from typing import Any
 from asgiref.sync import sync_to_async
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import F
+from django.db.utils import IntegrityError
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
@@ -184,7 +185,15 @@ class WatchTowerView(APIView):
         takers_serializer.save(user=(await user)[0])
         if takers_serializer.instance:
             await takers_serializer.instance
-        await Maker.objects.abulk_update(makers, ["filled", "status"])  # type: ignore
+
+        try:    
+            await Maker.objects.abulk_update(makers, ["filled", "status"])  # type: ignore
+        except IntegrityError as e:
+            return Response(
+                {"error": [errors.Order.ORDER_POSITIVE_VIOLATION]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
 
         if bot_update:
             await Bot.objects.abulk_update(bot_update, ["fees_earned"])  # type: ignore

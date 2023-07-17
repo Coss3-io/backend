@@ -44,6 +44,7 @@ class Order:
     TRADE_DATA_ERROR = "the trades field do not contain valid data"
     NO_MAKER_FOUND = "no matching maker order found"
     MAKER_ALREADY_CANCELLED = "the maker order is already cancelled"
+    ORDER_POSITIVE_VIOLATION = "orders cannot have numerical negative values"
 
 
 # Permissions Errors

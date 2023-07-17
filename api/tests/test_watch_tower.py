@@ -837,3 +837,394 @@ class MakerCancellationTestCase(APITestCase):
             {"error": [errors.Order.MAKER_ALREADY_CANCELLED]},
             "The error should say that maker is already cancelled",
         )
+
+
+class MakerBotCommitTestCase(APITestCase):
+    """Class used to check the behaviour of bot replacement orders"""
+
+    def setUp(self):
+        self.user = async_to_sync(User.objects.create_user)(
+            address=Address("0xf17f52151EbEF6C7334FAD080c5704D77216b732")
+        )
+
+        self.data = {
+            "address": "0xF17f52151EbEF6C7334FAD080c5704D77216b732",
+            "expiry": 2114380800,
+            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "is_buyer": False,
+            "step": "{0:f}".format(Decimal("1e17")),
+            "price": "{0:f}".format(Decimal("1e18")),
+            "maker_fees": "{0:f}".format(Decimal("50")),
+            "upper_bound": "{0:f}".format(Decimal("15e17")),
+            "lower_bound": "{0:f}".format(Decimal("5e17")),
+            "amount": "{0:f}".format(Decimal("2e18")),
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
+        }
+
+        self.client.post(reverse("api:bot"), data=self.data)
+
+    def test_maker_replacement_buy_commit(self):
+        """Checks committing a replacement maker buy order works"""
+
+        taker_address = "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef"
+        block = 12
+        taker_amount = "{0:f}".format(Decimal("73e16"))
+        fees = "{0:f}".format(Decimal("365e15"))
+        maker = Maker.objects.get(price=Decimal("11e17"))
+        trades = {
+            maker.order_hash: {
+                "taker_amount": taker_amount,
+                "base_fees": True,
+                "fees": fees,
+                "is_buyer": True,
+            }
+        }
+
+        with patch("api.views.watch_tower.WatchTowerView.permission_classes", []):
+            response = self.client.post(
+                reverse("api:wt"),
+                format="json",
+                data={
+                    "taker": taker_address,
+                    "block": block,
+                    "trades": trades,
+                },
+            )
+        maker.refresh_from_db()
+        taker = Taker.objects.get(user__address=taker_address)
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_200_OK,
+            "The bot replacement committing should work",
+        )
+        self.assertEqual(response.json(), {}, "On sucess the response should be empty")
+
+        self.assertEqual(
+            maker.filled,
+            Decimal(taker_amount),
+            "The amount filled should be reported into the maker order",
+        )
+
+        self.assertEqual(
+            taker.taker_amount,
+            Decimal(taker_amount),
+            "The taker amount should be reported into the taker object",
+        )
+        self.assertEqual(
+            taker.maker, maker, "The maker of the taker should be the matched maker"
+        )
+        self.assertEqual(taker.block, block, "The taker block should be block sent")
+        self.assertEqual(
+            taker.base_fees,
+            trades[maker.order_hash]["base_fees"],
+            "The base fees field should be reported into the created taker object",
+        )
+
+        self.assertEqual(
+            taker.is_buyer,
+            trades[maker.order_hash]["is_buyer"],
+            "The is_buyer field should be reported into the created taker object",
+        )
+
+        self.assertEqual(
+            taker.base_fees,
+            Decimal(trades[maker.order_hash]["base_fees"]),
+            "The base_fees field should be reported into the taker object",
+        )
+
+    def test_maker_replacement_buy_commit_already_trade_order(self):
+        """Checks committing a replacement maker buy order works
+        even if the order is filled a bit"""
+
+        taker_address = "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef"
+        block = 12
+        taker_amount = "{0:f}".format(Decimal("73e16"))
+        fees = "{0:f}".format(Decimal("365e15"))
+        maker = Maker.objects.get(price=Decimal("11e17"))
+        maker.filled = taker_amount
+        maker.save(update_fields=["filled"])
+
+        trades = {
+            maker.order_hash: {
+                "taker_amount": taker_amount,
+                "base_fees": True,
+                "fees": fees,
+                "is_buyer": True,
+            }
+        }
+
+        with patch("api.views.watch_tower.WatchTowerView.permission_classes", []):
+            response = self.client.post(
+                reverse("api:wt"),
+                format="json",
+                data={
+                    "taker": taker_address,
+                    "block": block,
+                    "trades": trades,
+                },
+            )
+        maker.refresh_from_db()
+        taker = Taker.objects.get(user__address=taker_address)
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_200_OK,
+            "The bot replacement committing should work",
+        )
+        self.assertEqual(response.json(), {}, "On sucess the response should be empty")
+
+        self.assertEqual(
+            maker.filled,
+            Decimal(taker_amount) * 2,
+            "The amount filled should be twice the first filled amount",
+        )
+
+        self.assertEqual(
+            taker.taker_amount,
+            Decimal(taker_amount),
+            "The taker amount should be reported into the taker object",
+        )
+        self.assertEqual(
+            taker.maker, maker, "The maker of the taker should be the matched maker"
+        )
+        self.assertEqual(taker.block, block, "The taker block should be block sent")
+        self.assertEqual(
+            taker.base_fees,
+            trades[maker.order_hash]["base_fees"],
+            "The base fees field should be reported into the created taker object",
+        )
+
+        self.assertEqual(
+            taker.is_buyer,
+            trades[maker.order_hash]["is_buyer"],
+            "The is_buyer field should be reported into the created taker object",
+        )
+
+        self.assertEqual(
+            taker.base_fees,
+            Decimal(trades[maker.order_hash]["base_fees"]),
+            "The base_fees field should be reported into the taker object",
+        )
+
+    def test_mulitple_taker_commit(self):
+        """Checks that multiple commit works"""
+        taker_address = "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef"
+        block = 12
+
+        maker = Maker.objects.get(price=Decimal("11e17"))
+        maker2 = Maker.objects.get(price=Decimal("12e17"))
+
+        trades = {
+            maker.order_hash: {
+                "taker_amount": "{0:f}".format(Decimal("73e16")),
+                "base_fees": True,
+                "fees": "{0:f}".format(Decimal("365e15")),
+                "is_buyer": True,
+            },
+            maker2.order_hash: {
+                "taker_amount": "{0:f}".format(Decimal("75e16")),
+                "base_fees": True,
+                "fees": "{0:f}".format(Decimal("360e15")),
+                "is_buyer": True,
+            },
+        }
+
+        with patch("api.views.watch_tower.WatchTowerView.permission_classes", []):
+            response = self.client.post(
+                reverse("api:wt"),
+                format="json",
+                data={
+                    "taker": taker_address,
+                    "block": block,
+                    "trades": trades,
+                },
+            )
+
+        maker.refresh_from_db()
+        maker2.refresh_from_db()
+
+        taker = Taker.objects.get(user__address=taker_address, maker=maker)
+        taker2 = Taker.objects.get(user__address=taker_address, maker=maker2)
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_200_OK,
+            "The response on multiple taker commit should work",
+        )
+        self.assertEqual(response.json(), {}, "The response should be empty on success")
+
+        self.assertEqual(
+            maker.filled,
+            Decimal(trades[maker.order_hash]["taker_amount"]),
+            "The maker amoout should be uptades after the trades",
+        )
+
+        self.assertEqual(
+            maker2.filled,
+            Decimal(trades[maker2.order_hash]["taker_amount"]),
+            "The maker amoout should be uptades after the trades",
+        )
+
+        self.assertEqual(
+            taker.taker_amount,
+            Decimal(trades[maker.order_hash]["taker_amount"]),
+            "The taker amount should be reported into the taker object",
+        )
+        self.assertEqual(
+            taker.maker, maker, "The maker of the taker should be the matched maker"
+        )
+        self.assertEqual(taker.block, block, "The taker block should be block sent")
+        self.assertEqual(
+            taker.base_fees,
+            trades[maker.order_hash]["base_fees"],
+            "The base fees field should be reported into the created taker object",
+        )
+
+        self.assertEqual(
+            taker.is_buyer,
+            trades[maker.order_hash]["is_buyer"],
+            "The is_buyer field should be reported into the created taker object",
+        )
+
+        self.assertEqual(
+            taker.base_fees,
+            Decimal(trades[maker.order_hash]["base_fees"]),
+            "The base_fees field should be reported into the taker object",
+        )
+
+        self.assertEqual(
+            taker2.taker_amount,
+            Decimal(trades[maker2.order_hash]["taker_amount"]),
+            "The taker amount should be reported into the taker object",
+        )
+        self.assertEqual(
+            taker2.maker, maker2, "The maker of the taker should be the matched maker"
+        )
+        self.assertEqual(taker2.block, block, "The taker block should be block sent")
+        self.assertEqual(
+            taker2.base_fees,
+            trades[maker2.order_hash]["base_fees"],
+            "The base fees field should be reported into the created taker object",
+        )
+
+        self.assertEqual(
+            taker2.is_buyer,
+            trades[maker2.order_hash]["is_buyer"],
+            "The is_buyer field should be reported into the created taker object",
+        )
+
+        self.assertEqual(
+            taker2.base_fees,
+            Decimal(trades[maker2.order_hash]["base_fees"]),
+            "The base_fees field should be reported into the taker object",
+        )
+
+    def test_maker_replacement_seller_commit(self):
+        """Checks seller commiting works"""
+
+        taker_address = "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef"
+        block = 12
+
+        maker = Maker.objects.get(price=Decimal("9e17"))
+        trades = {
+            maker.order_hash: {
+                "taker_amount": "{0:f}".format(Decimal("73e16")),
+                "base_fees": True,
+                "fees": "{0:f}".format(Decimal("365e15")),
+                "is_buyer": False,
+            }
+        }
+
+        with patch("api.views.watch_tower.WatchTowerView.permission_classes", []):
+            response = self.client.post(
+                reverse("api:wt"),
+                format="json",
+                data={
+                    "taker": taker_address,
+                    "block": block,
+                    "trades": trades,
+                },
+            )
+        maker.refresh_from_db()
+        taker = Taker.objects.get(user__address=taker_address)
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_200_OK,
+            "The bot replacement committing should work",
+        )
+        self.assertEqual(response.json(), {}, "On sucess the response should be empty")
+
+        self.assertEqual(
+            maker.filled,
+            Decimal(trades[maker.order_hash]["taker_amount"]),
+            "The amount filled should be reported into the maker order",
+        )
+
+        self.assertEqual(
+            taker.taker_amount,
+            Decimal(trades[maker.order_hash]["taker_amount"]),
+            "The taker amount should be reported into the taker object",
+        )
+        self.assertEqual(
+            taker.maker, maker, "The maker of the taker should be the matched maker"
+        )
+        self.assertEqual(taker.block, block, "The taker block should be block sent")
+        self.assertEqual(
+            taker.base_fees,
+            trades[maker.order_hash]["base_fees"],
+            "The base fees field should be reported into the created taker object",
+        )
+
+        self.assertEqual(
+            taker.is_buyer,
+            trades[maker.order_hash]["is_buyer"],
+            "The is_buyer field should be reported into the created taker object",
+        )
+
+        self.assertEqual(
+            taker.base_fees,
+            Decimal(trades[maker.order_hash]["base_fees"]),
+            "The base_fees field should be reported into the taker object",
+        )
+
+    def test_maker_seller_commit_same_side_no_previous_trades_fails(self):
+        """Checks seller commiting works"""
+
+        taker_address = "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef"
+        block = 12
+
+        maker = Maker.objects.get(price=Decimal("9e17"))
+        trades = {
+            maker.order_hash: {
+                "taker_amount": "{0:f}".format(Decimal("73e16")),
+                "base_fees": True,
+                "fees": "{0:f}".format(Decimal("365e15")),
+                "is_buyer": True,
+            }
+        }
+
+        with patch("api.views.watch_tower.WatchTowerView.permission_classes", []):
+            response = self.client.post(
+                reverse("api:wt"),
+                format="json",
+                data={
+                    "taker": taker_address,
+                    "block": block,
+                    "trades": trades,
+                },
+            )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request should fail if no trades were made",
+        )
+
+        self.assertDictEqual(
+            response.json(),
+            {"error": [errors.Order.ORDER_POSITIVE_VIOLATION]},
+            "with no previous trades an order violation should be raised",
+        )

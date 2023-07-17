@@ -21,6 +21,13 @@ class Maker(models.Model):
     class Meta:
         constraints = [
             models.CheckConstraint(
+                check=models.Q(filled__gte=Decimal("0"))
+                & models.Q(amount__gt=Decimal("0"))
+                & models.Q(amount__gt=Decimal("0"))
+                & models.Q(price__gt=Decimal("0")),
+                name="positive_numbers_needed"
+            ),
+            models.CheckConstraint(
                 check=models.Q(filled__lte=models.F("amount")), name="filled_lte_amount"
             ),
             models.CheckConstraint(
@@ -103,6 +110,14 @@ class Taker(models.Model):
     """The Taker class for taker orders"""
 
     objects = AsyncManager()
+
+    constraints = [
+            models.CheckConstraint(
+                check=models.Q(taker_amount__gte=Decimal("0"))
+                & models.Q(fees__gt=Decimal("0")),
+                name="positive_numbers_needed"
+            ),
+    ]
 
     maker = models.ForeignKey(
         "Maker",

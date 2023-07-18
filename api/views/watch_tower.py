@@ -16,7 +16,6 @@ from api.views.permissions import WatchTowerPermission
 from api.models.orders import Maker, Bot
 from api.serializers.orders import TakerSerializer, MakerSerializer
 
-
 class WatchTowerView(APIView):
     """The view for the watch tower to commit order changes"""
 
@@ -40,6 +39,7 @@ class WatchTowerView(APIView):
             }
         }
         ```"""
+
         if (trades := request.data.get("trades", {})) == {}:
             return Response(
                 {"trades": [errors.General.MISSING_FIELD.format("trade")]},
@@ -89,12 +89,13 @@ class WatchTowerView(APIView):
         bot_update = []
 
         async for maker in makers:
+            taker_amount = Decimal(trades[maker.order_hash]["taker_amount"])
             try:
                 takers.append(
                     {
                         "maker_id": maker.id,
                         "block": block,
-                        "taker_amount": trades[maker.order_hash]["taker_amount"],
+                        "taker_amount": taker_amount,
                         "fees": trades[maker.order_hash]["fees"],
                         "is_buyer": trades[maker.order_hash]["is_buyer"],
                         "base_fees": trades[maker.order_hash]["base_fees"],
@@ -108,52 +109,83 @@ class WatchTowerView(APIView):
                         )
                         if maker.is_buyer:
                             if maker.bot.maker_fees > Decimal("2000"):
-                                fees = maker.bot.maker_fees * maker.amount
+                                fees = (
+                                    maker.bot.maker_fees
+                                    * taker_amount
+                                    / Decimal("1e18")
+                                )
                             else:
                                 fees = (
                                     (
-                                        maker.price * maker.bot.maker_fees
-                                        + Decimal("1000")
+                                        (
+                                            maker.price * maker.bot.maker_fees
+                                            + Decimal("1000")
+                                        )
+                                        / (Decimal("1000"))
+                                        - maker.price
                                     )
-                                    / (Decimal("1000"))
-                                    - maker.price
-                                ) * maker.amount
+                                    * taker_amount
+                                    / Decimal("1e18")
+                                )
                         else:
                             if maker.bot.maker_fees > Decimal("2000"):
-                                fees = maker.bot.maker_fees * maker.amount
+                                fees = (
+                                    maker.bot.maker_fees
+                                    * taker_amount
+                                    / Decimal("1e18")
+                                )
                             else:
                                 fees = (
-                                    maker.price
-                                    - (maker.price * Decimal("1000"))
-                                    / (maker.bot.maker_fees + Decimal("1000"))
-                                ) * maker.amount
+                                    (
+                                        maker.price
+                                        - (maker.price * Decimal("1000"))
+                                        / (maker.bot.maker_fees + Decimal("1000"))
+                                    )
+                                    * taker_amount
+                                    / Decimal("1e18")
+                                )
                     else:
                         maker.filled = (
                             F("filled") + trades[maker.order_hash]["taker_amount"]
                         )
                         if maker.is_buyer:
                             if maker.bot.maker_fees > Decimal("2000"):
-                                fees = maker.bot.maker_fees * maker.amount
-                            else:
                                 fees = (
-                                    maker.price
-                                    - (maker.price * Decimal("1000"))
-                                    / (maker.bot.maker_fees + Decimal("1000"))
-                                ) * maker.amount
-                        else:
-                            if maker.bot.maker_fees > Decimal("2000"):
-                                fees = maker.bot.maker_fees * maker.amount
+                                    maker.bot.maker_fees
+                                    * taker_amount
+                                    / Decimal("1e18")
+                                )
                             else:
                                 fees = (
                                     (
-                                        maker.price * maker.bot.maker_fees
-                                        + Decimal("1000")
+                                        maker.price
+                                        - (maker.price * Decimal("1000"))
+                                        / (maker.bot.maker_fees + Decimal("1000"))
                                     )
-                                    / (Decimal("1000"))
-                                    - maker.price
-                                ) * maker.amount
-
-                    maker.bot.fees_earned = F("fees_earned") + fees
+                                    * taker_amount
+                                    / Decimal("1e18")
+                                )
+                        else:
+                            if maker.bot.maker_fees > Decimal("2000"):
+                                fees = (
+                                    maker.bot.maker_fees
+                                    * taker_amount
+                                    / Decimal("1e18")
+                                )
+                            else:
+                                fees = (
+                                    (
+                                        (
+                                            maker.price
+                                            * (maker.bot.maker_fees + Decimal("1000"))
+                                        )
+                                        / (Decimal("1000"))
+                                        - maker.price
+                                    )
+                                    * taker_amount
+                                    / Decimal("1e18")
+                                )
+                    maker.bot.fees_earned =  F("fees_earned") + fees
                     bot_update.append(maker.bot)
                 else:
                     if (
@@ -186,7 +218,7 @@ class WatchTowerView(APIView):
         if takers_serializer.instance:
             await takers_serializer.instance
 
-        try:    
+        try:
             await Maker.objects.abulk_update(makers, ["filled", "status"])  # type: ignore
         except IntegrityError as e:
             return Response(
@@ -194,27 +226,27 @@ class WatchTowerView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-
         if bot_update:
             await Bot.objects.abulk_update(bot_update, ["fees_earned"])  # type: ignore
         return Response({}, status=status.HTTP_200_OK)
-
     async def delete(self, request):
         """Function used for maker order cancellation"""
         try:
-            maker = await Maker.objects.aget(order_hash=request.data.get("order_hash", ""))
+            maker = await Maker.objects.aget(
+                order_hash=request.data.get("order_hash", "")
+            )
         except ObjectDoesNotExist:
             return Response(
                 {"order_hash": [errors.Order.NO_MAKER_FOUND]},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        
+
         if maker.status == Maker.CANCELLED:
             return Response(
                 {"error": [errors.Order.MAKER_ALREADY_CANCELLED]},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        
+
         maker.status = Maker.CANCELLED
         await maker.asave()
         return Response({}, status=status.HTTP_200_OK)

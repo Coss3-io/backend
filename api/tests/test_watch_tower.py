@@ -1228,3 +1228,123 @@ class MakerBotCommitTestCase(APITestCase):
             {"error": [errors.Order.ORDER_POSITIVE_VIOLATION]},
             "with no previous trades an order violation should be raised",
         )
+
+
+class MakerBotFeesTestCase(APITestCase):
+    """Checks the maker fees for replacement orders are handled well"""
+
+    def setUp(self):
+        self.user = async_to_sync(User.objects.create_user)(
+            address=Address("0xf17f52151EbEF6C7334FAD080c5704D77216b732")
+        )
+
+        self.data = {
+            "address": "0xF17f52151EbEF6C7334FAD080c5704D77216b732",
+            "expiry": 2114380800,
+            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "is_buyer": False,
+            "step": "{0:f}".format(Decimal("1e17")),
+            "price": "{0:f}".format(Decimal("1e18")),
+            "maker_fees": "{0:f}".format(Decimal("50")),
+            "upper_bound": "{0:f}".format(Decimal("15e17")),
+            "lower_bound": "{0:f}".format(Decimal("5e17")),
+            "amount": "{0:f}".format(Decimal("2e18")),
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
+        }
+
+        self.client.post(reverse("api:bot"), data=self.data)
+
+    def test_sell_maker_opp_side_lt_1000(self):
+        """Checks the fees on a particular scenario are handled well"""
+
+        taker_address = "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef"
+        block = 12
+        taker_amount = "{0:f}".format(Decimal("73e16"))
+        fees = "{0:f}".format(Decimal("365e15"))
+        maker = Maker.objects.get(price=Decimal("11e17"))
+        trades = {
+            maker.order_hash: {
+                "taker_amount": taker_amount,
+                "base_fees": True,
+                "fees": fees,
+                "is_buyer": True,
+            }
+        }
+
+        with patch("api.views.watch_tower.WatchTowerView.permission_classes", []):
+            response = self.client.post(
+                reverse("api:wt"),
+                format="json",
+                data={
+                    "taker": taker_address,
+                    "block": block,
+                    "trades": trades,
+                },
+            )
+        maker.refresh_from_db()
+
+        fees = (
+            (
+                maker.price * (maker.bot.maker_fees + Decimal("1000")) / Decimal("1000")
+                - maker.price
+            )
+            * Decimal(taker_amount)
+            / Decimal("1e18")
+        ).quantize(Decimal("1."))
+
+        self.assertEqual(response.status_code, HTTP_200_OK, "The request should work")
+        self.assertEqual(response.json(), {}, "On success the response should be empty")
+        self.assertEqual(
+            maker.bot.fees_earned,
+            fees,
+            "The negative fees generated should be updated to the bot ",
+        )
+
+    def test_buy_maker_opp_side_lt_1000(self):
+        """Checks the fees on a particular scenario are handled well"""
+        from django.db import connection
+
+        taker_address = "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef"
+        block = 12
+        taker_amount = "{0:f}".format(Decimal("73e16"))
+        fees = "{0:f}".format(Decimal("365e15"))
+        maker = Maker.objects.get(price=Decimal("9e17"))
+        trades = {
+            maker.order_hash: {
+                "taker_amount": taker_amount,
+                "base_fees": True,
+                "fees": fees,
+                "is_buyer": False,
+            }
+        }
+
+        with patch("api.views.watch_tower.WatchTowerView.permission_classes", []):
+            response = self.client.post(
+                reverse("api:wt"),
+                format="json",
+                data={
+                    "taker": taker_address,
+                    "block": block,
+                    "trades": trades,
+                },
+            )
+        maker.refresh_from_db()
+        fees = (
+            (
+                maker.price
+                - maker.price
+                * Decimal("1000")
+                / (maker.bot.maker_fees + Decimal("1000"))
+            )
+            * Decimal(taker_amount)
+            / Decimal("1e18")
+        ).quantize(Decimal("1."))
+
+        self.assertEqual(response.status_code, HTTP_200_OK, "The request should work")
+        self.assertEqual(response.json(), {}, "On success the response should be empty")
+        self.assertEqual(
+            maker.bot.fees_earned,
+            fees,
+            "The negative fees generated should be updated to the bot ",
+        )

@@ -14,6 +14,7 @@ import decimal
 from pathlib import Path
 
 decimal.DefaultContext.prec = 200
+decimal.DefaultContext.rounding = decimal.ROUND_DOWN
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent

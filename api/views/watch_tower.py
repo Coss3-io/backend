@@ -185,7 +185,7 @@ class WatchTowerView(APIView):
                                     * taker_amount
                                     / Decimal("1e18")
                                 )
-                    maker.bot.fees_earned =  F("fees_earned") + fees
+                    maker.bot.fees_earned =  F("fees_earned") + fees.quantize(Decimal("1."))
                     bot_update.append(maker.bot)
                 else:
                     if (

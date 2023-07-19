@@ -10,7 +10,7 @@ from rest_framework import serializers
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
 from api.models import User
 import api.errors as errors
-from api.models.orders import Maker
+from api.models.orders import Maker, Taker
 from api.models.types import Address
 from rest_framework.test import APITestCase
 
@@ -36,6 +36,10 @@ class MakerOrderTestCase(APITestCase):
             "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
             "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
             "is_buyer": False,
+            "filled": "0",
+            "base_fees": "0",
+            "quote_fees": "0",
+            "status": "OPEN",
         }
         response = self.client.post(reverse("api:order"), data=data)
         order = Maker.objects.select_related("user").get(order_hash=data["order_hash"])
@@ -250,6 +254,10 @@ class MakerOrderTestCase(APITestCase):
             "signature": "0xfabfac7f7a8bbb7f87747c940a6a9be667a57c86c145fd2bb91d8286cdbde0253e1cf2c95bdfb87a46669bc8ba0d4f92b4786d00df7f90aea8004d2b953b27cb1b",
             "order_hash": "0x0e3c530932af2cadc56e2cb633b4a4952b5ebb74888c19e1068c2d0213953e45",
             "is_buyer": False,
+            "filled": "0",
+            "base_fees": "0",
+            "quote_fees": "0",
+            "status": "OPEN",
         }
 
         async_to_sync(Maker.objects.create)(
@@ -275,7 +283,6 @@ class MakerOrderTestCase(APITestCase):
             HTTP_200_OK,
             "The order retrieving should work properly",
         )
-
         data["expiry"] = int(data["expiry"].timestamp())
         data["address"] = Web3.to_checksum_address(data["address"])
         data["base_token"] = Web3.to_checksum_address(data["base_token"])
@@ -295,6 +302,10 @@ class MakerOrderTestCase(APITestCase):
             "signature": "0xfabfac7f7a8bbb7f87747c940a6a9be667a57c86c145fd2bb91d8286cdbde0253e1cf2c95bdfb87a46669bc8ba0d4f92b4786d00df7f90aea8004d2b953b27cb1b",
             "order_hash": "0x0e3c530932af2cadc56e2cb633b4a4952b5ebb74888c19e1068c2d0213953e45",
             "is_buyer": False,
+            "filled": "0",
+            "status": "OPEN",
+            "base_fees": "0",
+            "quote_fees": "0",
         }
 
         async_to_sync(Maker.objects.create)(
@@ -1242,6 +1253,10 @@ class MakerOrderTestCase(APITestCase):
             "signature": "0x9cc2023e1b0401282c9b8abb371e09f4ef5cf4ff54d08bdfb9bb6d05f14a70f36de2002f2f005cd3dfb5ae42d023b18010a4a234d3ce8ed5b915d0fcb40c4ed91b",
             "order_hash": "0xddd97cfb8a661a4d513c78874c0ef707909f9a07fcd80d5aa147cbd23dae0aa6",
             "is_buyer": True,
+            "filled": "0",
+            "base_fees": "0",
+            "quote_fees": "0",
+            "status": "OPEN",
         }
         response = self.client.post(reverse("api:order"), data=data)
         User.objects.get(address=Web3.to_checksum_address(data["address"]))
@@ -1275,6 +1290,12 @@ class MakerOrderRetrievingTestCase(APITestCase):
             )
         )
 
+        self.user_3: User = async_to_sync(User.objects.create_user)(
+            address=Address(
+                Web3.to_checksum_address("0xC6FDF4076b8F3A5357c5E395ab970B5B54098Fef")
+            )
+        )
+
         self.order_1_1 = {
             "address": Web3.to_checksum_address(
                 "0xf17f52151EbEF6C7334FAD080c5704D77216B732"
@@ -1291,6 +1312,10 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "signature": "0xfabfac7f7a8bbb7f87747c940a6a9be667a57c86c145fd2bb91d8286cdbde0253e1cf2c95bdfb87a46669bc8ba0d4f92b4786d00df7f90aea8004d2b953b27cb1b",
             "order_hash": "0x0e3c530932af2cadc56e2cb633b4a4952b5ebb74888c19e1068c2d0213953e45",
             "is_buyer": False,
+            "filled": "0",
+            "base_fees": "0",
+            "quote_fees": "0",
+            "status": "OPEN",
         }
 
         self.order_1_2 = {
@@ -1309,6 +1334,10 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
             "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
             "is_buyer": False,
+            "filled": "0",
+            "base_fees": "0",
+            "quote_fees": "0",
+            "status": "OPEN",
         }
 
         self.order_1_3 = {
@@ -1327,6 +1356,10 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "signature": "0x139c033404a061eae0d17dbb366f153791569d6a7ad42bc6ad7b902a341bec6d7eca9102499ff60fe566fcd53642fb254c6efa2a8ca933ba917571fbfee73d261c",
             "order_hash": "0x54532cab462b29052d84773f9f4aef6e063642c8f6d334fc4fe96394b7dbd849",
             "is_buyer": False,
+            "filled": "0",
+            "base_fees": "0",
+            "quote_fees": "0",
+            "status": "OPEN",
         }
 
         self.order_2_1 = {
@@ -1345,6 +1378,10 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "signature": "0x346d7e67d76b8de75de2c18855818261394323565f0c246bd565ec448f670fa91c3139086f11ef6853fcae56cd67d89cbf4f60916898579836dec681b7f9249d1c",
             "order_hash": "0x07f5c2584ffbf3b7d14ad3410c1c98fb3b71496a7e5cd14ab22a68f268915bca",
             "is_buyer": True,
+            "filled": "0",
+            "base_fees": "0",
+            "quote_fees": "0",
+            "status": "OPEN",
         }
 
         self.order_2_2 = {
@@ -1363,6 +1400,10 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "signature": "0xee7433f9f83b59019723f08c8348895a767eb1aae16536847b54de37b3e92ff93f916e4c302309b7317335c9f9aad8e18927371994ef08ce75d8357376e2ef0a1b",
             "order_hash": "0x43a67aa1f3e53cad7f692f2ac249728f3369290b24a154e364c998fc9788b98f",
             "is_buyer": True,
+            "filled": "0",
+            "base_fees": "0",
+            "quote_fees": "0",
+            "status": "OPEN",
         }
 
         self.order_2_3 = {
@@ -1381,6 +1422,10 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "signature": "0x69b2da58758a256e2d24a6f04ca5d8dc7d4834b96a6246e18c2b9e8ecba80992145267c18e8add3a7b952121a9ae82ad090fc05ba44688f445e54a5b21caa6a81b",
             "order_hash": "0xa8a829d6e7ad540c0d3140a37e9fb9408878e5b5b5d7d48e54ba132a5c968e6a",
             "is_buyer": True,
+            "filled": "0",
+            "base_fees": "0",
+            "quote_fees": "0",
+            "status": "OPEN",
         }
 
         self.order_2_4 = {
@@ -1399,6 +1444,10 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "signature": "0x422b8570187908abb3a18a2f224e7fa4870c18944f9b4b86bc4b498c738739b90e6db92a52b994920908d64404482856226065001156ca2dbbe6b330d31116811b",
             "order_hash": "0x37ec83d93794625c87faa2aa937c3582bd310a147d019f7d1d56bc24b04d45ef",
             "is_buyer": True,
+            "filled": "0",
+            "base_fees": "0",
+            "quote_fees": "0",
+            "status": "OPEN",
         }
 
         self.pair_1 = {
@@ -1442,6 +1491,39 @@ class MakerOrderRetrievingTestCase(APITestCase):
                 order_hash=data["order_hash"],
                 is_buyer=data["is_buyer"],
             )
+
+    def test_retrieving_auth_no_orders_works(self):
+        """Checks the empty order retrieval works"""
+
+        self.client.force_authenticate(user=self.user_3)  # type: ignore
+        response = self.client.get(reverse("api:order"), data={"all": True})
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_200_OK,
+            "The request even if the user has no orders should work",
+        )
+        self.assertListEqual(
+            response.json(), [], "The returned order list should be empty for the user"
+        )
+
+    def test_retrieving_anon_no_orders_works(self):
+        """Checks the anon empty order retrieval works"""
+
+        Maker.objects.all().delete()
+        response = self.client.get(
+            reverse("api:orders"),
+            data=self.pair_1,
+        )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_200_OK,
+            "The request even if the user has no orders should work",
+        )
+        self.assertListEqual(
+            response.json(), [], "The returned order list should be empty for the user"
+        )
 
     def test_retrieving_pair_1_orders_anon(self):
         """Checks retrieving all the orders for a pair works"""
@@ -2003,4 +2085,552 @@ class MakerAPILogInTestCase(APITestCase):
 
         self.assertDictEqual(
             response.json(), {"signature": [errors.Signature.SIGNATURE_MISMATCH_ERROR]}
+        )
+
+
+class MakerTakersFeesRetrieval(APITestCase):
+    """Checks the maker fees retrieval works when trades have been make"""
+
+    def setUp(self):
+        self.user = async_to_sync(User.objects.create_user)(
+            address=Address("0xf17f52151EbEF6C7334FAD080c5704D77216b732")
+        )
+        self.taker_user = async_to_sync(User.objects.create_user)(
+            address=Address("0xf18f52151EbEF6C7334FAD080c5704D77216b732")
+        )
+
+        self.data = {
+            "address": Web3.to_checksum_address(
+                "0xf17f52151EbEF6C7334FAD080c5704D77216B732"
+            ),
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 1696667304,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": Web3.to_checksum_address(
+                "0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520"
+            ),
+            "quote_token": Web3.to_checksum_address(
+                "0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+            ),
+            "signature": "0xfabfac7f7a8bbb7f87747c940a6a9be667a57c86c145fd2bb91d8286cdbde0253e1cf2c95bdfb87a46669bc8ba0d4f92b4786d00df7f90aea8004d2b953b27cb1b",
+            "order_hash": "0x0e3c530932af2cadc56e2cb633b4a4952b5ebb74888c19e1068c2d0213953e45",
+            "is_buyer": False,
+            "filled": "0",
+            "base_fees": "0",
+            "quote_fees": "0",
+            "status": "OPEN",
+        }
+
+        self.maker = async_to_sync(Maker.objects.create)(
+            user=self.user,
+            amount=self.data["amount"],
+            expiry=datetime.fromtimestamp(self.data["expiry"]),
+            price=self.data["price"],
+            base_token=Web3.to_checksum_address(self.data["base_token"]),
+            quote_token=Web3.to_checksum_address(self.data["quote_token"]),
+            signature=self.data["signature"],
+            order_hash=self.data["order_hash"],
+            is_buyer=self.data["is_buyer"],
+        )
+
+    def test_maker_w_one_base_fees_taker(self):
+        """Checks a maker with one taker order with base
+        fees is well returned
+        """
+
+        taker_details = {
+            "taker_amount": Decimal("12e17"),
+            "maker": self.maker,
+            "user": self.taker_user,
+            "block": 18,
+            "base_fees": True,
+            "fees": Decimal("121e16"),
+            "is_buyer": True,
+        }
+
+        async_to_sync(Taker.objects.create)(
+            taker_amount=taker_details["taker_amount"],
+            maker=taker_details["maker"],
+            user=taker_details["user"],
+            block=taker_details["block"],
+            base_fees=taker_details["base_fees"],
+            fees=taker_details["fees"],
+            is_buyer=taker_details["is_buyer"],
+        )
+
+        self.client.force_authenticate(user=self.user)  # type: ignore
+        response = self.client.get(reverse("api:order"), data={"all": True})
+
+        self.assertEqual(
+            response.status_code, HTTP_200_OK, "The request should work fine"
+        )
+        self.assertEqual(
+            response.json()[0]["base_fees"],
+            "{0:f}".format(taker_details["fees"]),
+            "The base fees amount returned should match the taker base fees",
+        )
+        self.assertEqual(
+            response.json()[0]["quote_fees"],
+            "0",
+            "No quote fees should be returned",
+        )
+
+    def test_maker_w_two_base_takers(self):
+        """Checks a maker with two taker orders is well returned"""
+        taker_details = {
+            "taker_amount": Decimal("12e17"),
+            "maker": self.maker,
+            "user": self.taker_user,
+            "block": 18,
+            "base_fees": True,
+            "fees": Decimal("121e16"),
+            "is_buyer": True,
+        }
+
+        taker2_details = {
+            "taker_amount": Decimal("12e17"),
+            "maker": self.maker,
+            "user": self.taker_user,
+            "block": 18,
+            "base_fees": True,
+            "fees": Decimal("145e16"),
+            "is_buyer": True,
+        }
+
+        async_to_sync(Taker.objects.create)(
+            taker_amount=taker_details["taker_amount"],
+            maker=taker_details["maker"],
+            user=taker_details["user"],
+            block=taker_details["block"],
+            base_fees=taker_details["base_fees"],
+            fees=taker_details["fees"],
+            is_buyer=taker_details["is_buyer"],
+        )
+
+        async_to_sync(Taker.objects.create)(
+            taker_amount=taker2_details["taker_amount"],
+            maker=taker2_details["maker"],
+            user=taker2_details["user"],
+            block=taker2_details["block"],
+            base_fees=taker2_details["base_fees"],
+            fees=taker2_details["fees"],
+            is_buyer=taker2_details["is_buyer"],
+        )
+
+        self.client.force_authenticate(user=self.user)  # type: ignore
+        response = self.client.get(reverse("api:order"), data={"all": True})
+
+        self.assertEqual(
+            response.status_code, HTTP_200_OK, "The request should work fine"
+        )
+        self.assertEqual(
+            response.json()[0]["base_fees"],
+            "{0:f}".format(taker_details["fees"] + taker2_details["fees"]),
+            "The base fees amount returned should match the two takers base fees",
+        )
+        self.assertEqual(
+            response.json()[0]["quote_fees"],
+            "0",
+            "No quote fees should be returned",
+        )
+
+    def test_maker_w_one_quote_taker(self):
+        """Checks a maker with one quote taker is well returned"""
+        taker_details = {
+            "taker_amount": Decimal("12e17"),
+            "maker": self.maker,
+            "user": self.taker_user,
+            "block": 18,
+            "base_fees": False,
+            "fees": Decimal("121e16"),
+            "is_buyer": True,
+        }
+
+        async_to_sync(Taker.objects.create)(
+            taker_amount=taker_details["taker_amount"],
+            maker=taker_details["maker"],
+            user=taker_details["user"],
+            block=taker_details["block"],
+            base_fees=taker_details["base_fees"],
+            fees=taker_details["fees"],
+            is_buyer=taker_details["is_buyer"],
+        )
+
+        self.client.force_authenticate(user=self.user)  # type: ignore
+        response = self.client.get(reverse("api:order"), data={"all": True})
+
+        self.assertEqual(
+            response.status_code, HTTP_200_OK, "The request should work fine"
+        )
+        self.assertEqual(
+            response.json()[0]["quote_fees"],
+            "{0:f}".format(taker_details["fees"]),
+            "The quote fees amount returned should match the taker quote fees",
+        )
+        self.assertEqual(
+            response.json()[0]["base_fees"],
+            "0",
+            "No base fees should be returned",
+        )
+
+    def test_maker_w_two_quote_takers(self):
+        """Checks a make with two quote takers is well handled"""
+
+        taker_details = {
+            "taker_amount": Decimal("12e17"),
+            "maker": self.maker,
+            "user": self.taker_user,
+            "block": 18,
+            "base_fees": False,
+            "fees": Decimal("121e16"),
+            "is_buyer": True,
+        }
+
+        taker2_details = {
+            "taker_amount": Decimal("12e17"),
+            "maker": self.maker,
+            "user": self.taker_user,
+            "block": 18,
+            "base_fees": False,
+            "fees": Decimal("145e16"),
+            "is_buyer": True,
+        }
+
+        async_to_sync(Taker.objects.create)(
+            taker_amount=taker_details["taker_amount"],
+            maker=taker_details["maker"],
+            user=taker_details["user"],
+            block=taker_details["block"],
+            base_fees=taker_details["base_fees"],
+            fees=taker_details["fees"],
+            is_buyer=taker_details["is_buyer"],
+        )
+
+        async_to_sync(Taker.objects.create)(
+            taker_amount=taker2_details["taker_amount"],
+            maker=taker2_details["maker"],
+            user=taker2_details["user"],
+            block=taker2_details["block"],
+            base_fees=taker2_details["base_fees"],
+            fees=taker2_details["fees"],
+            is_buyer=taker2_details["is_buyer"],
+        )
+
+        self.client.force_authenticate(user=self.user)  # type: ignore
+        response = self.client.get(reverse("api:order"), data={"all": True})
+
+        self.assertEqual(
+            response.status_code, HTTP_200_OK, "The request should work fine"
+        )
+        self.assertEqual(
+            response.json()[0]["quote_fees"],
+            "{0:f}".format(taker_details["fees"] + taker2_details["fees"]),
+            "The quote fees amount returned should match the two takers quote fees",
+        )
+        self.assertEqual(
+            response.json()[0]["base_fees"],
+            "0",
+            "No base fees should be returned",
+        )
+
+    def test_maker_w_one_quote_and_base_taker(self):
+        """Checks a maker with base and quote takers is well returned"""
+        taker_details = {
+            "taker_amount": Decimal("12e17"),
+            "maker": self.maker,
+            "user": self.taker_user,
+            "block": 18,
+            "base_fees": True,
+            "fees": Decimal("121e16"),
+            "is_buyer": True,
+        }
+
+        taker2_details = {
+            "taker_amount": Decimal("12e17"),
+            "maker": self.maker,
+            "user": self.taker_user,
+            "block": 18,
+            "base_fees": False,
+            "fees": Decimal("145e16"),
+            "is_buyer": True,
+        }
+
+        async_to_sync(Taker.objects.create)(
+            taker_amount=taker_details["taker_amount"],
+            maker=taker_details["maker"],
+            user=taker_details["user"],
+            block=taker_details["block"],
+            base_fees=taker_details["base_fees"],
+            fees=taker_details["fees"],
+            is_buyer=taker_details["is_buyer"],
+        )
+
+        async_to_sync(Taker.objects.create)(
+            taker_amount=taker2_details["taker_amount"],
+            maker=taker2_details["maker"],
+            user=taker2_details["user"],
+            block=taker2_details["block"],
+            base_fees=taker2_details["base_fees"],
+            fees=taker2_details["fees"],
+            is_buyer=taker2_details["is_buyer"],
+        )
+
+        self.client.force_authenticate(user=self.user)  # type: ignore
+        response = self.client.get(reverse("api:order"), data={"all": True})
+
+        self.assertEqual(
+            response.status_code, HTTP_200_OK, "The request should work fine"
+        )
+        self.assertEqual(
+            response.json()[0]["base_fees"],
+            "{0:f}".format(taker_details["fees"]),
+            "The base fees amount returned should match the base taker fees",
+        )
+        self.assertEqual(
+            response.json()[0]["quote_fees"],
+            "{0:f}".format(taker2_details["fees"]),
+            "The quote fees returned should match the quote taker fees",
+        )
+
+    def test_maker_w_two_quote_and_base_takers(self):
+        """Checks a maker with base and quote takers is well returned"""
+        taker_details = {
+            "taker_amount": Decimal("12e17"),
+            "maker": self.maker,
+            "user": self.taker_user,
+            "block": 18,
+            "base_fees": True,
+            "fees": Decimal("121e16"),
+            "is_buyer": True,
+        }
+
+        taker2_details = {
+            "taker_amount": Decimal("12e17"),
+            "maker": self.maker,
+            "user": self.taker_user,
+            "block": 18,
+            "base_fees": True,
+            "fees": Decimal("145e16"),
+            "is_buyer": True,
+        }
+
+        taker3_details = {
+            "taker_amount": Decimal("12e17"),
+            "maker": self.maker,
+            "user": self.taker_user,
+            "block": 18,
+            "base_fees": False,
+            "fees": Decimal("15e16"),
+            "is_buyer": True,
+        }
+
+        taker4_details = {
+            "taker_amount": Decimal("12e17"),
+            "maker": self.maker,
+            "user": self.taker_user,
+            "block": 18,
+            "base_fees": False,
+            "fees": Decimal("185e16"),
+            "is_buyer": True,
+        }
+
+        for taker in [taker_details, taker2_details, taker3_details, taker4_details]:
+            async_to_sync(Taker.objects.create)(
+                taker_amount=taker["taker_amount"],
+                maker=taker["maker"],
+                user=taker["user"],
+                block=taker["block"],
+                base_fees=taker["base_fees"],
+                fees=taker["fees"],
+                is_buyer=taker["is_buyer"],
+            )
+
+        self.client.force_authenticate(user=self.user)  # type: ignore
+        response = self.client.get(reverse("api:order"), data={"all": True})
+
+        self.assertEqual(
+            response.status_code, HTTP_200_OK, "The request should work fine"
+        )
+        self.assertEqual(
+            response.json()[0]["base_fees"],
+            "{0:f}".format(taker_details["fees"] + taker2_details["fees"]),
+            "The base fees amount returned should match the base taker fees",
+        )
+        self.assertEqual(
+            response.json()[0]["quote_fees"],
+            "{0:f}".format(taker3_details["fees"] + taker4_details["fees"]),
+            "The quote fees returned should match the quote taker fees",
+        )
+
+    def test_two_makers_w_two_quote_and_base_takers(self):
+        """Checks two maker with base and quote taker are well returned"""
+
+        self.data = {
+            "address": Web3.to_checksum_address(
+                "0xf17f52151Ebef6C7334FAD080c5704D77216b732"
+            ),
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": Web3.to_checksum_address(
+                "0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520"
+            ),
+            "quote_token": Web3.to_checksum_address(
+                "0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+            ),
+            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
+            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "is_buyer": False,
+            "filled": "0",
+            "base_fees": "0",
+            "quote_fees": "0",
+            "status": "OPEN",
+        }
+
+        maker2 = async_to_sync(Maker.objects.create)(
+            user=self.user,
+            amount=self.data["amount"],
+            expiry=datetime.fromtimestamp(self.data["expiry"]),
+            price=self.data["price"],
+            base_token=Web3.to_checksum_address(self.data["base_token"]),
+            quote_token=Web3.to_checksum_address(self.data["quote_token"]),
+            signature=self.data["signature"],
+            order_hash=self.data["order_hash"],
+            is_buyer=self.data["is_buyer"],
+        )
+
+        taker_details = {
+            "taker_amount": Decimal("12e17"),
+            "maker": self.maker,
+            "user": self.taker_user,
+            "block": 18,
+            "base_fees": True,
+            "fees": Decimal("121e16"),
+            "is_buyer": True,
+        }
+
+        taker2_details = {
+            "taker_amount": Decimal("12e17"),
+            "maker": self.maker,
+            "user": self.taker_user,
+            "block": 18,
+            "base_fees": True,
+            "fees": Decimal("145e16"),
+            "is_buyer": True,
+        }
+
+        taker3_details = {
+            "taker_amount": Decimal("12e17"),
+            "maker": self.maker,
+            "user": self.taker_user,
+            "block": 18,
+            "base_fees": False,
+            "fees": Decimal("15e16"),
+            "is_buyer": True,
+        }
+
+        taker4_details = {
+            "taker_amount": Decimal("12e17"),
+            "maker": self.maker,
+            "user": self.taker_user,
+            "block": 18,
+            "base_fees": False,
+            "fees": Decimal("185e16"),
+            "is_buyer": True,
+        }
+
+        taker2_1_details = {
+            "taker_amount": Decimal("12e17"),
+            "maker": maker2,
+            "user": self.taker_user,
+            "block": 18,
+            "base_fees": True,
+            "fees": Decimal("1e16"),
+            "is_buyer": True,
+        }
+
+        taker2_2_details = {
+            "taker_amount": Decimal("12e17"),
+            "maker": maker2,
+            "user": self.taker_user,
+            "block": 18,
+            "base_fees": True,
+            "fees": Decimal("5e16"),
+            "is_buyer": True,
+        }
+
+        taker2_3_details = {
+            "taker_amount": Decimal("12e17"),
+            "maker": maker2,
+            "user": self.taker_user,
+            "block": 18,
+            "base_fees": False,
+            "fees": Decimal("2e16"),
+            "is_buyer": True,
+        }
+
+        taker2_4_details = {
+            "taker_amount": Decimal("12e17"),
+            "maker": maker2,
+            "user": self.taker_user,
+            "block": 18,
+            "base_fees": False,
+            "fees": Decimal("8e16"),
+            "is_buyer": True,
+        }
+
+        for taker in [
+            taker_details,
+            taker2_details,
+            taker3_details,
+            taker4_details,
+            taker2_1_details,
+            taker2_2_details,
+            taker2_3_details,
+            taker2_4_details,
+        ]:
+            async_to_sync(Taker.objects.create)(
+                taker_amount=taker["taker_amount"],
+                maker=taker["maker"],
+                user=taker["user"],
+                block=taker["block"],
+                base_fees=taker["base_fees"],
+                fees=taker["fees"],
+                is_buyer=taker["is_buyer"],
+            )
+
+        self.client.force_authenticate(user=self.user)  # type: ignore
+        response = self.client.get(reverse("api:order"), data={"all": True})
+
+        self.assertEqual(
+            response.status_code, HTTP_200_OK, "The request should work fine"
+        )
+
+        data = response.json()
+        if data[0]["order_hash"] == self.maker.order_hash:
+            maker_1, maker_2 = data[0], data[1]
+        else:
+            maker_1, maker_2 = data[1], data[0]
+
+
+        self.assertEqual(
+            maker_1["base_fees"],
+            "{0:f}".format(taker_details["fees"] + taker2_details["fees"]),
+            "The base fees amount returned should match the base taker fees",
+        )
+        self.assertEqual(
+            maker_1["quote_fees"],
+            "{0:f}".format(taker3_details["fees"] + taker4_details["fees"]),
+            "The quote fees returned should match the quote taker fees",
+        )
+
+        self.assertEqual(
+            maker_2["base_fees"],
+            "{0:f}".format(taker2_1_details["fees"] + taker2_2_details["fees"]),
+            "The base fees amount returned should match the base taker fees",
+        )
+        self.assertEqual(
+            maker_2["quote_fees"],
+            "{0:f}".format(taker2_3_details["fees"] + taker2_4_details["fees"]),
+            "The quote fees returned should match the quote taker fees",
         )

@@ -124,6 +124,7 @@ class Taker(models.Model):
         on_delete=models.PROTECT,
         null=False,
         blank=False,
+        related_name="takers"
     )
     user = models.ForeignKey(
         "User",

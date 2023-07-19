@@ -47,6 +47,7 @@ class MakerSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False, write_only=True)
     address = serializers.CharField(write_only=True)
     expiry = TimestampField(required=True)
+    status = serializers.CharField(source="get_status_display", read_only=True)
     is_buyer = serializers.BooleanField(allow_null=True, default=None)  # type: ignore
 
     class Meta:
@@ -61,9 +62,14 @@ class MakerSerializer(serializers.ModelSerializer):
             "is_buyer",
             "expiry",
             "order_hash",
+            "status",
+            "filled",
             "signature",
         ]
-        extra_kwargs = {"user": {"write_only": True}}
+        extra_kwargs = {
+            "user": {"write_only": True},
+            "filled": {"read_only": True},
+        }
         list_serializer_class = MakerListSerializer
 
     async def create(self, validated_data):
@@ -86,6 +92,17 @@ class MakerSerializer(serializers.ModelSerializer):
             data["step"] = "{0:f}".format(instance.bot.step)
         else:
             data["address"] = instance.user.address
+        base_fees = Decimal("0")
+        quote_fees = Decimal("0")
+
+        for taker in instance.takers.all():
+            if taker.base_fees:
+                base_fees += taker.fees
+            else:
+                quote_fees += taker.fees
+        data["quote_fees"] = str(quote_fees)
+        data["base_fees"] = str(base_fees)
+
         return data
 
     def validate_id(self, value):
@@ -128,9 +145,9 @@ class MakerSerializer(serializers.ModelSerializer):
                 "amount": int(data["amount"]),
                 "price": int(data["price"]),
                 "step": 0,
-                "maker_fees": 0,  
-                "upper_bound": 0,  
-                "lower_bound": 0,  
+                "maker_fees": 0,
+                "upper_bound": 0,
+                "lower_bound": 0,
                 "base_token": data["base_token"],
                 "quote_token": data["quote_token"],
                 "expiry": int(data["expiry"].timestamp()),
@@ -276,20 +293,22 @@ class BotSerializer(serializers.ModelSerializer):
         ]
 
         for order in orders:
-            _, order.order_hash = compute_order_hash({
-                "address": user.address,
-                "amount": int(order.amount),
-                "price": int(order.price),
-                "step": int(validated_data["step"]), 
-                "maker_fees": int(validated_data["maker_fees"]), 
-                "upper_bound": int(validated_data["upper_bound"]),  
-                "lower_bound": int(validated_data["lower_bound"]),  
-                "base_token": order.base_token,
-                "quote_token": order.quote_token,
-                "expiry": int(order.expiry.timestamp()),
-                "is_buyer": 0 if is_buyer else 1,
-                "replace_order": True, 
-            })
+            _, order.order_hash = compute_order_hash(
+                {
+                    "address": user.address,
+                    "amount": int(order.amount),
+                    "price": int(order.price),
+                    "step": int(validated_data["step"]),
+                    "maker_fees": int(validated_data["maker_fees"]),
+                    "upper_bound": int(validated_data["upper_bound"]),
+                    "lower_bound": int(validated_data["lower_bound"]),
+                    "base_token": order.base_token,
+                    "quote_token": order.quote_token,
+                    "expiry": int(order.expiry.timestamp()),
+                    "is_buyer": 0 if is_buyer else 1,
+                    "replace_order": True,
+                }
+            )
         await Maker.objects.abulk_create(orders)
         return bot
 
@@ -349,21 +368,23 @@ class BotSerializer(serializers.ModelSerializer):
             raise ValidationError(errors.Order.PRICE_GT_UPPER_BOUND)
         if data["base_token"].lower() == data["quote_token"].lower():
             raise ValidationError(errors.Order.SAME_BASE_QUOTE_ERROR)
-        
-        encoded_order = encode_order({
+
+        encoded_order = encode_order(
+            {
                 "address": data["address"],
                 "amount": int(data["amount"]),
                 "price": int(data["price"]),
                 "step": int(data["step"]),
-                "maker_fees": int(data["maker_fees"]),  
-                "upper_bound": int(data["upper_bound"]),  
-                "lower_bound": int(data["lower_bound"]),  
+                "maker_fees": int(data["maker_fees"]),
+                "upper_bound": int(data["upper_bound"]),
+                "lower_bound": int(data["lower_bound"]),
                 "base_token": data["base_token"],
                 "quote_token": data["quote_token"],
                 "expiry": int(data["expiry"].timestamp()),
                 "is_buyer": 0 if data["is_buyer"] else 1,
                 "replace_order": True,
-            })
+            }
+        )
 
         if (
             validate_eth_signed_message(

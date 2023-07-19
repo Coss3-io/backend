@@ -22,6 +22,7 @@ class Address:
     SHORT_ADDRESS_ERROR = "the {} address you gave is too short"
     LONG_ADDRESS_ERROR = "the {} address you gave is too long"
     WRONG_ADDRESS_ERROR = "the {} address submitted is hill formed"
+    WRONG_CHECKSUM = "the {} address you gave is not checksumed"
 
 
 class KeccakHash:
@@ -39,6 +40,11 @@ class Order:
     LOWER_BOUND_GT_PRICE = "the lower_bound must be smaller or equal to the price"
     PRICE_GT_UPPER_BOUND = "the price cannot be greater than the lower bound"
     BOT_EXISTING_ORDER = "this bot has already existing orders"
+    TRADE_FIELD_FORMAT_ERROR = "the trades field must be a json"
+    TRADE_DATA_ERROR = "the trades field do not contain valid data"
+    NO_MAKER_FOUND = "no matching maker order found"
+    MAKER_ALREADY_CANCELLED = "the maker order is already cancelled"
+    ORDER_POSITIVE_VIOLATION = "orders cannot have numerical negative values"
 
 
 # Permissions Errors

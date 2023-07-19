@@ -13,5 +13,5 @@ urlpatterns = [
     path("stacking", StackingView.as_view(), name="stacking"),
     path("bot", BotView.as_view(), name="bot"),
     path("stacking-fees", StackingFeesView.as_view(), name="stacking-fees"),
-    path("wt-orders", WatchTowerView.as_view(), name="wt"),
+    path("wt", WatchTowerView.as_view(), name="wt"),
 ]

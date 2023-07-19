@@ -12,6 +12,8 @@ from api.utils import (
     validate_eth_signed_message,
     validate_decimal_integer,
     validate_address,
+    compute_order_hash,
+    encode_order,
 )
 
 
@@ -119,42 +121,27 @@ class MakerSerializer(serializers.ModelSerializer):
     def validate(self, data):
         if data["base_token"].lower() == data["quote_token"].lower():
             raise ValidationError(errors.Order.SAME_BASE_QUOTE_ERROR)
-        message = encode_packed(
-            [
-                "address",
-                "uint256",
-                "uint256",
-                "uint256",
-                "uint256",
-                "uint256",
-                "uint256",
-                "address",
-                "address",
-                "uint64",
-                "uint8",
-                "bool",
-            ],
-            [
-                data["address"],
-                int(data["amount"]),
-                int(data["price"]),
-                0,  # this is the step field
-                0,  # this is the maker fees field
-                0,  # this is the upper bound field
-                0,  # this is the lower bound field
-                data["base_token"],
-                data["quote_token"],
-                int(data["expiry"].timestamp()),
-                0 if data["is_buyer"] else 1,
-                False,  # not a replace order
-            ],
-        )
 
-        orderHash = str(Web3.to_hex(Web3.keccak(message)))
+        encoded_order, order_hash = compute_order_hash(
+            {
+                "address": data["address"],
+                "amount": int(data["amount"]),
+                "price": int(data["price"]),
+                "step": 0,
+                "maker_fees": 0,  
+                "upper_bound": 0,  
+                "lower_bound": 0,  
+                "base_token": data["base_token"],
+                "quote_token": data["quote_token"],
+                "expiry": int(data["expiry"].timestamp()),
+                "is_buyer": 0 if data["is_buyer"] else 1,
+                "replace_order": False,
+            }
+        )
 
         if (
             validate_eth_signed_message(
-                message=message,
+                message=encoded_order,
                 signature=data["signature"],
                 address=data["address"],
             )
@@ -162,7 +149,7 @@ class MakerSerializer(serializers.ModelSerializer):
         ):
             raise ValidationError(errors.Signature.SIGNATURE_MISMATCH_ERROR)
 
-        if orderHash != data["order_hash"]:
+        if order_hash != data["order_hash"]:
             raise ValidationError(errors.KeccakHash.MISMATCH_HASH_ERROR)
         return super().validate(data)
 
@@ -174,10 +161,12 @@ class TakerListSerializer(serializers.ListSerializer):
         takers = [Taker(**order) for order in validated_data]
         return await Taker.objects.abulk_create(takers)
 
+
 class TakerSerializer(serializers.ModelSerializer):
     """Serializer used for the taker orders creation and deletetion"""
 
-    maker = MakerSerializer()
+    maker = MakerSerializer(required=False)
+    maker_id = serializers.IntegerField(required=True, write_only=True)
 
     class Meta:
         model = Taker
@@ -185,6 +174,7 @@ class TakerSerializer(serializers.ModelSerializer):
         depth = 1
         fields = [
             "maker",
+            "maker_id",
             "block",
             "taker_amount",
             "base_fees",
@@ -193,6 +183,7 @@ class TakerSerializer(serializers.ModelSerializer):
         ]
         extra_kwargs = {
             "user": {"write_only": True},
+            "maker": {"read_only": True},
         }
 
         def validate_block(self, data: str) -> str:
@@ -285,44 +276,20 @@ class BotSerializer(serializers.ModelSerializer):
         ]
 
         for order in orders:
-            order_hash = Web3.keccak(
-                encode_packed(
-                    [
-                        "address",
-                        "uint256",
-                        "uint256",
-                        "uint256",
-                        "uint256",
-                        "uint256",
-                        "uint256",
-                        "address",
-                        "address",
-                        "uint64",
-                        "uint8",
-                        "bool",
-                    ],
-                    [
-                        user.address,
-                        int(order.amount),
-                        int(order.price),
-                        int(validated_data["step"]),
-                        int(validated_data["maker_fees"]),
-                        int(validated_data["upper_bound"]),
-                        int(validated_data["lower_bound"]),
-                        order.base_token,
-                        order.quote_token,
-                        int(order.expiry.timestamp()),
-                        0 if is_buyer else 1,
-                        True,  # a replace order
-                    ],
-                )
-            )
-            order.order_hash = Web3.to_hex(
-                Web3.solidity_keccak(
-                    ["bytes", "uint256"],
-                    [order_hash, int(order.price)],
-                )
-            )
+            _, order.order_hash = compute_order_hash({
+                "address": user.address,
+                "amount": int(order.amount),
+                "price": int(order.price),
+                "step": int(validated_data["step"]), 
+                "maker_fees": int(validated_data["maker_fees"]), 
+                "upper_bound": int(validated_data["upper_bound"]),  
+                "lower_bound": int(validated_data["lower_bound"]),  
+                "base_token": order.base_token,
+                "quote_token": order.quote_token,
+                "expiry": int(order.expiry.timestamp()),
+                "is_buyer": 0 if is_buyer else 1,
+                "replace_order": True, 
+            })
         await Maker.objects.abulk_create(orders)
         return bot
 
@@ -382,40 +349,25 @@ class BotSerializer(serializers.ModelSerializer):
             raise ValidationError(errors.Order.PRICE_GT_UPPER_BOUND)
         if data["base_token"].lower() == data["quote_token"].lower():
             raise ValidationError(errors.Order.SAME_BASE_QUOTE_ERROR)
-        message = encode_packed(
-            [
-                "address",
-                "uint256",
-                "uint256",
-                "uint256",
-                "uint256",
-                "uint256",
-                "uint256",
-                "address",
-                "address",
-                "uint64",
-                "uint8",
-                "bool",
-            ],
-            [
-                data["address"],
-                int(data["amount"]),
-                int(data["price"]),
-                int(data["step"]),
-                int(data["maker_fees"]),
-                int(data["upper_bound"]),
-                int(data["lower_bound"]),
-                data["base_token"],
-                data["quote_token"],
-                int(data["expiry"].timestamp()),
-                0 if data["is_buyer"] else 1,
-                True,  # a replace order
-            ],
-        )
+        
+        encoded_order = encode_order({
+                "address": data["address"],
+                "amount": int(data["amount"]),
+                "price": int(data["price"]),
+                "step": int(data["step"]),
+                "maker_fees": int(data["maker_fees"]),  
+                "upper_bound": int(data["upper_bound"]),  
+                "lower_bound": int(data["lower_bound"]),  
+                "base_token": data["base_token"],
+                "quote_token": data["quote_token"],
+                "expiry": int(data["expiry"].timestamp()),
+                "is_buyer": 0 if data["is_buyer"] else 1,
+                "replace_order": True,
+            })
 
         if (
             validate_eth_signed_message(
-                message=message,
+                message=encoded_order,
                 signature=data["signature"],
                 address=data["address"],
             )

@@ -1290,6 +1290,12 @@ class MakerOrderRetrievingTestCase(APITestCase):
             )
         )
 
+        self.user_3: User = async_to_sync(User.objects.create_user)(
+            address=Address(
+                Web3.to_checksum_address("0xC6FDF4076b8F3A5357c5E395ab970B5B54098Fef")
+            )
+        )
+
         self.order_1_1 = {
             "address": Web3.to_checksum_address(
                 "0xf17f52151EbEF6C7334FAD080c5704D77216B732"
@@ -1485,6 +1491,39 @@ class MakerOrderRetrievingTestCase(APITestCase):
                 order_hash=data["order_hash"],
                 is_buyer=data["is_buyer"],
             )
+
+    def test_retrieving_auth_no_orders_works(self):
+        """Checks the empty order retrieval works"""
+
+        self.client.force_authenticate(user=self.user_3)  # type: ignore
+        response = self.client.get(reverse("api:order"), data={"all": True})
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_200_OK,
+            "The request even if the user has no orders should work",
+        )
+        self.assertListEqual(
+            response.json(), [], "The returned order list should be empty for the user"
+        )
+
+    def test_retrieving_anon_no_orders_works(self):
+        """Checks the anon empty order retrieval works"""
+
+        Maker.objects.all().delete()
+        response = self.client.get(
+            reverse("api:orders"),
+            data=self.pair_1,
+        )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_200_OK,
+            "The request even if the user has no orders should work",
+        )
+        self.assertListEqual(
+            response.json(), [], "The returned order list should be empty for the user"
+        )
 
     def test_retrieving_pair_1_orders_anon(self):
         """Checks retrieving all the orders for a pair works"""

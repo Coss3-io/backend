@@ -39,9 +39,14 @@ class OrderView(APIView):
         except ValidationError as e:
             raise ValidationError({"quote_token": e.detail})
 
-        queryset = Maker.objects.filter(
-            base_token=base_token, quote_token=quote_token
-        ).select_related("user", "bot", "bot__user")
+        queryset = (
+            Maker.objects.filter(base_token=base_token, quote_token=quote_token)
+            .select_related("user", "bot", "bot__user")
+            .prefetch_related("takers")
+        )
+        length = await sync_to_async(len)(queryset)
+        if length:
+            await sync_to_async(queryset[0].takers.all)()
         data = await sync_to_async(lambda: MakerSerializer(queryset, many=True).data)()
         return Response(data, status=status.HTTP_200_OK)
 
@@ -55,18 +60,22 @@ class MakerView(APIView):
 
     def get_permissions(self):
         data = super().get_permissions()
-        return data + [permission() for permission in getattr(getattr(self, self.request.method.lower(), self.http_method_not_allowed), "permission_classes", [])]  # type: ignore   
+        return data + [permission() for permission in getattr(getattr(self, self.request.method.lower(), self.http_method_not_allowed), "permission_classes", [])]  # type: ignore
 
     @authentication_classes([ApiAuthentication])
     @permission_classes([IsAuthenticated])
     async def get(self, request: Request):
         """The view to retrieve the orders of a user"""
-        
+
         if request.auth == "awaitable":
             request.user = (await User.objects.aget_or_create(address=request.user))[0]
 
         if request.query_params.get("all", None):
-            queryset = Maker.objects.filter(user=request.user).select_related("user")
+            queryset = (
+                Maker.objects.filter(user=request.user)
+                .select_related("user")
+                .prefetch_related("takers")
+            )
         else:
             if (base_token := request.query_params.get("base_token", "0")) == "0" or (
                 quote_token := request.query_params.get("quote_token", "0")
@@ -88,6 +97,10 @@ class MakerView(APIView):
             queryset = Maker.objects.filter(
                 user=request.user, base_token=base_token, quote_token=quote_token
             )
+
+        length = await sync_to_async(len)(queryset)
+        if length:
+            await sync_to_async(queryset[0].takers.all)()
         data = await sync_to_async(lambda: MakerSerializer(queryset, many=True).data)()
         return Response(data, status=status.HTTP_200_OK)
 
@@ -100,8 +113,8 @@ class MakerView(APIView):
 
         if maker.instance is not None:
             maker.instance = await maker.instance
-
-        return Response(maker.data, status=status.HTTP_200_OK)
+        data = await sync_to_async(lambda: maker.data)()
+        return Response(data, status=status.HTTP_200_OK)
 
 
 class BotView(APIView):

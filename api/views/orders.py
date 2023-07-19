@@ -13,7 +13,7 @@ from api.models.orders import Maker, Bot, Taker
 from api.models.types import Address
 from api.models import User
 import api.errors as errors
-from api.serializers.orders import MakerSerializer, BotSerializer
+from api.serializers.orders import MakerSerializer, BotSerializer, TakerSerializer
 from api.views.authentications import ApiAuthentication
 
 
@@ -152,10 +152,10 @@ class TakerView(APIView):
                 raise ValidationError({"quote_token": e.detail})
 
             queryset = Taker.objects.filter(
-                user=request.user, base_token=base_token, quote_token=quote_token
+                user=request.user, maker__base_token=base_token, maker__quote_token=quote_token
             )
 
-        data = await sync_to_async(lambda: MakerSerializer(queryset, many=True).data)()
+        data = await sync_to_async(lambda: TakerSerializer(queryset, many=True).data)()
         return Response(data, status=status.HTTP_200_OK)
 
 

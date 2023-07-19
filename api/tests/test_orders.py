@@ -36,6 +36,10 @@ class MakerOrderTestCase(APITestCase):
             "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
             "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
             "is_buyer": False,
+            "filled": "0",
+            "base_fees": "0",
+            "quote_fees": "0",
+            "status": "OPEN",
         }
         response = self.client.post(reverse("api:order"), data=data)
         order = Maker.objects.select_related("user").get(order_hash=data["order_hash"])
@@ -250,6 +254,10 @@ class MakerOrderTestCase(APITestCase):
             "signature": "0xfabfac7f7a8bbb7f87747c940a6a9be667a57c86c145fd2bb91d8286cdbde0253e1cf2c95bdfb87a46669bc8ba0d4f92b4786d00df7f90aea8004d2b953b27cb1b",
             "order_hash": "0x0e3c530932af2cadc56e2cb633b4a4952b5ebb74888c19e1068c2d0213953e45",
             "is_buyer": False,
+            "filled": "0",
+            "base_fees": "0",
+            "quote_fees": "0",
+            "status": "OPEN",
         }
 
         async_to_sync(Maker.objects.create)(
@@ -275,7 +283,6 @@ class MakerOrderTestCase(APITestCase):
             HTTP_200_OK,
             "The order retrieving should work properly",
         )
-
         data["expiry"] = int(data["expiry"].timestamp())
         data["address"] = Web3.to_checksum_address(data["address"])
         data["base_token"] = Web3.to_checksum_address(data["base_token"])
@@ -295,6 +302,10 @@ class MakerOrderTestCase(APITestCase):
             "signature": "0xfabfac7f7a8bbb7f87747c940a6a9be667a57c86c145fd2bb91d8286cdbde0253e1cf2c95bdfb87a46669bc8ba0d4f92b4786d00df7f90aea8004d2b953b27cb1b",
             "order_hash": "0x0e3c530932af2cadc56e2cb633b4a4952b5ebb74888c19e1068c2d0213953e45",
             "is_buyer": False,
+            "filled": "0",
+            "status": "OPEN",
+            "base_fees": "0",
+            "quote_fees": "0",
         }
 
         async_to_sync(Maker.objects.create)(
@@ -1242,6 +1253,10 @@ class MakerOrderTestCase(APITestCase):
             "signature": "0x9cc2023e1b0401282c9b8abb371e09f4ef5cf4ff54d08bdfb9bb6d05f14a70f36de2002f2f005cd3dfb5ae42d023b18010a4a234d3ce8ed5b915d0fcb40c4ed91b",
             "order_hash": "0xddd97cfb8a661a4d513c78874c0ef707909f9a07fcd80d5aa147cbd23dae0aa6",
             "is_buyer": True,
+            "filled": "0",
+            "base_fees": "0",
+            "quote_fees": "0",
+            "status": "OPEN",
         }
         response = self.client.post(reverse("api:order"), data=data)
         User.objects.get(address=Web3.to_checksum_address(data["address"]))
@@ -1291,6 +1306,10 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "signature": "0xfabfac7f7a8bbb7f87747c940a6a9be667a57c86c145fd2bb91d8286cdbde0253e1cf2c95bdfb87a46669bc8ba0d4f92b4786d00df7f90aea8004d2b953b27cb1b",
             "order_hash": "0x0e3c530932af2cadc56e2cb633b4a4952b5ebb74888c19e1068c2d0213953e45",
             "is_buyer": False,
+            "filled": "0",
+            "base_fees": "0",
+            "quote_fees": "0",
+            "status": "OPEN",
         }
 
         self.order_1_2 = {
@@ -1309,6 +1328,10 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
             "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
             "is_buyer": False,
+            "filled": "0",
+            "base_fees": "0",
+            "quote_fees": "0",
+            "status": "OPEN",
         }
 
         self.order_1_3 = {
@@ -1327,6 +1350,10 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "signature": "0x139c033404a061eae0d17dbb366f153791569d6a7ad42bc6ad7b902a341bec6d7eca9102499ff60fe566fcd53642fb254c6efa2a8ca933ba917571fbfee73d261c",
             "order_hash": "0x54532cab462b29052d84773f9f4aef6e063642c8f6d334fc4fe96394b7dbd849",
             "is_buyer": False,
+            "filled": "0",
+            "base_fees": "0",
+            "quote_fees": "0",
+            "status": "OPEN",
         }
 
         self.order_2_1 = {
@@ -1345,6 +1372,10 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "signature": "0x346d7e67d76b8de75de2c18855818261394323565f0c246bd565ec448f670fa91c3139086f11ef6853fcae56cd67d89cbf4f60916898579836dec681b7f9249d1c",
             "order_hash": "0x07f5c2584ffbf3b7d14ad3410c1c98fb3b71496a7e5cd14ab22a68f268915bca",
             "is_buyer": True,
+            "filled": "0",
+            "base_fees": "0",
+            "quote_fees": "0",
+            "status": "OPEN",
         }
 
         self.order_2_2 = {
@@ -1363,6 +1394,10 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "signature": "0xee7433f9f83b59019723f08c8348895a767eb1aae16536847b54de37b3e92ff93f916e4c302309b7317335c9f9aad8e18927371994ef08ce75d8357376e2ef0a1b",
             "order_hash": "0x43a67aa1f3e53cad7f692f2ac249728f3369290b24a154e364c998fc9788b98f",
             "is_buyer": True,
+            "filled": "0",
+            "base_fees": "0",
+            "quote_fees": "0",
+            "status": "OPEN",
         }
 
         self.order_2_3 = {
@@ -1381,6 +1416,10 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "signature": "0x69b2da58758a256e2d24a6f04ca5d8dc7d4834b96a6246e18c2b9e8ecba80992145267c18e8add3a7b952121a9ae82ad090fc05ba44688f445e54a5b21caa6a81b",
             "order_hash": "0xa8a829d6e7ad540c0d3140a37e9fb9408878e5b5b5d7d48e54ba132a5c968e6a",
             "is_buyer": True,
+            "filled": "0",
+            "base_fees": "0",
+            "quote_fees": "0",
+            "status": "OPEN",
         }
 
         self.order_2_4 = {
@@ -1399,6 +1438,10 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "signature": "0x422b8570187908abb3a18a2f224e7fa4870c18944f9b4b86bc4b498c738739b90e6db92a52b994920908d64404482856226065001156ca2dbbe6b330d31116811b",
             "order_hash": "0x37ec83d93794625c87faa2aa937c3582bd310a147d019f7d1d56bc24b04d45ef",
             "is_buyer": True,
+            "filled": "0",
+            "base_fees": "0",
+            "quote_fees": "0",
+            "status": "OPEN",
         }
 
         self.pair_1 = {

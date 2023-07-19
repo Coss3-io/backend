@@ -1255,7 +1255,7 @@ class MakerBotFeesTestCase(APITestCase):
 
         self.client.post(reverse("api:bot"), data=self.data)
 
-    def test_sell_maker_opp_side_lt_1000(self):
+    def test_sell_maker_opp_side_lt_2000(self):
         """Checks the fees on a particular scenario are handled well"""
 
         taker_address = "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef"
@@ -1301,7 +1301,151 @@ class MakerBotFeesTestCase(APITestCase):
             "The negative fees generated should be updated to the bot ",
         )
 
-    def test_buy_maker_opp_side_lt_1000(self):
+    def test_sell_maker_opp_side_gt_2000(self):
+        """Checks the fees on a particular scenario are handled well"""
+
+        taker_address = "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef"
+        block = 12
+        taker_amount = "{0:f}".format(Decimal("73e16"))
+        fees = "{0:f}".format(Decimal("365e15"))
+
+        maker = Maker.objects.get(price=Decimal("11e17"))
+        maker.bot.maker_fees = Decimal("5e14")
+        maker.bot.save(update_fields=["maker_fees"])
+
+        trades = {
+            maker.order_hash: {
+                "taker_amount": taker_amount,
+                "base_fees": True,
+                "fees": fees,
+                "is_buyer": True,
+            }
+        }
+
+        with patch("api.views.watch_tower.WatchTowerView.permission_classes", []):
+            response = self.client.post(
+                reverse("api:wt"),
+                format="json",
+                data={
+                    "taker": taker_address,
+                    "block": block,
+                    "trades": trades,
+                },
+            )
+        maker.refresh_from_db()
+
+        fees = (
+            maker.bot.maker_fees * Decimal(taker_amount) / Decimal("1e18")
+        ).quantize(Decimal("1."))
+
+        self.assertEqual(response.status_code, HTTP_200_OK, "The request should work")
+        self.assertEqual(response.json(), {}, "On success the response should be empty")
+        self.assertEqual(
+            maker.bot.fees_earned,
+            fees,
+            "The negative fees generated should be updated to the bot ",
+        )
+
+    def test_sell_maker_same_side_lt_2000(self):
+        """Checks the fees on a particular scenario are handled well"""
+
+        taker_address = "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef"
+        block = 12
+        taker_amount = "{0:f}".format(Decimal("73e16"))
+        fees = "{0:f}".format(Decimal("365e15"))
+
+        maker = Maker.objects.get(price=Decimal("11e17"))
+        maker.filled = Decimal(taker_amount)
+        maker.save(update_fields=["filled"])
+
+        trades = {
+            maker.order_hash: {
+                "taker_amount": taker_amount,
+                "base_fees": True,
+                "fees": fees,
+                "is_buyer": False,
+            }
+        }
+
+        with patch("api.views.watch_tower.WatchTowerView.permission_classes", []):
+            response = self.client.post(
+                reverse("api:wt"),
+                format="json",
+                data={
+                    "taker": taker_address,
+                    "block": block,
+                    "trades": trades,
+                },
+            )
+        maker.refresh_from_db()
+
+        fees = (
+            (
+                maker.price
+                - maker.price
+                * Decimal("1000")
+                / (maker.bot.maker_fees + Decimal("1000"))
+            )
+            * Decimal(taker_amount)
+            / Decimal("1e18")
+        ).quantize(Decimal("1."))
+
+        self.assertEqual(response.status_code, HTTP_200_OK, "The request should work")
+        self.assertEqual(response.json(), {}, "On success the response should be empty")
+        self.assertEqual(
+            maker.bot.fees_earned,
+            fees,
+            "The negative fees generated should be updated to the bot ",
+        )
+
+    def test_sell_maker_same_side_gt_2000(self):
+        """Checks the fees on a particular scenario are handled well"""
+
+        taker_address = "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef"
+        block = 12
+        taker_amount = "{0:f}".format(Decimal("73e16"))
+        fees = "{0:f}".format(Decimal("365e15"))
+
+        maker = Maker.objects.get(price=Decimal("11e17"))
+        maker.filled = Decimal(taker_amount)
+        maker.bot.maker_fees = Decimal("5e14")
+        maker.bot.save(update_fields=["maker_fees"])
+        maker.save(update_fields=["filled"])
+
+        trades = {
+            maker.order_hash: {
+                "taker_amount": taker_amount,
+                "base_fees": True,
+                "fees": fees,
+                "is_buyer": False,
+            }
+        }
+
+        with patch("api.views.watch_tower.WatchTowerView.permission_classes", []):
+            response = self.client.post(
+                reverse("api:wt"),
+                format="json",
+                data={
+                    "taker": taker_address,
+                    "block": block,
+                    "trades": trades,
+                },
+            )
+        maker.refresh_from_db()
+
+        fees = (
+            maker.bot.maker_fees * Decimal(taker_amount) / Decimal("1e18")
+        ).quantize(Decimal("1."))
+
+        self.assertEqual(response.status_code, HTTP_200_OK, "The request should work")
+        self.assertEqual(response.json(), {}, "On success the response should be empty")
+        self.assertEqual(
+            maker.bot.fees_earned,
+            fees,
+            "The negative fees generated should be updated to the bot ",
+        )
+
+    def test_buy_maker_opp_side_lt_2000(self):
         """Checks the fees on a particular scenario are handled well"""
         from django.db import connection
 
@@ -1339,6 +1483,150 @@ class MakerBotFeesTestCase(APITestCase):
             )
             * Decimal(taker_amount)
             / Decimal("1e18")
+        ).quantize(Decimal("1."))
+
+        self.assertEqual(response.status_code, HTTP_200_OK, "The request should work")
+        self.assertEqual(response.json(), {}, "On success the response should be empty")
+        self.assertEqual(
+            maker.bot.fees_earned,
+            fees,
+            "The negative fees generated should be updated to the bot ",
+        )
+
+    def test_buy_maker_opp_side_gt_2000(self):
+        """Checks the fees on a particular scenario are handled well"""
+        from django.db import connection
+
+        taker_address = "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef"
+        block = 12
+        taker_amount = "{0:f}".format(Decimal("73e16"))
+        fees = "{0:f}".format(Decimal("365e15"))
+
+        maker = Maker.objects.get(price=Decimal("9e17"))
+        maker.bot.maker_fees = Decimal("77e14")
+        maker.bot.save(update_fields=["maker_fees"])
+
+        trades = {
+            maker.order_hash: {
+                "taker_amount": taker_amount,
+                "base_fees": True,
+                "fees": fees,
+                "is_buyer": False,
+            }
+        }
+
+        with patch("api.views.watch_tower.WatchTowerView.permission_classes", []):
+            response = self.client.post(
+                reverse("api:wt"),
+                format="json",
+                data={
+                    "taker": taker_address,
+                    "block": block,
+                    "trades": trades,
+                },
+            )
+        maker.refresh_from_db()
+        fees = (
+            maker.bot.maker_fees * Decimal(taker_amount) / Decimal("1e18")
+        ).quantize(Decimal("1."))
+
+        self.assertEqual(response.status_code, HTTP_200_OK, "The request should work")
+        self.assertEqual(response.json(), {}, "On success the response should be empty")
+        self.assertEqual(
+            maker.bot.fees_earned,
+            fees,
+            "The negative fees generated should be updated to the bot ",
+        )
+
+    def test_buy_maker_same_side_lt_2000(self):
+        """Checks the fees on a particular scenario are handled well"""
+        from django.db import connection
+
+        taker_address = "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef"
+        block = 12
+        taker_amount = "{0:f}".format(Decimal("73e16"))
+        fees = "{0:f}".format(Decimal("365e15"))
+
+        maker = Maker.objects.get(price=Decimal("9e17"))
+        maker.filled = Decimal(taker_amount)
+        maker.save(update_fields=["filled"])
+
+        trades = {
+            maker.order_hash: {
+                "taker_amount": taker_amount,
+                "base_fees": True,
+                "fees": fees,
+                "is_buyer": False,
+            }
+        }
+
+        with patch("api.views.watch_tower.WatchTowerView.permission_classes", []):
+            response = self.client.post(
+                reverse("api:wt"),
+                format="json",
+                data={
+                    "taker": taker_address,
+                    "block": block,
+                    "trades": trades,
+                },
+            )
+        maker.refresh_from_db()
+        fees = (
+            (
+                maker.price
+                - maker.price
+                * Decimal("1000")
+                / (maker.bot.maker_fees + Decimal("1000"))
+            )
+            * Decimal(taker_amount)
+            / Decimal("1e18")
+        ).quantize(Decimal("1."))
+
+        self.assertEqual(response.status_code, HTTP_200_OK, "The request should work")
+        self.assertEqual(response.json(), {}, "On success the response should be empty")
+        self.assertEqual(
+            maker.bot.fees_earned,
+            fees,
+            "The negative fees generated should be updated to the bot ",
+        )
+
+    def test_buy_maker_same_side_gt_2000(self):
+        """Checks the fees on a particular scenario are handled well"""
+        from django.db import connection
+
+        taker_address = "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef"
+        block = 12
+        taker_amount = "{0:f}".format(Decimal("73e16"))
+        fees = "{0:f}".format(Decimal("365e15"))
+
+        maker = Maker.objects.get(price=Decimal("9e17"))
+        maker.filled = Decimal(taker_amount)
+        maker.bot.maker_fees = Decimal("71e14")
+        maker.bot.save(update_fields=["maker_fees"])
+        maker.save(update_fields=["filled"])
+
+        trades = {
+            maker.order_hash: {
+                "taker_amount": taker_amount,
+                "base_fees": True,
+                "fees": fees,
+                "is_buyer": False,
+            }
+        }
+
+        with patch("api.views.watch_tower.WatchTowerView.permission_classes", []):
+            response = self.client.post(
+                reverse("api:wt"),
+                format="json",
+                data={
+                    "taker": taker_address,
+                    "block": block,
+                    "trades": trades,
+                },
+            )
+        maker.refresh_from_db()
+        fees = (
+            (maker.bot.maker_fees) * Decimal(taker_amount) / Decimal("1e18")
         ).quantize(Decimal("1."))
 
         self.assertEqual(response.status_code, HTTP_200_OK, "The request should work")

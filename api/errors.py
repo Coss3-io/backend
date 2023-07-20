@@ -45,6 +45,7 @@ class Order:
     NO_MAKER_FOUND = "no matching maker order found"
     MAKER_ALREADY_CANCELLED = "the maker order is already cancelled"
     ORDER_POSITIVE_VIOLATION = "orders cannot have numerical negative values"
+    BASE_QUOTE_NEEDED = "base_token and quote_token params are needed"
 
 
 # Permissions Errors

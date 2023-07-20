@@ -27,7 +27,7 @@ class OrderView(APIView):
             quote_token := request.query_params.get("quote_token", "0")
         ) == "0":
             return Response(
-                {"detail": "base_token and quote_token params are needed"},
+                {"detail": errors.Order.BASE_QUOTE_NEEDED},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         try:
@@ -138,7 +138,7 @@ class TakerView(APIView):
                 quote_token := request.query_params.get("quote_token", "0")
             ) == "0":
                 return Response(
-                    {"detail": "base_token and quote_token params are needed"},
+                    {"detail": errors.Order.BASE_QUOTE_NEEDED},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 

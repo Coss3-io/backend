@@ -2612,7 +2612,6 @@ class MakerTakersFeesRetrieval(APITestCase):
         else:
             maker_1, maker_2 = data[1], data[0]
 
-
         self.assertEqual(
             maker_1["base_fees"],
             "{0:f}".format(taker_details["fees"] + taker2_details["fees"]),
@@ -2634,3 +2633,293 @@ class MakerTakersFeesRetrieval(APITestCase):
             "{0:f}".format(taker2_3_details["fees"] + taker2_4_details["fees"]),
             "The quote fees returned should match the quote taker fees",
         )
+
+
+class TakerRetrievalTestCase(APITestCase):
+    """Class used to retrieve the taker order for a user"""
+
+    def setUp(self):
+        self.user = async_to_sync(User.objects.create_user)(
+            address=Address("0xf17f52151EbEF6C7334FAD080c5704D77216b732")
+        )
+        self.taker_user = async_to_sync(User.objects.create_user)(
+            address=Address("0xf18f52151EbEF6C7334FAD080c5704D77216b732")
+        )
+
+        self.data = {
+            "address": Web3.to_checksum_address(
+                "0xf17f52151EbEF6C7334FAD080c5704D77216B732"
+            ),
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 1696667304,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": Web3.to_checksum_address(
+                "0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520"
+            ),
+            "quote_token": Web3.to_checksum_address(
+                "0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+            ),
+            "signature": "0xfabfac7f7a8bbb7f87747c940a6a9be667a57c86c145fd2bb91d8286cdbde0253e1cf2c95bdfb87a46669bc8ba0d4f92b4786d00df7f90aea8004d2b953b27cb1b",
+            "order_hash": "0x0e3c530932af2cadc56e2cb633b4a4952b5ebb74888c19e1068c2d0213953e45",
+            "is_buyer": False,
+            "filled": "0",
+            "base_fees": "0",
+            "quote_fees": "0",
+            "status": "OPEN",
+        }
+
+        self.maker = async_to_sync(Maker.objects.create)(
+            user=self.user,
+            amount=self.data["amount"],
+            expiry=datetime.fromtimestamp(self.data["expiry"]),
+            price=self.data["price"],
+            base_token=Web3.to_checksum_address(self.data["base_token"]),
+            quote_token=Web3.to_checksum_address(self.data["quote_token"]),
+            signature=self.data["signature"],
+            order_hash=self.data["order_hash"],
+            is_buyer=self.data["is_buyer"],
+        )
+
+        self.taker_details = {
+            "taker_amount": Decimal("12e17"),
+            "maker": self.maker,
+            "user": self.taker_user,
+            "block": 18,
+            "base_fees": False,
+            "fees": Decimal("145e16"),
+            "is_buyer": True,
+        }
+
+        self.taker = async_to_sync(Taker.objects.create)(
+            taker_amount=self.taker_details["taker_amount"],
+            maker=self.taker_details["maker"],
+            user=self.taker_details["user"],
+            block=self.taker_details["block"],
+            base_fees=self.taker_details["base_fees"],
+            fees=self.taker_details["fees"],
+            is_buyer=self.taker_details["is_buyer"],
+        )
+
+    def test_anon_users_cannot_see_takers_orders(self):
+        """The anonymous users should not be able to see taker orders"""
+
+        response = self.client.get(reverse("api:taker"), data={"all": True})
+        self.assertEqual(
+            response.status_code,
+            HTTP_403_FORBIDDEN,
+            "The anon user shouldn't be allowed to use this endpoint",
+        )
+
+    def test_logged_in_user_can_see_his_takers(self):
+        """A logged in user should see its taker orders"""
+
+        self.client.force_authenticate(user=self.taker_user)  # type: ignore
+        response = self.client.get(reverse("api:taker"), data={"all": True})
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_200_OK,
+            "The response should work for logged in users",
+        )
+
+        del self.taker_details["user"]
+        del self.taker_details["maker"]
+        self.taker_details["taker_amount"] = "{0:f}".format(
+            self.taker_details["taker_amount"]
+        )
+        self.taker_details["fees"] = "{0:f}".format(self.taker_details["fees"])
+
+        self.assertEqual(
+            response.json()[0],
+            self.taker_details,
+            "The taker returned should match the one sent",
+        )
+
+    def test_retrieving_all_user_takers(self):
+        """Checks retrieving all the takers orders at once work"""
+
+        taker_details = {
+            "taker_amount": Decimal("10e23"),
+            "maker": self.maker,
+            "user": self.taker_user,
+            "block": 21,
+            "base_fees": False,
+            "fees": Decimal("145e16"),
+            "is_buyer": True,
+        }
+        async_to_sync(Taker.objects.create)(
+            taker_amount=taker_details["taker_amount"],
+            maker=taker_details["maker"],
+            user=taker_details["user"],
+            block=taker_details["block"],
+            base_fees=taker_details["base_fees"],
+            fees=taker_details["fees"],
+            is_buyer=taker_details["is_buyer"],
+        )
+
+        self.client.force_authenticate(user=self.taker_user)  # type: ignore
+        response = self.client.get(reverse("api:taker"), data={"all": True})
+        data = response.json()
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_200_OK,
+            "The request with several taker orders should work",
+        )
+        self.assertEqual(
+            len(data), 2, "two taker orders should be returned on the response"
+        )
+        if data[0]["block"] == taker_details["block"]:
+            taker2, taker1 = data[0], data[1]
+        else:
+            taker1, taker2 = data[0], data[1]
+
+        del self.taker_details["user"]
+        del self.taker_details["maker"]
+        self.taker_details["taker_amount"] = "{0:f}".format(
+            self.taker_details["taker_amount"]
+        )
+        self.taker_details["fees"] = "{0:f}".format(self.taker_details["fees"])
+
+        self.assertEqual(
+            taker1,
+            self.taker_details,
+            "The taker returned should match the one created",
+        )
+
+        del taker_details["user"]
+        del taker_details["maker"]
+        taker_details["taker_amount"] = "{0:f}".format(taker_details["taker_amount"])
+        taker_details["fees"] = "{0:f}".format(taker_details["fees"])
+
+        self.assertEqual(
+            taker2,
+            taker_details,
+            "The second taker returned should match the one created",
+        )
+
+    def test_retrieving_same_pair_multiple_taker(self):
+        """Checks a user can retrieve multiple orders from the same pair"""
+
+        taker_details = {
+            "taker_amount": Decimal("10e23"),
+            "maker": self.maker,
+            "user": self.taker_user,
+            "block": 21,
+            "base_fees": False,
+            "fees": Decimal("145e16"),
+            "is_buyer": True,
+        }
+        async_to_sync(Taker.objects.create)(
+            taker_amount=taker_details["taker_amount"],
+            maker=taker_details["maker"],
+            user=taker_details["user"],
+            block=taker_details["block"],
+            base_fees=taker_details["base_fees"],
+            fees=taker_details["fees"],
+            is_buyer=taker_details["is_buyer"],
+        )
+
+        self.client.force_authenticate(user=self.taker_user)  # type: ignore
+        response = self.client.get(
+            reverse("api:taker"),
+            data={
+                "base_token": self.maker.base_token,
+                "quote_token": self.maker.quote_token,
+            },
+        )
+        data = response.json()
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_200_OK,
+            "The request with several taker orders should work",
+        )
+        self.assertEqual(
+            len(data), 2, "two taker orders should be returned on the response"
+        )
+        if data[0]["block"] == taker_details["block"]:
+            taker2, taker1 = data[0], data[1]
+        else:
+            taker1, taker2 = data[0], data[1]
+
+        del self.taker_details["user"]
+        del self.taker_details["maker"]
+        self.taker_details["taker_amount"] = "{0:f}".format(
+            self.taker_details["taker_amount"]
+        )
+        self.taker_details["fees"] = "{0:f}".format(self.taker_details["fees"])
+
+        self.assertEqual(
+            taker1,
+            self.taker_details,
+            "The taker returned should match the one created",
+        )
+
+        del taker_details["user"]
+        del taker_details["maker"]
+        taker_details["taker_amount"] = "{0:f}".format(taker_details["taker_amount"])
+        taker_details["fees"] = "{0:f}".format(taker_details["fees"])
+
+        self.assertEqual(
+            taker2,
+            taker_details,
+            "The second taker returned should match the one created",
+        )
+
+    def test_retrieving_takers_wrong_params_fails(self):
+        """Checks the takers retrieviing fails if the params are wrong"""
+
+        self.client.force_authenticate(user=self.taker_user)  # type: ignore
+        response = self.client.get(reverse("api:taker"))
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request without param should fail",
+        )
+        self.assertEqual(response.json(), {"detail": errors.Order.BASE_QUOTE_NEEDED})
+
+    def test_retrieve_takers_wrong_base_token(self):
+        """Checks the taker retrieval fails with wrong base_token"""
+
+        self.client.force_authenticate(user=self.taker_user)  # type: ignore
+        response = self.client.get(
+            reverse("api:taker"),
+            data={
+                "base_token": "0xz02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+                "quote_token": self.maker.quote_token,
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "the request should fail with wrong base token",
+        )
+        self.assertDictEqual(
+            response.json(),
+            {"base_token": [errors.Address.WRONG_ADDRESS_ERROR.format("base_token")]},
+        )
+
+    def test_retrieve_takers_wrong_quote_token(self):
+        """Checks the taker retrieval fails with wrong quote_token"""
+
+        self.client.force_authenticate(user=self.taker_user)  # type: ignore
+        response = self.client.get(
+            reverse("api:taker"),
+            data={
+                "base_token": self.maker.base_token,
+                "quote_token": "0xz02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "the request should fail with wrong quote token",
+        )
+        self.assertDictEqual(
+            response.json(),
+            {"quote_token": [errors.Address.WRONG_ADDRESS_ERROR.format("quote_token")]},
+        ) 

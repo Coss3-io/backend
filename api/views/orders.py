@@ -9,11 +9,11 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import ValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
-from api.models.orders import Maker, Bot
+from api.models.orders import Maker, Bot, Taker
 from api.models.types import Address
 from api.models import User
 import api.errors as errors
-from api.serializers.orders import MakerSerializer, BotSerializer
+from api.serializers.orders import MakerSerializer, BotSerializer, TakerSerializer
 from api.views.authentications import ApiAuthentication
 
 
@@ -27,7 +27,7 @@ class OrderView(APIView):
             quote_token := request.query_params.get("quote_token", "0")
         ) == "0":
             return Response(
-                {"detail": "base_token and quote_token params are needed"},
+                {"detail": errors.Order.BASE_QUOTE_NEEDED},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         try:
@@ -115,6 +115,49 @@ class MakerView(APIView):
             maker.instance = await maker.instance
         data = await sync_to_async(lambda: maker.data)()
         return Response(data, status=status.HTTP_200_OK)
+
+
+class TakerView(APIView):
+    """View used to retrieve the logged in users taker orders"""
+
+    authentication_classes = [ApiAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    async def get(self, request):
+        """Function used to retrieve the user taker orders"""
+
+        if request.auth == "awaitable":
+            request.user = (await User.objects.aget_or_create(address=request.user))[0]
+
+        if request.query_params.get("all", None):
+            queryset = (
+                Taker.objects.filter(user=request.user)
+            )
+        else:
+            if (base_token := request.query_params.get("base_token", "0")) == "0" or (
+                quote_token := request.query_params.get("quote_token", "0")
+            ) == "0":
+                return Response(
+                    {"detail": errors.Order.BASE_QUOTE_NEEDED},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            try:
+                base_token = Address(base_token, "base_token")
+            except ValidationError as e:
+                raise ValidationError({"base_token": e.detail})
+            try:
+                quote_token = Address(quote_token, "quote_token")
+            except ValidationError as e:
+                raise ValidationError({"quote_token": e.detail})
+
+            queryset = Taker.objects.filter(
+                user=request.user, maker__base_token=base_token, maker__quote_token=quote_token
+            )
+
+        data = await sync_to_async(lambda: TakerSerializer(queryset, many=True).data)()
+        return Response(data, status=status.HTTP_200_OK)
+
 
 
 class BotView(APIView):

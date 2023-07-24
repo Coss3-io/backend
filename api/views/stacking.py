@@ -10,10 +10,12 @@ from api.models import User
 from api.models.stacking import Stacking, StackingFees
 from api.views.permissions import WatchTowerPermission
 from api.serializers.stacking import StackingSerializer, StackingFeesSerializer
-from api.models.types import Address
-import api.errors as errors
-from api.utils import validate_decimal_integer
+from api.messages import WStypes
+from api.consumers.websocket import WebsocketConsumer
 from api.views.authentications import ApiAuthentication
+from channels.layers import get_channel_layer
+
+channel_layer = get_channel_layer()
 
 
 class StackingView(APIView):
@@ -73,6 +75,12 @@ class StackingView(APIView):
             stacking.instance.amount = stacking.validated_data["amount"]
             await stacking.instance.asave(update_fields=["amount"])
             stacking.validated_data["amount"] = stacking.data["amount"]
+
+            await channel_layer.group_send(  # type: ignore
+                WebsocketConsumer.groups[0],
+                {"type": "send.json", "data": {WStypes.NEW_STACKING: stacking.validated_data}},
+            )
+
             return Response(
                 {},
                 status=status.HTTP_200_OK,
@@ -110,7 +118,7 @@ class StackingFeesView(APIView):
             "amount": int
         }
         ```"""
-    
+
         stacking_fees = StackingFeesSerializer(data=request.data)
         await sync_to_async(stacking_fees.is_valid)(raise_exception=True)
 
@@ -124,6 +132,12 @@ class StackingFeesView(APIView):
             stacking_fees.instance.amount = stacking_fees.validated_data["amount"]
             await stacking_fees.instance.asave(update_fields=["amount"])
             stacking_fees.validated_data["amount"] = stacking_fees.data["amount"]
+
+            await channel_layer.group_send(  # type: ignore
+                WebsocketConsumer.groups[0],
+                {"type": "send.json", "data": {WStypes.NEW_FEES: stacking_fees.validated_data}},
+            )
+
             return Response(
                 {},
                 status=status.HTTP_200_OK,

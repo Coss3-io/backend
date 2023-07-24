@@ -12,9 +12,9 @@ from api.models.orders import Maker, Bot, Taker
 from api.models.types import Address
 from api.models import User
 import api.errors as errors
-from api.messages import WStypes
 from api.serializers.orders import MakerSerializer, BotSerializer, TakerSerializer
 from api.views.authentications import ApiAuthentication
+from api.messages import WStypes
 from api.consumers.websocket import WebsocketConsumer
 from channels.layers import get_channel_layer
 
@@ -208,4 +208,10 @@ class BotView(APIView):
             )
 
         data = await sync_to_async(lambda: bot.data)()
+
+        await channel_layer.group_send(  # type: ignore
+            WebsocketConsumer.groups[0],
+            {"type": "send.json", "data": {WStypes.NEW_BOT :data}},
+        )
+
         return Response(data, status=status.HTTP_200_OK)

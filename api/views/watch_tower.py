@@ -15,6 +15,12 @@ from api.utils import validate_decimal_integer, compute_order_hash
 from api.views.permissions import WatchTowerPermission
 from api.models.orders import Maker, Bot
 from api.serializers.orders import TakerSerializer, MakerSerializer
+from api.messages import WStypes
+from api.consumers.websocket import WebsocketConsumer
+from channels.layers import get_channel_layer
+
+channel_layer = get_channel_layer()
+
 
 class WatchTowerView(APIView):
     """The view for the watch tower to commit order changes"""
@@ -185,7 +191,9 @@ class WatchTowerView(APIView):
                                     * taker_amount
                                     / Decimal("1e18")
                                 )
-                    maker.bot.fees_earned =  F("fees_earned") + fees.quantize(Decimal("1."))
+                    maker.bot.fees_earned = F("fees_earned") + fees.quantize(
+                        Decimal("1.")
+                    )
                     bot_update.append(maker.bot)
                 else:
                     if (
@@ -229,6 +237,7 @@ class WatchTowerView(APIView):
         if bot_update:
             await Bot.objects.abulk_update(bot_update, ["fees_earned"])  # type: ignore
         return Response({}, status=status.HTTP_200_OK)
+
     async def delete(self, request):
         """Function used for maker order cancellation"""
         try:
@@ -249,4 +258,9 @@ class WatchTowerView(APIView):
 
         maker.status = Maker.CANCELLED
         await maker.asave()
+
+        await channel_layer.group_send(  # type: ignore
+            WebsocketConsumer.groups[0],
+            {"type": "send.json", "data": {WStypes.DEL_MAKER: maker.order_hash}},
+        )
         return Response({}, status=status.HTTP_200_OK)

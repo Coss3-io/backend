@@ -44,7 +44,7 @@ class MakerOrderTestCase(APITestCase):
         response = self.client.post(reverse("api:order"), data=data)
         order = Maker.objects.select_related("user").get(order_hash=data["order_hash"])
         data["address"] = Web3.to_checksum_address(data["address"])
-
+        data["bot"] = None
         self.assertDictEqual(
             data, response.json(), "The returned order should match the order sent"
         )
@@ -283,6 +283,7 @@ class MakerOrderTestCase(APITestCase):
             HTTP_200_OK,
             "The order retrieving should work properly",
         )
+        data["bot"] = None
         data["expiry"] = int(data["expiry"].timestamp())
         data["address"] = Web3.to_checksum_address(data["address"])
         data["base_token"] = Web3.to_checksum_address(data["base_token"])
@@ -333,7 +334,7 @@ class MakerOrderTestCase(APITestCase):
             HTTP_200_OK,
             "The own order retrieving should work properly",
         )
-
+        data["bot"] = None
         data["expiry"] = int(data["expiry"].timestamp())
         data["address"] = Web3.to_checksum_address(data["address"])
         data["base_token"] = Web3.to_checksum_address(data["base_token"])
@@ -1265,6 +1266,7 @@ class MakerOrderTestCase(APITestCase):
             response.status_code, HTTP_200_OK, "The order resquest should not fail"
         )
 
+        data["bot"] = None
         data["address"] = Web3.to_checksum_address(data["address"])
         data["base_token"] = Web3.to_checksum_address(data["base_token"])
         data["quote_token"] = Web3.to_checksum_address(data["quote_token"])
@@ -1316,6 +1318,7 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "base_fees": "0",
             "quote_fees": "0",
             "status": "OPEN",
+            "bot": None
         }
 
         self.order_1_2 = {
@@ -1338,6 +1341,7 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "base_fees": "0",
             "quote_fees": "0",
             "status": "OPEN",
+            "bot": None
         }
 
         self.order_1_3 = {
@@ -1360,6 +1364,7 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "base_fees": "0",
             "quote_fees": "0",
             "status": "OPEN",
+            "bot": None
         }
 
         self.order_2_1 = {
@@ -1382,6 +1387,7 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "base_fees": "0",
             "quote_fees": "0",
             "status": "OPEN",
+            "bot": None
         }
 
         self.order_2_2 = {
@@ -1404,6 +1410,7 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "base_fees": "0",
             "quote_fees": "0",
             "status": "OPEN",
+            "bot": None
         }
 
         self.order_2_3 = {
@@ -1426,6 +1433,7 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "base_fees": "0",
             "quote_fees": "0",
             "status": "OPEN",
+            "bot": None
         }
 
         self.order_2_4 = {
@@ -1448,6 +1456,7 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "base_fees": "0",
             "quote_fees": "0",
             "status": "OPEN",
+            "bot": None
         }
 
         self.pair_1 = {

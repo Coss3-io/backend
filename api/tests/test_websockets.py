@@ -14,13 +14,15 @@ from django.conf import settings
 from backend.asgi import ws_asgi_app
 from api.messages import WStypes
 from api.models import User
-from api.models.orders import Maker
+from api.models.orders import Maker, Bot
 from api.models.types import Address
+
+
 class WebsocketFramesTestCase(APITestCase):
     """Class used to verify the frames sent by the websocket"""
 
     def setUp(self):
-        self.user =  async_to_sync(User.objects.create_user)(
+        self.user = async_to_sync(User.objects.create_user)(
             address=Address("0xf17f52151EbEF6C7334FAD080c5704D77216b732")
         )
 
@@ -47,6 +49,23 @@ class WebsocketFramesTestCase(APITestCase):
             order_hash=self.data["order_hash"],
             is_buyer=self.data["is_buyer"],
         )
+
+        self.bot = {
+            "address": "0xF17f52151EbEF6C7334FAD080c5704D77216b732",
+            "expiry": 2114380800,
+            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "is_buyer": False,
+            "step": "{0:f}".format(Decimal("1e17")),
+            "price": "{0:f}".format(Decimal("1e18")),
+            "maker_fees": "{0:f}".format(Decimal("50")),
+            "upper_bound": "{0:f}".format(Decimal("15e17")),
+            "lower_bound": "{0:f}".format(Decimal("5e17")),
+            "amount": "{0:f}".format(Decimal("2e18")),
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
+        }
+
+        self.client.post(reverse("api:bot"), data=self.bot)
 
     async def test_websocket_frame_order_creation(self):
         """Checks a websocket frame is sent on order creation"""
@@ -92,6 +111,8 @@ class WebsocketFramesTestCase(APITestCase):
     async def test_websocket_frame_bot_creation(self):
         """Checks a websocket frame is sent on bot creation"""
 
+        async for bot in Bot.objects.all():
+            await bot.adelete()
         communicator = WebsocketCommunicator(ws_asgi_app, "/ws")
         connected, _ = await communicator.connect()
         self.assertTrue(connected, "The websocket should be connected on test startup")
@@ -198,7 +219,7 @@ class WebsocketFramesTestCase(APITestCase):
         self.assertTrue(connected, "The websocket should be connected on test startup")
 
         with patch("api.views.watch_tower.WatchTowerView.permission_classes", []):
-            response = await self.async_client.delete( #type: ignore
+            await self.async_client.delete(  # type: ignore
                 reverse("api:wt"),
                 content_type="application/json",
                 format="json",
@@ -211,4 +232,107 @@ class WebsocketFramesTestCase(APITestCase):
             loads(message),
             {WStypes.DEL_MAKER: self.data.get("order_hash")},
             "The websocket message should contain the deleted order hash",
+        )
+
+    async def test_websocket_frame_maker_update(self):
+        """Checks the websocket frame is sent well on order update"""
+
+        taker_address = Web3.to_checksum_address(
+            "0xf17f52151EbEF6C7334FAD080c5704D77216b733"
+        )
+        communicator = WebsocketCommunicator(ws_asgi_app, "/ws")
+        connected, _ = await communicator.connect()
+        self.assertTrue(connected, "The websocket should be connected on test startup")
+        maker = await Maker.objects.select_related("bot").aget(price=Decimal("5e17"))
+
+        trades = {
+            self.data["order_hash"]: {
+                "taker_amount": "{0:f}".format(Decimal("73e16")),
+                "base_fees": True,
+                "fees": "{0:f}".format(Decimal("365e15")),
+                "is_buyer": True,
+            },
+            maker.order_hash: {
+                "taker_amount": "{0:f}".format(Decimal("75e16")),
+                "base_fees": True,
+                "fees": "{0:f}".format(Decimal("360e15")),
+                "is_buyer": False,
+            },
+        }
+
+        with patch("api.views.watch_tower.WatchTowerView.permission_classes", []):
+            await self.async_client.post(  # type: ignore
+                reverse("api:wt"),
+                content_type="application/json",
+                data={
+                    "taker": taker_address,
+                    "block": 19,
+                    "trades": trades,
+                },
+            )
+        message = await communicator.receive_from()
+        self.data["filled"] = "{0:f}".format(Decimal("73e16"))
+        maker = await Maker.objects.select_related("bot").aget(price=Decimal("5e17"))
+
+        self.data["bot"] = None
+        self.data["status"] = "OPEN"
+        data = {
+            WStypes.MAKERS_UPDATE: [
+                self.data,
+                {
+                    "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+                    "amount": "{0:f}".format(Decimal("2e18")),
+                    "expiry": 2114380800,
+                    "price": "{0:f}".format(maker.price),
+                    "base_token": maker.base_token,
+                    "quote_token": maker.quote_token,
+                    "signature": maker.signature,
+                    "order_hash": maker.order_hash,
+                    "is_buyer": maker.is_buyer,
+                    "filled": "{0:f}".format(maker.filled),
+                    "status": maker.get_status_display(),
+                    "bot": {
+                        "step": "{0:f}".format(maker.bot.step),
+                        "price": "{0:f}".format(maker.bot.price),
+                        "maker_fees": "{0:f}".format(maker.bot.maker_fees),
+                        "upper_bound": "{0:f}".format(maker.bot.upper_bound),
+                        "lower_bound": "{0:f}".format(maker.bot.lower_bound),
+                        "fees_earned": "{0:f}".format(maker.bot.fees_earned),
+                    },
+                },
+            ]
+        }
+
+        message = loads(message)
+        if (
+            data[WStypes.MAKERS_UPDATE][0]["order_hash"]
+            == message[WStypes.MAKERS_UPDATE][0]["order_hash"]
+        ):
+            ws_1, maker_1 = (
+                data[WStypes.MAKERS_UPDATE][0],
+                message[WStypes.MAKERS_UPDATE][0],
+            )
+            ws_2, maker_2 = (
+                data[WStypes.MAKERS_UPDATE][1],
+                message[WStypes.MAKERS_UPDATE][1],
+            )
+        else:
+            ws_1, maker_1 = (
+                data[WStypes.MAKERS_UPDATE][0],
+                message[WStypes.MAKERS_UPDATE][1],
+            )
+            ws_2, maker_2 = (
+                data[WStypes.MAKERS_UPDATE][1],
+                message[WStypes.MAKERS_UPDATE][0],
+            )
+
+        self.assertDictEqual(
+            ws_1,
+            maker_1,
+            "The websocket message should contain the first maker update data",
+        )
+        self.assertDictEqual(
+            ws_2,
+            maker_2,
+            "The websocket message should contain the second maker update data",
         )

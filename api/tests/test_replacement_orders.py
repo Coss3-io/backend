@@ -98,13 +98,13 @@ class ReplacementOrdersCreationTestCase(APITestCase):
                 base_token_amount += Decimal(order.get("amount"))
 
             self.assertEqual(
-                order.get("step"),
+                order["bot"].get("step"),
                 data.get("step"),
                 "The step field should be reported into the orders created",
             )
 
             self.assertEqual(
-                order.get("maker_fees"),
+                order["bot"].get("maker_fees"),
                 data.get("maker_fees"),
                 "The maker_fees field should be reported into the orders created",
             )
@@ -116,7 +116,7 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             prices.pop(prices.index(order.get("price")))
 
             self.assertEqual(
-                order.get("lower_bound"),
+                order["bot"].get("lower_bound"),
                 data.get("lower_bound"),
                 "The orders lower bound should match the bot lower bound",
             )
@@ -155,7 +155,7 @@ class ReplacementOrdersCreationTestCase(APITestCase):
                 "fees_earned": "0",
             }
         )
-
+        
         self.assertDictEqual(
             response.json(),
             data,

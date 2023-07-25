@@ -75,7 +75,7 @@ class WatchTowerView(APIView):
             validate_decimal_integer(block, "block")
 
             if checksum_address != taker:
-                raise ValidationError(errors.Address.WRONG_CHECKSUM)
+                raise ValidationError(errors.Address.WRONG_CHECKSUM.format(""))
         except ValidationError as e:
             return Response({"error": e.detail}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -93,10 +93,14 @@ class WatchTowerView(APIView):
             "bot"
         )
         bot_update = []
+        ws_frame = []
 
         async for maker in makers:
             taker_amount = Decimal(trades[maker.order_hash]["taker_amount"])
             try:
+                maker_ws = await sync_to_async(
+                    lambda: MakerSerializer(maker, context={"private": True}).data
+                )()
                 takers.append(
                     {
                         "maker_id": maker.id,
@@ -112,6 +116,10 @@ class WatchTowerView(APIView):
                     if maker.is_buyer == trades[maker.order_hash]["is_buyer"]:
                         maker.filled = (
                             F("filled") - trades[maker.order_hash]["taker_amount"]
+                        )
+                        maker_ws["filled"] = "{0:f}".format(
+                            Decimal(maker_ws["filled"])
+                            - Decimal(trades[maker.order_hash]["taker_amount"])
                         )
                         if maker.is_buyer:
                             if maker.bot.maker_fees > Decimal("2000"):
@@ -154,6 +162,10 @@ class WatchTowerView(APIView):
                         maker.filled = (
                             F("filled") + trades[maker.order_hash]["taker_amount"]
                         )
+                        maker_ws["filled"] = "{0:f}".format(
+                            Decimal(maker_ws["filled"])
+                            + Decimal(trades[maker.order_hash]["taker_amount"])
+                        )
                         if maker.is_buyer:
                             if maker.bot.maker_fees > Decimal("2000"):
                                 fees = (
@@ -191,6 +203,9 @@ class WatchTowerView(APIView):
                                     * taker_amount
                                     / Decimal("1e18")
                                 )
+                    maker_ws["bot"]["fees_earned"] = "{0:f}".format(
+                        (maker.bot.fees_earned + fees).quantize(Decimal("1."))
+                    )
                     maker.bot.fees_earned = F("fees_earned") + fees.quantize(
                         Decimal("1.")
                     )
@@ -202,10 +217,16 @@ class WatchTowerView(APIView):
                     ):
                         maker.filled = maker.amount
                         maker.status = Maker.FILLED
+                        maker_ws["filled"] = maker_ws["amount"]
                     else:
                         maker.filled = (
                             F("filled") + trades[maker.order_hash]["taker_amount"]
                         )
+                        maker_ws["filled"] = "{0:f}".format(
+                            Decimal(maker_ws["filled"])
+                            + Decimal(trades[maker.order_hash]["taker_amount"])
+                        )
+                ws_frame.append(maker_ws)
             except KeyError as e:
                 await user
                 return Response(
@@ -236,6 +257,12 @@ class WatchTowerView(APIView):
 
         if bot_update:
             await Bot.objects.abulk_update(bot_update, ["fees_earned"])  # type: ignore
+
+        await channel_layer.group_send(  # type: ignore
+            WebsocketConsumer.groups[0],
+            {"type": "send.json", "data": {WStypes.MAKERS_UPDATE: ws_frame}},
+        )
+
         return Response({}, status=status.HTTP_200_OK)
 
     async def delete(self, request):

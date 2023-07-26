@@ -292,6 +292,7 @@ class WebsocketFramesTestCase(APITestCase):
                     "filled": "{0:f}".format(maker.filled),
                     "status": maker.get_status_display(),
                     "bot": {
+                        "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
                         "step": "{0:f}".format(maker.bot.step),
                         "price": "{0:f}".format(maker.bot.price),
                         "maker_fees": "{0:f}".format(maker.bot.maker_fees),

@@ -187,7 +187,7 @@ class BotView(APIView):
         if request.auth == "awaitable":
             request.user = (await User.objects.aget_or_create(address=request.user))[0]
 
-        bots = Bot.objects.filter(user=request.user).prefetch_related("orders")
+        bots = Bot.objects.filter(user=request.user).prefetch_related("orders") 
         data = await sync_to_async(lambda: BotSerializer(bots, many=True).data)()
         return Response(data, status=status.HTTP_200_OK)
 

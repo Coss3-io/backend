@@ -240,10 +240,14 @@ class WebsocketFramesTestCase(APITestCase):
         taker_address = Web3.to_checksum_address(
             "0xf17f52151EbEF6C7334FAD080c5704D77216b733"
         )
+        block = 19
+        prev_fees = Decimal("100e18")
         communicator = WebsocketCommunicator(ws_asgi_app, "/ws")
         connected, _ = await communicator.connect()
         self.assertTrue(connected, "The websocket should be connected on test startup")
         maker = await Maker.objects.select_related("bot").aget(price=Decimal("5e17"))
+        maker.bot.fees_earned = prev_fees
+        await maker.bot.asave()
 
         trades = {
             self.data["order_hash"]: {
@@ -253,7 +257,7 @@ class WebsocketFramesTestCase(APITestCase):
                 "is_buyer": True,
             },
             maker.order_hash: {
-                "taker_amount": "{0:f}".format(Decimal("75e16")),
+                "taker_amount": "{0:f}".format(Decimal("73e16")),
                 "base_fees": True,
                 "fees": "{0:f}".format(Decimal("360e15")),
                 "is_buyer": False,
@@ -266,10 +270,22 @@ class WebsocketFramesTestCase(APITestCase):
                 content_type="application/json",
                 data={
                     "taker": taker_address,
-                    "block": 19,
+                    "block": block,
                     "trades": trades,
                 },
             )
+
+        fees = (
+            (
+                maker.price
+                - maker.price
+                * Decimal("1000")
+                / (maker.bot.maker_fees + Decimal("1000"))
+            )
+            * Decimal(trades[maker.order_hash]["taker_amount"])
+            / Decimal("1e18")
+        ).quantize(Decimal("1."))
+
         message = await communicator.receive_from()
         self.data["filled"] = "{0:f}".format(Decimal("73e16"))
         maker = await Maker.objects.select_related("bot").aget(price=Decimal("5e17"))
@@ -298,10 +314,30 @@ class WebsocketFramesTestCase(APITestCase):
                         "maker_fees": "{0:f}".format(maker.bot.maker_fees),
                         "upper_bound": "{0:f}".format(maker.bot.upper_bound),
                         "lower_bound": "{0:f}".format(maker.bot.lower_bound),
-                        "fees_earned": "{0:f}".format(maker.bot.fees_earned),
+                        "fees_earned": "{0:f}".format(fees),
                     },
                 },
-            ]
+            ],
+            WStypes.NEW_TAKERS: [
+                {
+                    "block": block,
+                    "taker_amount": trades[maker.order_hash]["taker_amount"],
+                    "fees": trades[maker.order_hash]["fees"],
+                    "is_buyer": trades[maker.order_hash]["is_buyer"],
+                    "base_fees": trades[maker.order_hash]["base_fees"],
+                    "address": taker_address,
+                    "maker_hash": maker.order_hash,
+                },
+                {
+                    "block": block,
+                    "taker_amount": trades[self.data["order_hash"]]["taker_amount"],
+                    "fees": trades[self.data["order_hash"]]["fees"],
+                    "is_buyer": trades[self.data["order_hash"]]["is_buyer"],
+                    "base_fees": trades[self.data["order_hash"]]["base_fees"],
+                    "address": taker_address,
+                    "maker_hash": self.data["order_hash"],
+                },
+            ],
         }
 
         message = loads(message)
@@ -327,6 +363,28 @@ class WebsocketFramesTestCase(APITestCase):
                 message[WStypes.MAKERS_UPDATE][0],
             )
 
+        if (
+            data[WStypes.NEW_TAKERS][0]["maker_hash"]
+            == message[WStypes.NEW_TAKERS][0]["maker_hash"]
+        ):
+            taker_ws_1, taker_1 = (
+                data[WStypes.NEW_TAKERS][0],
+                message[WStypes.NEW_TAKERS][0],
+            )
+            taker_ws_2, taker_2 = (
+                data[WStypes.NEW_TAKERS][1],
+                message[WStypes.NEW_TAKERS][1],
+            )
+        else:
+            taker_ws_1, taker_1 = (
+                data[WStypes.NEW_TAKERS][0],
+                message[WStypes.NEW_TAKERS][1],
+            )
+            taker_ws_2, taker_2 = (
+                data[WStypes.NEW_TAKERS][1],
+                message[WStypes.NEW_TAKERS][0],
+            )
+
         self.assertDictEqual(
             ws_1,
             maker_1,
@@ -336,4 +394,15 @@ class WebsocketFramesTestCase(APITestCase):
             ws_2,
             maker_2,
             "The websocket message should contain the second maker update data",
+        )
+
+        self.assertDictEqual(
+            taker_ws_1,
+            taker_1,
+            "The websocket message should contain the first taker update data",
+        )
+        self.assertDictEqual(
+            taker_ws_2,
+            taker_2,
+            "The websocket message should contain the second taker update data",
         )

@@ -1,5 +1,6 @@
 from decimal import Decimal
 from typing import Any
+from django.db.models.expressions import CombinedExpression
 from asgiref.sync import sync_to_async
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import F
@@ -11,9 +12,9 @@ from adrf.views import APIView
 from api.models import User
 import api.errors as errors
 from api.models.types import Address, KeccakHash
-from api.utils import validate_decimal_integer, compute_order_hash
+from api.utils import validate_decimal_integer
 from api.views.permissions import WatchTowerPermission
-from api.models.orders import Maker, Bot
+from api.models.orders import Maker, Bot, Taker
 from api.serializers.orders import TakerSerializer, MakerSerializer
 from api.messages import WStypes
 from api.consumers.websocket import WebsocketConsumer
@@ -88,27 +89,29 @@ class WatchTowerView(APIView):
             )
 
         takers: Any = []
-        user = User.objects.aget_or_create(address=checksum_address)
+        user = (await User.objects.aget_or_create(address=checksum_address))[0]
         makers = Maker.objects.filter(order_hash__in=makers_hash_list).select_related(
             "bot"
         )
         bot_update = []
-        ws_frame = []
+        maker_ws = []
 
         async for maker in makers:
             taker_amount = Decimal(trades[maker.order_hash]["taker_amount"])
             try:
-                maker_ws = await sync_to_async(
+                temp_maker_ws = await sync_to_async(
                     lambda: MakerSerializer(maker, context={"private": True}).data
                 )()
                 takers.append(
                     {
                         "maker_id": maker.id,
                         "block": block,
-                        "taker_amount": taker_amount,
+                        "taker_amount": trades[maker.order_hash]["taker_amount"],
                         "fees": trades[maker.order_hash]["fees"],
                         "is_buyer": trades[maker.order_hash]["is_buyer"],
                         "base_fees": trades[maker.order_hash]["base_fees"],
+                        "address": user.address,
+                        "maker_hash": maker.order_hash,
                     }
                 )
 
@@ -117,8 +120,8 @@ class WatchTowerView(APIView):
                         maker.filled = (
                             F("filled") - trades[maker.order_hash]["taker_amount"]
                         )
-                        maker_ws["filled"] = "{0:f}".format(
-                            Decimal(maker_ws["filled"])
+                        temp_maker_ws["filled"] = "{0:f}".format(
+                            Decimal(temp_maker_ws["filled"])
                             - Decimal(trades[maker.order_hash]["taker_amount"])
                         )
                         if maker.is_buyer:
@@ -162,8 +165,8 @@ class WatchTowerView(APIView):
                         maker.filled = (
                             F("filled") + trades[maker.order_hash]["taker_amount"]
                         )
-                        maker_ws["filled"] = "{0:f}".format(
-                            Decimal(maker_ws["filled"])
+                        temp_maker_ws["filled"] = "{0:f}".format(
+                            Decimal(temp_maker_ws["filled"])
                             + Decimal(trades[maker.order_hash]["taker_amount"])
                         )
                         if maker.is_buyer:
@@ -203,8 +206,8 @@ class WatchTowerView(APIView):
                                     * taker_amount
                                     / Decimal("1e18")
                                 )
-                    maker_ws["bot"]["fees_earned"] = "{0:f}".format(
-                        (maker.bot.fees_earned + fees).quantize(Decimal("1."))
+                    temp_maker_ws["bot"]["fees_earned"] = "{0:f}".format(
+                        (fees).quantize(Decimal("1."))
                     )
                     maker.bot.fees_earned = F("fees_earned") + fees.quantize(
                         Decimal("1.")
@@ -217,16 +220,16 @@ class WatchTowerView(APIView):
                     ):
                         maker.filled = maker.amount
                         maker.status = Maker.FILLED
-                        maker_ws["filled"] = maker_ws["amount"]
+                        temp_maker_ws["filled"] = temp_maker_ws["amount"]
                     else:
                         maker.filled = (
                             F("filled") + trades[maker.order_hash]["taker_amount"]
                         )
-                        maker_ws["filled"] = "{0:f}".format(
-                            Decimal(maker_ws["filled"])
+                        temp_maker_ws["filled"] = "{0:f}".format(
+                            Decimal(temp_maker_ws["filled"])
                             + Decimal(trades[maker.order_hash]["taker_amount"])
                         )
-                ws_frame.append(maker_ws)
+                maker_ws.append(temp_maker_ws)
             except KeyError as e:
                 await user
                 return Response(
@@ -235,7 +238,6 @@ class WatchTowerView(APIView):
                 )
 
         if not takers:
-            await user
             return Response(
                 {"error": [errors.Order.NO_MAKER_FOUND]},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -243,9 +245,9 @@ class WatchTowerView(APIView):
 
         takers_serializer = TakerSerializer(data=takers, many=True)
         await sync_to_async(takers_serializer.is_valid)(raise_exception=True)
-        takers_serializer.save(user=(await user)[0])
+        takers_serializer.save(user=user)
         if takers_serializer.instance:
-            await takers_serializer.instance
+            takers_serializer.instance = await takers_serializer.instance
 
         try:
             await Maker.objects.abulk_update(makers, ["filled", "status"])  # type: ignore
@@ -258,9 +260,18 @@ class WatchTowerView(APIView):
         if bot_update:
             await Bot.objects.abulk_update(bot_update, ["fees_earned"])  # type: ignore
 
+        for data in takers:
+            del data["maker_id"]
+
         await channel_layer.group_send(  # type: ignore
             WebsocketConsumer.groups[0],
-            {"type": "send.json", "data": {WStypes.MAKERS_UPDATE: ws_frame}},
+            {
+                "type": "send.json",
+                "data": {
+                    WStypes.MAKERS_UPDATE: maker_ws,
+                    WStypes.NEW_TAKERS: takers,
+                },
+            },
         )
 
         return Response({}, status=status.HTTP_200_OK)

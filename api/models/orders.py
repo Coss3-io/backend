@@ -129,8 +129,8 @@ class Taker(models.Model):
     user = models.ForeignKey(
         "User",
         on_delete=models.CASCADE,
-        null=True,
-        blank=True,
+        null=False,
+        blank=False,
     )
     block = models.BigIntegerField(null=False, blank=False)
     taker_amount = models.DecimalField(

@@ -1,5 +1,4 @@
 from decimal import Decimal
-from datetime import datetime
 from asgiref.sync import sync_to_async
 from adrf.views import APIView
 from django.db.utils import IntegrityError
@@ -15,6 +14,11 @@ from api.models import User
 import api.errors as errors
 from api.serializers.orders import MakerSerializer, BotSerializer, TakerSerializer
 from api.views.authentications import ApiAuthentication
+from api.messages import WStypes
+from api.consumers.websocket import WebsocketConsumer
+from channels.layers import get_channel_layer
+
+channel_layer = get_channel_layer()
 
 
 class OrderView(APIView):
@@ -114,6 +118,12 @@ class MakerView(APIView):
         if maker.instance is not None:
             maker.instance = await maker.instance
         data = await sync_to_async(lambda: maker.data)()
+
+        await channel_layer.group_send(  # type: ignore
+            WebsocketConsumer.groups[0],
+            {"type": "send.json", "data": {WStypes.NEW_MAKER :data}},
+        )
+
         return Response(data, status=status.HTTP_200_OK)
 
 
@@ -130,9 +140,7 @@ class TakerView(APIView):
             request.user = (await User.objects.aget_or_create(address=request.user))[0]
 
         if request.query_params.get("all", None):
-            queryset = (
-                Taker.objects.filter(user=request.user)
-            )
+            queryset = Taker.objects.filter(user=request.user)
         else:
             if (base_token := request.query_params.get("base_token", "0")) == "0" or (
                 quote_token := request.query_params.get("quote_token", "0")
@@ -152,12 +160,13 @@ class TakerView(APIView):
                 raise ValidationError({"quote_token": e.detail})
 
             queryset = Taker.objects.filter(
-                user=request.user, maker__base_token=base_token, maker__quote_token=quote_token
+                user=request.user,
+                maker__base_token=base_token,
+                maker__quote_token=quote_token,
             )
 
         data = await sync_to_async(lambda: TakerSerializer(queryset, many=True).data)()
         return Response(data, status=status.HTTP_200_OK)
-
 
 
 class BotView(APIView):
@@ -178,7 +187,7 @@ class BotView(APIView):
         if request.auth == "awaitable":
             request.user = (await User.objects.aget_or_create(address=request.user))[0]
 
-        bots = Bot.objects.filter(user=request.user).prefetch_related("orders")
+        bots = Bot.objects.filter(user=request.user).select_related("user").prefetch_related("orders") 
         data = await sync_to_async(lambda: BotSerializer(bots, many=True).data)()
         return Response(data, status=status.HTTP_200_OK)
 
@@ -199,4 +208,10 @@ class BotView(APIView):
             )
 
         data = await sync_to_async(lambda: bot.data)()
+
+        await channel_layer.group_send(  # type: ignore
+            WebsocketConsumer.groups[0],
+            {"type": "send.json", "data": {WStypes.NEW_BOT :data}},
+        )
+
         return Response(data, status=status.HTTP_200_OK)

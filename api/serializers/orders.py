@@ -28,189 +28,6 @@ class TimestampField(serializers.Field):
         return int(datetime.timestamp(value))
 
 
-class MakerListSerializer(serializers.ListSerializer):
-    """Used for multiple operation on orders, especially creation, and update"""
-
-    def create(self, validated_data):
-        makers = [Maker(**data) for data in validated_data]
-        return Maker.objects.abulk_create(makers)
-
-    def update(self, validated_data):
-        return Maker.objects.abulk_update(  # type: ignore
-            [Maker(**data) for data in validated_data], ["filled", "status"]
-        )
-
-
-class MakerSerializer(serializers.ModelSerializer):
-    """The maker order class serializer"""
-
-    id = serializers.IntegerField(required=False, write_only=True)
-    address = serializers.CharField(write_only=True)
-    expiry = TimestampField(required=True)
-    status = serializers.CharField(source="get_status_display", read_only=True)
-    is_buyer = serializers.BooleanField(allow_null=True, default=None)  # type: ignore
-
-    class Meta:
-        model = Maker
-        fields = [
-            "id",
-            "address",
-            "base_token",
-            "quote_token",
-            "amount",
-            "price",
-            "is_buyer",
-            "expiry",
-            "order_hash",
-            "status",
-            "filled",
-            "signature",
-        ]
-        extra_kwargs = {
-            "user": {"write_only": True},
-            "filled": {"read_only": True},
-        }
-        list_serializer_class = MakerListSerializer
-
-    async def create(self, validated_data):
-        validated_data.update(
-            {
-                "user": (
-                    await User.objects.aget_or_create(address=validated_data["address"])
-                )[0]
-            }
-        )
-        del validated_data["address"]
-        return await super().create(validated_data=validated_data)
-
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        if not instance.user:
-            data["address"] = instance.bot.user.address
-            data["lower_bound"] = "{0:f}".format(instance.bot.lower_bound)
-            data["maker_fees"] = "{0:f}".format(instance.bot.maker_fees)
-            data["step"] = "{0:f}".format(instance.bot.step)
-        else:
-            data["address"] = instance.user.address
-        base_fees = Decimal("0")
-        quote_fees = Decimal("0")
-
-        for taker in instance.takers.all():
-            if taker.base_fees:
-                base_fees += taker.fees
-            else:
-                quote_fees += taker.fees
-        data["quote_fees"] = str(quote_fees)
-        data["base_fees"] = str(base_fees)
-
-        return data
-
-    def validate_id(self, value):
-        if value is not None:
-            raise ValidationError(errors.Order.ID_SUBMITTED_ERROR)
-
-    def validate_address(self, value):
-        return Address(value)
-
-    def validate_is_buyer(self, value):
-        if value is None:
-            raise ValidationError("This field is required.")
-        return value
-
-    def validate_amount(self, value: str):
-        return validate_decimal_integer(value, "amount")
-
-    def validate_price(self, value: str):
-        return validate_decimal_integer(value, "price")
-
-    def validate_base_token(self, value):
-        return validate_address(value, "base_token")
-
-    def validate_quote_token(self, value):
-        return validate_address(value, "quote_token")
-
-    def validate_order_hash(self, value):
-        return KeccakHash(value)
-
-    def validate_signature(self, value):
-        return Signature(value)
-
-    def validate(self, data):
-        if data["base_token"].lower() == data["quote_token"].lower():
-            raise ValidationError(errors.Order.SAME_BASE_QUOTE_ERROR)
-
-        encoded_order, order_hash = compute_order_hash(
-            {
-                "address": data["address"],
-                "amount": int(data["amount"]),
-                "price": int(data["price"]),
-                "step": 0,
-                "maker_fees": 0,
-                "upper_bound": 0,
-                "lower_bound": 0,
-                "base_token": data["base_token"],
-                "quote_token": data["quote_token"],
-                "expiry": int(data["expiry"].timestamp()),
-                "is_buyer": 0 if data["is_buyer"] else 1,
-                "replace_order": False,
-            }
-        )
-
-        if (
-            validate_eth_signed_message(
-                message=encoded_order,
-                signature=data["signature"],
-                address=data["address"],
-            )
-            == False
-        ):
-            raise ValidationError(errors.Signature.SIGNATURE_MISMATCH_ERROR)
-
-        if order_hash != data["order_hash"]:
-            raise ValidationError(errors.KeccakHash.MISMATCH_HASH_ERROR)
-        return super().validate(data)
-
-
-class TakerListSerializer(serializers.ListSerializer):
-    """List serializer for batch creation of taker orders"""
-
-    async def create(self, validated_data):
-        takers = [Taker(**order) for order in validated_data]
-        return await Taker.objects.abulk_create(takers)
-
-
-class TakerSerializer(serializers.ModelSerializer):
-    """Serializer used for the taker orders creation and deletetion"""
-
-    maker = MakerSerializer(required=False, write_only=True)
-    maker_id = serializers.IntegerField(required=True, write_only=True)
-
-    class Meta:
-        model = Taker
-        list_serializer_class = TakerListSerializer
-        fields = [
-            "maker",
-            "maker_id",
-            "block",
-            "taker_amount",
-            "base_fees",
-            "fees",
-            "is_buyer",
-        ]
-        extra_kwargs = {
-            "user": {"write_only": True},
-        }
-
-        def validate_block(self, data: str) -> str:
-            return validate_decimal_integer(data, "block")
-
-        def validate_taker_amount(self, data: str) -> str:
-            return validate_decimal_integer(data, "taker_amount")
-
-        def validate_base_fees(self, data: str) -> str:
-            return validate_decimal_integer(data, "base_fees")
-
-
 class BotSerializer(serializers.ModelSerializer):
     """The model used to serialize bots"""
 
@@ -398,6 +215,10 @@ class BotSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
+        data["address"] = instance.user.address
+        if self.context.get("private", None):
+            return data
+        
         base_token_amount = Decimal("0")
         quote_token_amount = Decimal("0")
         for order in instance.orders.all():
@@ -416,3 +237,189 @@ class BotSerializer(serializers.ModelSerializer):
             }
         )
         return data
+
+
+class MakerListSerializer(serializers.ListSerializer):
+    """Used for multiple operation on orders, especially creation, and update"""
+
+    def create(self, validated_data):
+        makers = [Maker(**data) for data in validated_data]
+        return Maker.objects.abulk_create(makers)
+
+    def update(self, validated_data):
+        return Maker.objects.abulk_update(  # type: ignore
+            [Maker(**data) for data in validated_data], ["filled", "status"]
+        )
+
+
+class MakerSerializer(serializers.ModelSerializer):
+    """The maker order class serializer"""
+
+    id = serializers.IntegerField(required=False, write_only=True)
+    address = serializers.CharField(write_only=True)
+    expiry = TimestampField(required=True)
+    bot = BotSerializer(read_only=True, context={"private": True})
+    status = serializers.CharField(source="get_status_display", read_only=True)
+    is_buyer = serializers.BooleanField(allow_null=True, default=None)  # type: ignore
+
+    class Meta:
+        model = Maker
+        fields = [
+            "id",
+            "bot",
+            "address",
+            "base_token",
+            "quote_token",
+            "amount",
+            "price",
+            "is_buyer",
+            "expiry",
+            "order_hash",
+            "status",
+            "filled",
+            "signature",
+        ]
+        extra_kwargs = {
+            "user": {"write_only": True},
+            "filled": {"read_only": True},
+        }
+        list_serializer_class = MakerListSerializer
+
+    async def create(self, validated_data):
+        validated_data.update(
+            {
+                "user": (
+                    await User.objects.aget_or_create(address=validated_data["address"])
+                )[0]
+            }
+        )
+        del validated_data["address"]
+        return await super().create(validated_data=validated_data)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if not instance.user:
+            data["address"] = instance.bot.user.address
+        else:
+            data["address"] = instance.user.address
+
+        if self.context.get("private", None):
+            return data
+
+        base_fees = Decimal("0")
+        quote_fees = Decimal("0")
+
+        for taker in instance.takers.all():
+            if taker.base_fees:
+                base_fees += taker.fees
+            else:
+                quote_fees += taker.fees
+        data["quote_fees"] = str(quote_fees)
+        data["base_fees"] = str(base_fees)
+
+        return data
+
+    def validate_id(self, value):
+        if value is not None:
+            raise ValidationError(errors.Order.ID_SUBMITTED_ERROR)
+
+    def validate_address(self, value):
+        return Address(value)
+
+    def validate_is_buyer(self, value):
+        if value is None:
+            raise ValidationError("This field is required.")
+        return value
+
+    def validate_amount(self, value: str):
+        return validate_decimal_integer(value, "amount")
+
+    def validate_price(self, value: str):
+        return validate_decimal_integer(value, "price")
+
+    def validate_base_token(self, value):
+        return validate_address(value, "base_token")
+
+    def validate_quote_token(self, value):
+        return validate_address(value, "quote_token")
+
+    def validate_order_hash(self, value):
+        return KeccakHash(value)
+
+    def validate_signature(self, value):
+        return Signature(value)
+
+    def validate(self, data):
+        if data["base_token"].lower() == data["quote_token"].lower():
+            raise ValidationError(errors.Order.SAME_BASE_QUOTE_ERROR)
+
+        encoded_order, order_hash = compute_order_hash(
+            {
+                "address": data["address"],
+                "amount": int(data["amount"]),
+                "price": int(data["price"]),
+                "step": 0,
+                "maker_fees": 0,
+                "upper_bound": 0,
+                "lower_bound": 0,
+                "base_token": data["base_token"],
+                "quote_token": data["quote_token"],
+                "expiry": int(data["expiry"].timestamp()),
+                "is_buyer": 0 if data["is_buyer"] else 1,
+                "replace_order": False,
+            }
+        )
+
+        if (
+            validate_eth_signed_message(
+                message=encoded_order,
+                signature=data["signature"],
+                address=data["address"],
+            )
+            == False
+        ):
+            raise ValidationError(errors.Signature.SIGNATURE_MISMATCH_ERROR)
+
+        if order_hash != data["order_hash"]:
+            raise ValidationError(errors.KeccakHash.MISMATCH_HASH_ERROR)
+        return super().validate(data)
+
+
+class TakerListSerializer(serializers.ListSerializer):
+    """List serializer for batch creation of taker orders"""
+
+    async def create(self, validated_data):
+        takers = [Taker(**order) for order in validated_data]
+        return await Taker.objects.abulk_create(takers)
+
+
+class TakerSerializer(serializers.ModelSerializer):
+    """Serializer used for the taker orders creation and deletetion"""
+
+    maker = MakerSerializer(required=False, write_only=True)
+    maker_id = serializers.IntegerField(required=True, write_only=True)
+
+    class Meta:
+        model = Taker
+        list_serializer_class = TakerListSerializer
+        fields = [
+            "maker",
+            "maker_id",
+            "block",
+            "taker_amount",
+            "base_fees",
+            "fees",
+            "is_buyer",
+        ]
+        extra_kwargs = {
+            "user": {"write_only": True},
+        }
+
+        def validate_block(self, data: str) -> str:
+            return validate_decimal_integer(data, "block")
+
+        def validate_taker_amount(self, data: str) -> str:
+            return validate_decimal_integer(data, "taker_amount")
+
+        def validate_base_fees(self, data: str) -> str:
+            return validate_decimal_integer(data, "base_fees")

@@ -662,7 +662,7 @@ class MakerCommitTestCase(APITestCase):
 
         self.assertDictEqual(
             response.json(),
-            {"error": [errors.Address.WRONG_CHECKSUM]},
+            {"error": [errors.Address.WRONG_CHECKSUM.format("")]},
             "the request with wrong taker checksum should fail",
         )
 

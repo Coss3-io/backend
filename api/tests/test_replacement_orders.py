@@ -98,13 +98,13 @@ class ReplacementOrdersCreationTestCase(APITestCase):
                 base_token_amount += Decimal(order.get("amount"))
 
             self.assertEqual(
-                order.get("step"),
+                order["bot"].get("step"),
                 data.get("step"),
                 "The step field should be reported into the orders created",
             )
 
             self.assertEqual(
-                order.get("maker_fees"),
+                order["bot"].get("maker_fees"),
                 data.get("maker_fees"),
                 "The maker_fees field should be reported into the orders created",
             )
@@ -116,7 +116,7 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             prices.pop(prices.index(order.get("price")))
 
             self.assertEqual(
-                order.get("lower_bound"),
+                order["bot"].get("lower_bound"),
                 data.get("lower_bound"),
                 "The orders lower bound should match the bot lower bound",
             )
@@ -142,9 +142,9 @@ class ReplacementOrdersCreationTestCase(APITestCase):
 
         del data["expiry"]
         del data["signature"]
-        del data["address"]
         del data["amount"]
         del data["is_buyer"]
+        data["address"] = Web3.to_checksum_address(data.get("address", ""))
         data["base_token"] = Web3.to_checksum_address(data.get("base_token", ""))
         data["quote_token"] = Web3.to_checksum_address(data.get("quote_token", ""))
 
@@ -155,7 +155,6 @@ class ReplacementOrdersCreationTestCase(APITestCase):
                 "fees_earned": "0",
             }
         )
-
         self.assertDictEqual(
             response.json(),
             data,
@@ -1547,7 +1546,6 @@ class BotRetrievalTestCase(APITestCase):
 
         del self.data["expiry"]
         del self.data["signature"]
-        del self.data["address"]
         del self.data["amount"]
         del self.data["is_buyer"]
 
@@ -1557,6 +1555,7 @@ class BotRetrievalTestCase(APITestCase):
         self.data["quote_token"] = Web3.to_checksum_address(
             self.data.get("quote_token", "")
         )
+        self.data["address"] = Web3.to_checksum_address(self.data.get("address", ""))
 
         self.data.update(
             {
@@ -1622,7 +1621,6 @@ class BotRetrievalTestCase(APITestCase):
 
         del self.data["expiry"]
         del self.data["signature"]
-        del self.data["address"]
         del self.data["amount"]
         del self.data["is_buyer"]
 
@@ -1641,6 +1639,9 @@ class BotRetrievalTestCase(APITestCase):
 
         self.data["base_token"] = Web3.to_checksum_address(
             self.data.get("base_token", "")
+        )
+        self.data["address"] = Web3.to_checksum_address(
+            self.data.get("address", "")
         )
         self.data["quote_token"] = Web3.to_checksum_address(
             self.data.get("quote_token", "")
@@ -1682,7 +1683,6 @@ class BotRetrievalTestCase(APITestCase):
 
         del self.data["expiry"], data["expiry"]
         del self.data["signature"], data["signature"]
-        del self.data["address"], data["address"]
         del self.data["amount"], data["amount"]
         del self.data["is_buyer"], data["is_buyer"]
 
@@ -1709,6 +1709,10 @@ class BotRetrievalTestCase(APITestCase):
         data["base_token"] = Web3.to_checksum_address(data.get("base_token", ""))
         self.data["base_token"] = Web3.to_checksum_address(
             self.data.get("base_token", "")
+        )
+        data["address"] = Web3.to_checksum_address(data.get("address", ""))
+        self.data["address"] = Web3.to_checksum_address(
+            self.data.get("address", "")
         )
         data["quote_token"] = Web3.to_checksum_address(data.get("quote_token", ""))
         self.data["quote_token"] = Web3.to_checksum_address(

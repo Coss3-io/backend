@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 import decimal
+import os
 from pathlib import Path
 
 decimal.DefaultContext.prec = 200
@@ -61,7 +62,7 @@ ROOT_URLCONF = "backend.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [os.path.join(BASE_DIR, "backend", "templates")],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -101,12 +102,12 @@ REST_FRAMEWORK = {
     # Use Django's standard `django.contrib.auth` permissions,
     # or allow read-only access for unauthenticated users.
     "DEFAULT_PERMISSION_CLASSES": [
-        #"rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly"
+        # "rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly"
     ],
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
     ],
-    "NON_FIELD_ERRORS_KEY": "error"
+    "NON_FIELD_ERRORS_KEY": "error",
 }
 
 CHANNEL_LAYERS = {
@@ -141,6 +142,8 @@ STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOG_IN_MESSAGE = "log in into coss3.io as {address} at {timestamp}"
-API_LOG_IN_MESSAGE = "api request into coss3.io as {{address}} at {{timestamp}} {method}{path}"
+API_LOG_IN_MESSAGE = (
+    "api request into coss3.io as {{address}} at {{timestamp}} {method}{path}"
+)
 
 from .local_settings import *

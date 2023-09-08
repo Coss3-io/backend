@@ -28,6 +28,8 @@ class MyUserManager(BaseUserManager):
 
         user = await self.create_user(address)
         user.is_admin = True
+        user.is_staff = True
+        user.is_superuser = True
         await user.asave(using=self._db)
         return user
 
@@ -45,6 +47,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         ],
     )
     is_active = models.BooleanField(default=True)
+    is_staff = models.BooleanField(default=False)
     is_admin = models.BooleanField(default=False)
 
     objects = MyUserManager()

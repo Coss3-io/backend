@@ -25,7 +25,7 @@ class Maker(models.Model):
                 & models.Q(amount__gt=Decimal("0"))
                 & models.Q(amount__gt=Decimal("0"))
                 & models.Q(price__gt=Decimal("0")),
-                name="positive_numbers_needed"
+                name="positive_numbers_needed",
             ),
             models.CheckConstraint(
                 check=models.Q(filled__lte=models.F("amount")), name="filled_lte_amount"
@@ -112,11 +112,11 @@ class Taker(models.Model):
     objects = AsyncManager()
 
     constraints = [
-            models.CheckConstraint(
-                check=models.Q(taker_amount__gte=Decimal("0"))
-                & models.Q(fees__gt=Decimal("0")),
-                name="positive_numbers_needed"
-            ),
+        models.CheckConstraint(
+            check=models.Q(taker_amount__gte=Decimal("0"))
+            & models.Q(fees__gt=Decimal("0")),
+            name="positive_numbers_needed",
+        ),
     ]
 
     maker = models.ForeignKey(
@@ -124,7 +124,7 @@ class Taker(models.Model):
         on_delete=models.PROTECT,
         null=False,
         blank=False,
-        related_name="takers"
+        related_name="takers",
     )
     user = models.ForeignKey(
         "User",
@@ -150,6 +150,7 @@ class Taker(models.Model):
         blank=False,
     )
     is_buyer = models.BooleanField(null=False, blank=False)
+    date = models.DateTimeField(auto_now_add=True)
 
 
 class Bot(models.Model):

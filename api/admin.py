@@ -1,7 +1,9 @@
 from decimal import Decimal
 from django.contrib import admin
 from django.conf import settings
-from api.models.orders import Maker, Taker
+from api.models import User
+from api.models.orders import Bot, Maker, Taker
+from api.models.stacking import Stacking, StackingFees
 
 
 def trim_zero(number):
@@ -24,12 +26,37 @@ def format_token(token):
 class TakerInlines(admin.TabularInline):
     model = Taker
     extra = 0
+    show_change_link = True
+
+
+class MakerInlines(admin.TabularInline):
+    model = Maker
+    extra = 0
+
+    show_change_link = True
+    fields = ["base_token", "quote_token", "amount", "price", "filled", "is_buyer"]
+    readonly_fields = [
+        "base_token",
+        "quote_token",
+        "amount",
+        "price",
+        "filled",
+        "is_buyer",
+    ]
+
+
+class MakerListFilter(admin.SimpleListFilter):
+    """List filter for maker base and quote tokens"""
+
+    title = "Token Pair"
+    parameter_name = "token_pair"
 
 
 @admin.register(Maker)
 class MakerAdmin(admin.ModelAdmin):
     inlines = [TakerInlines]
     ordering = ("expiry",)
+    search_fields = ["base_token", "quote_token"]
     list_display = [
         "__str__",
         "amount_formatted",
@@ -43,6 +70,8 @@ class MakerAdmin(admin.ModelAdmin):
     ]
 
     readonly_fields = [
+        "bot",
+        "user",
         "amount",
         "price",
         "base_token",
@@ -60,6 +89,7 @@ class MakerAdmin(admin.ModelAdmin):
             "Order Details",
             {
                 "fields": [
+                    ("user", "bot"),
                     ("amount", "price", "filled"),
                     ("base_token", "quote_token"),
                     ("expiry", "is_buyer"),
@@ -105,6 +135,7 @@ class MakerAdmin(admin.ModelAdmin):
 @admin.register(Taker)
 class TakerAdmin(admin.ModelAdmin):
     list_select_related = ["user", "maker"]
+    search_fields = ["maker__base_token", "maker__quote_token"]
     ordering = ["-date"]
 
     list_display = [
@@ -133,7 +164,7 @@ class TakerAdmin(admin.ModelAdmin):
                     ("base_fees", "is_buyer"),
                     "block",
                 ],
-                "classes": ["wide"]
+                "classes": ["wide"],
             },
         ),
     ]
@@ -159,3 +190,123 @@ class TakerAdmin(admin.ModelAdmin):
     @admin.display(description="Price")
     def price_formatted(self, obj: Taker):
         return trim_zero(obj.maker.price)
+
+
+@admin.register(Bot)
+class BotAdmin(admin.ModelAdmin):
+    """Class used to manage the bots from the admin page"""
+
+    inlines = [MakerInlines]
+    ordering = ("date",)
+    list_display = [
+        "__str__",
+        "date",
+        "lower_bound_f",
+        "upper_bound_f",
+        "step_f",
+        "price_f",
+        "maker_fees_f",
+        "fees_earned_f",
+    ]
+
+    readonly_fields = [
+        "user",
+        "date",
+        "lower_bound",
+        "upper_bound",
+        "step",
+        "price",
+        "maker_fees",
+        "fees_earned",
+    ]
+
+    fieldsets = [
+        (
+            None,
+            {
+                "fields": [
+                    (
+                        "user",
+                        "date",
+                    )
+                ],
+                "classes": ["wide"],
+            },
+        ),
+        (
+            "Order Details",
+            {
+                "fields": [
+                    ("lower_bound", "upper_bound"),
+                    ("price", "step"),
+                    ("fees_earned", "maker_fees"),
+                ],
+                "classes": ["wide"],
+            },
+        ),
+    ]
+
+    @admin.display(description="lower_bound")
+    def lower_bound_f(self, obj: Bot):
+        return trim_zero(obj.lower_bound)
+
+    @admin.display(description="upper_bound")
+    def upper_bound_f(self, obj: Bot):
+        return trim_zero(obj.upper_bound)
+
+    @admin.display(description="step")
+    def step_f(self, obj: Bot):
+        return trim_zero(obj.step)
+
+    @admin.display(description="price")
+    def price_f(self, obj: Bot):
+        return trim_zero(obj.price)
+
+    @admin.display(description="maker_fees")
+    def maker_fees_f(self, obj: Bot):
+        return trim_zero(obj.maker_fees)
+
+    @admin.display(description="fees_earned")
+    def fees_earned_f(self, obj: Bot):
+        return trim_zero(obj.fees_earned)
+
+
+@admin.register(Stacking)
+class StackingAdmin(admin.ModelAdmin):
+    """Admin interface user to interact with the stacking entries"""
+
+    ordering = ("-slot",)
+    search_fields = ["user__address"]
+    list_display = ["user", "amount_f", "slot"]
+    
+    readonly_fields = ["user"]
+    fields = ["user", ("amount", "slot")]
+
+    @admin.display(description="amount")
+    def amount_f(self, obj: Stacking):
+        return trim_zero(obj.amount)
+
+@admin.register(StackingFees)
+class StackingFeesAdmin(admin.ModelAdmin):
+    """Admin interface user to interact with the stackingfees entries"""
+
+    ordering = ("-slot",)
+    search_fields = ["token"]
+    list_display = ["token_f", "amount_f", "slot"]
+    
+    readonly_fields = ["token"]
+    fields = ["token", ("amount", "slot")]
+
+    @admin.display(description="amount")
+    def amount_f(self, obj: Stacking):
+        return trim_zero(obj.amount)
+
+    @admin.display(description="Token")
+    def token_f(self, obj: StackingFees):
+        "infer the token symbol from the address"
+        return format_token(obj.token)
+
+@admin.register(User)
+class UserAdmin(admin.ModelAdmin):
+    """User admin interface"""
+    pass

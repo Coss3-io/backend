@@ -398,7 +398,7 @@ class TakerSerializer(serializers.ModelSerializer):
 
     maker = MakerSerializer(required=False, write_only=True)
     maker_id = serializers.IntegerField(required=True, write_only=True)
-
+    date = TimestampField(required=False, read_only=True)
     class Meta:
         model = Taker
         list_serializer_class = TakerListSerializer
@@ -410,6 +410,7 @@ class TakerSerializer(serializers.ModelSerializer):
             "base_fees",
             "fees",
             "is_buyer",
+            "date",
         ]
         extra_kwargs = {
             "user": {"write_only": True},

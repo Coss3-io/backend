@@ -36,6 +36,7 @@ AUTH_USER_MODEL = "api.User"
 # Application definition
 
 INSTALLED_APPS = [
+    'django_crontab',
     "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
@@ -56,6 +57,10 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+]
+
+CRONJOBS = [
+    ('0 3 * * *', 'backend.cron.deleting_expired_orders')
 ]
 
 ROOT_URLCONF = "backend.urls"

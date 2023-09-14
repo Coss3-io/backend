@@ -53,6 +53,7 @@ class BotSerializer(serializers.ModelSerializer):
         write_only=True,
     )
     is_buyer = serializers.BooleanField(allow_null=True, default=None, write_only=True)  # type: ignore
+    timestamp = TimestampField(required=False, read_only=True)
 
     class Meta:
         model = Bot
@@ -70,6 +71,7 @@ class BotSerializer(serializers.ModelSerializer):
             "upper_bound",
             "lower_bound",
             "fees_earned",
+            "timestamp",
         ]
         extra_kwargs = {
             "fees_earned": {"read_only": True},
@@ -398,7 +400,7 @@ class TakerSerializer(serializers.ModelSerializer):
 
     maker = MakerSerializer(required=False, write_only=True)
     maker_id = serializers.IntegerField(required=True, write_only=True)
-    date = TimestampField(required=False, read_only=True)
+    timestamp = TimestampField(required=False, read_only=True)
     class Meta:
         model = Taker
         list_serializer_class = TakerListSerializer
@@ -410,7 +412,7 @@ class TakerSerializer(serializers.ModelSerializer):
             "base_fees",
             "fees",
             "is_buyer",
-            "date",
+            "timestamp",
         ]
         extra_kwargs = {
             "user": {"write_only": True},

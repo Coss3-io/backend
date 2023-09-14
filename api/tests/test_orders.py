@@ -2691,7 +2691,7 @@ class TakerRetrievalTestCase(APITestCase):
         )
 
         self.taker_details = {
-            "date": self.datetime,
+            "timestamp": self.datetime,
             "taker_amount": Decimal("12e17"),
             "maker": self.maker,
             "user": self.taker_user,
@@ -2705,7 +2705,7 @@ class TakerRetrievalTestCase(APITestCase):
             taker_amount=self.taker_details["taker_amount"],
             maker=self.taker_details["maker"],
             user=self.taker_details["user"],
-            date=self.taker_details["date"],
+            timestamp=self.taker_details["timestamp"],
             block=self.taker_details["block"],
             base_fees=self.taker_details["base_fees"],
             fees=self.taker_details["fees"],
@@ -2740,7 +2740,7 @@ class TakerRetrievalTestCase(APITestCase):
             self.taker_details["taker_amount"]
         )
         self.taker_details["fees"] = "{0:f}".format(self.taker_details["fees"])
-        self.taker_details["date"] = int(self.taker_details["date"].timestamp())
+        self.taker_details["timestamp"] = int(self.taker_details["timestamp"].timestamp())
 
         self.assertEqual(
             response.json()[0],
@@ -2756,13 +2756,13 @@ class TakerRetrievalTestCase(APITestCase):
             "maker": self.maker,
             "user": self.taker_user,
             "block": 21,
-            "date": now,
+            "timestamp": now,
             "base_fees": False,
             "fees": Decimal("145e16"),
             "is_buyer": True,
         }
         async_to_sync(Taker.objects.create)(
-            date=taker_details["date"],
+            timestamp=taker_details["timestamp"],
             taker_amount=taker_details["taker_amount"],
             maker=taker_details["maker"],
             user=taker_details["user"],
@@ -2795,7 +2795,7 @@ class TakerRetrievalTestCase(APITestCase):
             self.taker_details["taker_amount"]
         )
         self.taker_details["fees"] = "{0:f}".format(self.taker_details["fees"])
-        self.taker_details["date"] = int(self.taker_details["date"].timestamp())
+        self.taker_details["timestamp"] = int(self.taker_details["timestamp"].timestamp())
 
         self.assertEqual(
             taker1,
@@ -2807,7 +2807,7 @@ class TakerRetrievalTestCase(APITestCase):
         del taker_details["maker"]
         taker_details["taker_amount"] = "{0:f}".format(taker_details["taker_amount"])
         taker_details["fees"] = "{0:f}".format(taker_details["fees"])
-        taker_details["date"] = int(taker_details["date"].timestamp())
+        taker_details["timestamp"] = int(taker_details["timestamp"].timestamp())
 
         self.assertEqual(
             taker2,
@@ -2823,13 +2823,13 @@ class TakerRetrievalTestCase(APITestCase):
             "maker": self.maker,
             "user": self.taker_user,
             "block": 21,
-            "date": now,
+            "timestamp": now,
             "base_fees": False,
             "fees": Decimal("145e16"),
             "is_buyer": True,
         }
         async_to_sync(Taker.objects.create)(
-            date=taker_details["date"],
+            timestamp=taker_details["timestamp"],
             taker_amount=taker_details["taker_amount"],
             maker=taker_details["maker"],
             user=taker_details["user"],
@@ -2868,7 +2868,7 @@ class TakerRetrievalTestCase(APITestCase):
             self.taker_details["taker_amount"]
         )
         self.taker_details["fees"] = "{0:f}".format(self.taker_details["fees"])
-        self.taker_details["date"] = int(self.taker_details["date"].timestamp())
+        self.taker_details["timestamp"] = int(self.taker_details["timestamp"].timestamp())
 
         self.assertEqual(
             taker1,
@@ -2880,7 +2880,7 @@ class TakerRetrievalTestCase(APITestCase):
         del taker_details["maker"]
         taker_details["taker_amount"] = "{0:f}".format(taker_details["taker_amount"])
         taker_details["fees"] = "{0:f}".format(taker_details["fees"])
-        taker_details["date"] = int(taker_details["date"].timestamp())
+        taker_details["timestamp"] = int(taker_details["timestamp"].timestamp())
         self.assertEqual(
             taker2,
             taker_details,

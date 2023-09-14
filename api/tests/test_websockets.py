@@ -112,7 +112,7 @@ class WebsocketFramesTestCase(APITestCase):
         """Checks a websocket frame is sent on bot creation"""
 
         async for bot in Bot.objects.all():
-            await bot.adelete()
+            await bot.adelete() #type: ignore
         communicator = WebsocketCommunicator(ws_asgi_app, "/ws")
         connected, _ = await communicator.connect()
         self.assertTrue(connected, "The websocket should be connected on test startup")
@@ -315,6 +315,7 @@ class WebsocketFramesTestCase(APITestCase):
                         "upper_bound": "{0:f}".format(maker.bot.upper_bound),
                         "lower_bound": "{0:f}".format(maker.bot.lower_bound),
                         "fees_earned": "{0:f}".format(fees),
+                        "timestamp": int(maker.bot.timestamp.timestamp())
                     },
                 },
             ],

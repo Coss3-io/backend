@@ -1,4 +1,5 @@
 from decimal import Decimal
+from datetime import datetime
 from functools import partial
 from unittest.mock import patch
 from datetime import datetime
@@ -2654,7 +2655,7 @@ class TakerRetrievalTestCase(APITestCase):
         self.taker_user = async_to_sync(User.objects.create_user)(
             address=Address("0xf18f52151EbEF6C7334FAD080c5704D77216b732")
         )
-
+        self.datetime = datetime.now()
         self.data = {
             "address": Web3.to_checksum_address(
                 "0xf17f52151EbEF6C7334FAD080c5704D77216B732"
@@ -2690,6 +2691,7 @@ class TakerRetrievalTestCase(APITestCase):
         )
 
         self.taker_details = {
+            "timestamp": self.datetime,
             "taker_amount": Decimal("12e17"),
             "maker": self.maker,
             "user": self.taker_user,
@@ -2703,6 +2705,7 @@ class TakerRetrievalTestCase(APITestCase):
             taker_amount=self.taker_details["taker_amount"],
             maker=self.taker_details["maker"],
             user=self.taker_details["user"],
+            timestamp=self.taker_details["timestamp"],
             block=self.taker_details["block"],
             base_fees=self.taker_details["base_fees"],
             fees=self.taker_details["fees"],
@@ -2737,6 +2740,7 @@ class TakerRetrievalTestCase(APITestCase):
             self.taker_details["taker_amount"]
         )
         self.taker_details["fees"] = "{0:f}".format(self.taker_details["fees"])
+        self.taker_details["timestamp"] = int(self.taker_details["timestamp"].timestamp())
 
         self.assertEqual(
             response.json()[0],
@@ -2746,17 +2750,19 @@ class TakerRetrievalTestCase(APITestCase):
 
     def test_retrieving_all_user_takers(self):
         """Checks retrieving all the takers orders at once work"""
-
+        now = datetime.now()
         taker_details = {
             "taker_amount": Decimal("10e23"),
             "maker": self.maker,
             "user": self.taker_user,
             "block": 21,
+            "timestamp": now,
             "base_fees": False,
             "fees": Decimal("145e16"),
             "is_buyer": True,
         }
         async_to_sync(Taker.objects.create)(
+            timestamp=taker_details["timestamp"],
             taker_amount=taker_details["taker_amount"],
             maker=taker_details["maker"],
             user=taker_details["user"],
@@ -2789,6 +2795,7 @@ class TakerRetrievalTestCase(APITestCase):
             self.taker_details["taker_amount"]
         )
         self.taker_details["fees"] = "{0:f}".format(self.taker_details["fees"])
+        self.taker_details["timestamp"] = int(self.taker_details["timestamp"].timestamp())
 
         self.assertEqual(
             taker1,
@@ -2800,6 +2807,7 @@ class TakerRetrievalTestCase(APITestCase):
         del taker_details["maker"]
         taker_details["taker_amount"] = "{0:f}".format(taker_details["taker_amount"])
         taker_details["fees"] = "{0:f}".format(taker_details["fees"])
+        taker_details["timestamp"] = int(taker_details["timestamp"].timestamp())
 
         self.assertEqual(
             taker2,
@@ -2809,17 +2817,19 @@ class TakerRetrievalTestCase(APITestCase):
 
     def test_retrieving_same_pair_multiple_taker(self):
         """Checks a user can retrieve multiple orders from the same pair"""
-
+        now = datetime.now()
         taker_details = {
             "taker_amount": Decimal("10e23"),
             "maker": self.maker,
             "user": self.taker_user,
             "block": 21,
+            "timestamp": now,
             "base_fees": False,
             "fees": Decimal("145e16"),
             "is_buyer": True,
         }
         async_to_sync(Taker.objects.create)(
+            timestamp=taker_details["timestamp"],
             taker_amount=taker_details["taker_amount"],
             maker=taker_details["maker"],
             user=taker_details["user"],
@@ -2858,6 +2868,7 @@ class TakerRetrievalTestCase(APITestCase):
             self.taker_details["taker_amount"]
         )
         self.taker_details["fees"] = "{0:f}".format(self.taker_details["fees"])
+        self.taker_details["timestamp"] = int(self.taker_details["timestamp"].timestamp())
 
         self.assertEqual(
             taker1,
@@ -2869,7 +2880,7 @@ class TakerRetrievalTestCase(APITestCase):
         del taker_details["maker"]
         taker_details["taker_amount"] = "{0:f}".format(taker_details["taker_amount"])
         taker_details["fees"] = "{0:f}".format(taker_details["fees"])
-
+        taker_details["timestamp"] = int(taker_details["timestamp"].timestamp())
         self.assertEqual(
             taker2,
             taker_details,

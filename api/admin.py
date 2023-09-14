@@ -136,11 +136,11 @@ class MakerAdmin(admin.ModelAdmin):
 class TakerAdmin(admin.ModelAdmin):
     list_select_related = ["user", "maker"]
     search_fields = ["maker__base_token", "maker__quote_token"]
-    ordering = ["-date"]
+    ordering = ["-timestamp"]
 
     list_display = [
         "__str__",
-        "date",
+        "timestamp",
         "is_buyer",
         "amount_formatted",
         "price_formatted",
@@ -151,14 +151,14 @@ class TakerAdmin(admin.ModelAdmin):
         "block",
     ]
 
-    readonly_fields = ["maker", "user", "date"]
+    readonly_fields = ["maker", "user", "timestamp"]
 
     fieldsets = [
         (
             None,
             {
                 "fields": [
-                    ("maker", "user", "date"),
+                    ("maker", "user", "timestamp"),
                     "taker_amount",
                     "fees",
                     ("base_fees", "is_buyer"),
@@ -197,10 +197,10 @@ class BotAdmin(admin.ModelAdmin):
     """Class used to manage the bots from the admin page"""
 
     inlines = [MakerInlines]
-    ordering = ("date",)
+    ordering = ("timestamp",)
     list_display = [
         "__str__",
-        "date",
+        "timestamp",
         "lower_bound_f",
         "upper_bound_f",
         "step_f",
@@ -211,7 +211,7 @@ class BotAdmin(admin.ModelAdmin):
 
     readonly_fields = [
         "user",
-        "date",
+        "timestamp",
         "lower_bound",
         "upper_bound",
         "step",
@@ -227,7 +227,7 @@ class BotAdmin(admin.ModelAdmin):
                 "fields": [
                     (
                         "user",
-                        "date",
+                        "timestamp",
                     )
                 ],
                 "classes": ["wide"],

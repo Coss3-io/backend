@@ -150,14 +150,14 @@ class Taker(models.Model):
         blank=False,
     )
     is_buyer = models.BooleanField(null=False, blank=False)
-    date = models.DateTimeField(auto_now_add=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
 
 
 class Bot(models.Model):
     """The model used to store replace orders data, and group them to a"""
 
     user = models.ForeignKey("User", on_delete=models.CASCADE, null=False, blank=False)
-    date = models.DateTimeField(auto_now_add=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
 
     step = models.DecimalField(
         max_digits=78,

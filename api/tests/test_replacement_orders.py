@@ -1,4 +1,5 @@
 from decimal import Decimal
+from time import time
 from asgiref.sync import async_to_sync
 from django.urls import reverse
 from django.db.models import F
@@ -18,6 +19,7 @@ class ReplacementOrdersCreationTestCase(APITestCase):
 
     def test_create_a_bot(self):
         """Checks the bot creation works well"""
+        timestamp = int(time())
         data = {
             "address": "0xF17f52151EbEF6C7334FAD080c5704D77216b732",
             "expiry": 2114380800,
@@ -148,6 +150,9 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         data["base_token"] = Web3.to_checksum_address(data.get("base_token", ""))
         data["quote_token"] = Web3.to_checksum_address(data.get("quote_token", ""))
 
+        bot_data = response.json()
+        bot_timestamp = bot_data["timestamp"]
+        del bot_data["timestamp"]
         data.update(
             {
                 "base_token_amount": "{0:f}".format(base_token_amount),
@@ -156,9 +161,41 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             }
         )
         self.assertDictEqual(
-            response.json(),
+            bot_data,
             data,
             "The returned bot data should hold all the bot informations",
+        )
+
+        self.assertAlmostEqual(
+            timestamp, bot_timestamp, delta=3, msg="The two timestamps should be equal"
+        )
+
+    def test_sending_a_date_on_bot_creation_is_ignored(self):
+        """Checks that if a user send a date on bot creation the date is not taken in account"""
+        timestamp = int(time())
+        data = {
+            "address": "0xF17f52151EbEF6C7334FAD080c5704D77216b732",
+            "expiry": 2114380800,
+            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "is_buyer": False,
+            "step": "{0:f}".format(Decimal("1e17")),
+            "price": "{0:f}".format(Decimal("1e18")),
+            "maker_fees": "{0:f}".format(Decimal("50")),
+            "upper_bound": "{0:f}".format(Decimal("15e17")),
+            "lower_bound": "{0:f}".format(Decimal("5e17")),
+            "amount": "{0:f}".format(Decimal("2e18")),
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "timestamp": 200000
+        }
+
+        response = self.client.post(reverse("api:bot"), data=data).json()
+
+        self.assertAlmostEqual(
+            timestamp,
+            response["timestamp"],
+            delta=1,
+            msg="The timestamp sent by the user should be ignored on bot creation",
         )
 
     def test_creating_twice_the_same_bot_fails(self):
@@ -1514,7 +1551,7 @@ class BotRetrievalTestCase(APITestCase):
         self.user = async_to_sync(User.objects.create_user)(
             address=Address("0xf17f52151EbEF6C7334FAD080c5704D77216b732")
         )
-
+        self.timestamp = int(time())
         self.data = {
             "address": "0xF17f52151EbEF6C7334FAD080c5704D77216b732",
             "expiry": 2114380800,
@@ -1537,7 +1574,6 @@ class BotRetrievalTestCase(APITestCase):
         self.client.force_authenticate(user=self.user)  # type: ignore
         response = self.client.get(reverse("api:bot"))
         data = response.json()
-
         self.assertEqual(
             response.status_code,
             HTTP_200_OK,
@@ -1556,6 +1592,9 @@ class BotRetrievalTestCase(APITestCase):
             self.data.get("quote_token", "")
         )
         self.data["address"] = Web3.to_checksum_address(self.data.get("address", ""))
+        
+        bot_timestamp = data[0]["timestamp"]
+        del data[0]["timestamp"]
 
         self.data.update(
             {
@@ -1568,6 +1607,13 @@ class BotRetrievalTestCase(APITestCase):
         self.assertEqual(len(data), 1, "only one bot should be available for the user")
         self.assertDictEqual(
             data[0], self.data, "The returned data shold contain the bot informations"
+        )
+
+        self.assertAlmostEqual(
+            self.timestamp,
+            bot_timestamp,
+            delta=1,
+            msg="The returned bot timestamp should match the creation timestamp",
         )
 
     def test_retrieving_bots_anon_fails(self):
@@ -1640,12 +1686,12 @@ class BotRetrievalTestCase(APITestCase):
         self.data["base_token"] = Web3.to_checksum_address(
             self.data.get("base_token", "")
         )
-        self.data["address"] = Web3.to_checksum_address(
-            self.data.get("address", "")
-        )
+        self.data["address"] = Web3.to_checksum_address(self.data.get("address", ""))
         self.data["quote_token"] = Web3.to_checksum_address(
             self.data.get("quote_token", "")
         )
+        bot_timestamp = data[0]["timestamp"]
+        del data[0]["timestamp"]
 
         self.assertEqual(len(data), 1, "only one bot should be available for the user")
         self.assertDictEqual(
@@ -1654,9 +1700,17 @@ class BotRetrievalTestCase(APITestCase):
             "The returned data shold contain the bot informations with the filled update",
         )
 
+        self.assertAlmostEqual(
+            self.timestamp,
+            bot_timestamp,
+            delta=1,
+            msg="The returned bot timestamp should match the creation timestamp",
+        )
+
     def test_bot_retrieval_with_two_bots_works(self):
         """Checks getting the user bot while having two bots works"""
 
+        timestamp = int(time())
         data = {
             "address": "0xF17f52151EbEF6C7334FAD080c5704D77216b732",
             "expiry": 2114380801,
@@ -1711,13 +1765,16 @@ class BotRetrievalTestCase(APITestCase):
             self.data.get("base_token", "")
         )
         data["address"] = Web3.to_checksum_address(data.get("address", ""))
-        self.data["address"] = Web3.to_checksum_address(
-            self.data.get("address", "")
-        )
+        self.data["address"] = Web3.to_checksum_address(self.data.get("address", ""))
         data["quote_token"] = Web3.to_checksum_address(data.get("quote_token", ""))
         self.data["quote_token"] = Web3.to_checksum_address(
             self.data.get("quote_token", "")
         )
+
+        bot1_timestamp = bot1["timestamp"]
+        bot2_timestamp = bot2["timestamp"]
+        del bot1["timestamp"]
+        del bot2["timestamp"]
 
         self.assertDictEqual(
             bot1,
@@ -1729,4 +1786,18 @@ class BotRetrievalTestCase(APITestCase):
             bot2,
             self.data,
             "The second bot should have the right amounts of base and quote token",
+        )
+
+        self.assertAlmostEqual(
+            timestamp,
+            bot1_timestamp,
+            delta=1,
+            msg="The returned bot1 timestamp should match the creation timestamp",
+        )
+
+        self.assertAlmostEqual(
+            self.timestamp,
+            bot2_timestamp,
+            delta=1,
+            msg="The returned bot2 timestamp should match the creation timestamp",
         )

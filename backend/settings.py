@@ -36,7 +36,8 @@ AUTH_USER_MODEL = "api.User"
 # Application definition
 
 INSTALLED_APPS = [
-    'django_crontab',
+    "django_crontab",
+    "corsheaders",
     "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
@@ -52,6 +53,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -59,8 +61,16 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-CRONJOBS = [
-    ('0 3 * * *', 'backend.cron.deleting_expired_orders')
+CRONJOBS = [("0 3 * * *", "backend.cron.deleting_expired_orders")]
+
+CSRF_COOKIE_NAME = "XSRF-TOKEN"
+CSRF_HEADER_NAME = "HTTP_X_XSRF_TOKEN"
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:8080",
+]
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:8080",
 ]
 
 ROOT_URLCONF = "backend.urls"

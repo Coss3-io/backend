@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 import decimal
 import os
 from pathlib import Path
+from corsheaders.defaults import default_headers
 
 decimal.DefaultContext.prec = 200
 decimal.DefaultContext.rounding = decimal.ROUND_DOWN
@@ -72,6 +73,11 @@ CORS_ALLOWED_ORIGINS = [
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:8080",
 ]
+
+CORS_ALLOW_HEADERS = (
+    *default_headers,
+    "x-xsrf-token",
+)
 
 ROOT_URLCONF = "backend.urls"
 

@@ -6,7 +6,7 @@ from api.views.stacking import StackingView, StackingFeesView
 
 app_name = "api"
 urlpatterns = [
-    path("acccount", UserCreateView.as_view(), name="account"),
+    path("account", UserCreateView.as_view(), name="account"),
     path("login", UserLogInView.as_view(), name="login"),
     path("orders", OrderView.as_view(), name="orders"),
     path("order", MakerView.as_view(), name="order"),

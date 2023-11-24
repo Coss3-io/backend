@@ -4,6 +4,7 @@ from adrf.views import APIView
 from django.db.utils import IntegrityError
 from rest_framework import status
 from rest_framework.decorators import permission_classes, authentication_classes
+from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import ValidationError
 from rest_framework.request import Request
@@ -66,7 +67,7 @@ class MakerView(APIView):
         data = super().get_permissions()
         return data + [permission() for permission in getattr(getattr(self, self.request.method.lower(), self.http_method_not_allowed), "permission_classes", [])]  # type: ignore
 
-    @authentication_classes([ApiAuthentication])
+    @authentication_classes([ApiAuthentication, SessionAuthentication])
     @permission_classes([IsAuthenticated])
     async def get(self, request: Request):
         """The view to retrieve the orders of a user"""
@@ -121,7 +122,7 @@ class MakerView(APIView):
 
         await channel_layer.group_send(  # type: ignore
             WebsocketConsumer.groups[0],
-            {"type": "send.json", "data": {WStypes.NEW_MAKER :data}},
+            {"type": "send.json", "data": {WStypes.NEW_MAKER: data}},
         )
 
         return Response(data, status=status.HTTP_200_OK)
@@ -130,7 +131,7 @@ class MakerView(APIView):
 class TakerView(APIView):
     """View used to retrieve the logged in users taker orders"""
 
-    authentication_classes = [ApiAuthentication]
+    authentication_classes = [ApiAuthentication, SessionAuthentication]
     permission_classes = [IsAuthenticated]
 
     async def get(self, request):
@@ -180,14 +181,18 @@ class BotView(APIView):
         data = super().get_permissions()
         return data + [permission() for permission in getattr(getattr(self, self.request.method.lower(), self.http_method_not_allowed), "permission_classes", [])]  # type: ignore
 
-    @authentication_classes([ApiAuthentication])
+    @authentication_classes([ApiAuthentication, SessionAuthentication])
     @permission_classes([IsAuthenticated])
     async def get(self, request):
         """Returns the user bots list,"""
         if request.auth == "awaitable":
             request.user = (await User.objects.aget_or_create(address=request.user))[0]
 
-        bots = Bot.objects.filter(user=request.user).select_related("user").prefetch_related("orders") 
+        bots = (
+            Bot.objects.filter(user=request.user)
+            .select_related("user")
+            .prefetch_related("orders")
+        )
         data = await sync_to_async(lambda: BotSerializer(bots, many=True).data)()
         return Response(data, status=status.HTTP_200_OK)
 
@@ -211,7 +216,7 @@ class BotView(APIView):
 
         await channel_layer.group_send(  # type: ignore
             WebsocketConsumer.groups[0],
-            {"type": "send.json", "data": {WStypes.NEW_BOT :data}},
+            {"type": "send.json", "data": {WStypes.NEW_BOT: data}},
         )
 
         return Response(data, status=status.HTTP_200_OK)

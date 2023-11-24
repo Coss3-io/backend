@@ -4,6 +4,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.request import Request
 from rest_framework.decorators import permission_classes, authentication_classes
+from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import IsAuthenticated
 from adrf.views import APIView
 from api.models import User
@@ -29,7 +30,7 @@ class StackingView(APIView):
         data = super().get_permissions()
         return data + [permission() for permission in getattr(getattr(self, self.request.method.lower(), self.http_method_not_allowed), "permission_classes", [])]  # type: ignore
 
-    @authentication_classes([ApiAuthentication])
+    @authentication_classes([ApiAuthentication, SessionAuthentication])
     @permission_classes([IsAuthenticated])
     async def get(self, request: Request):
         """Retrieves a user stacking amount per block"""

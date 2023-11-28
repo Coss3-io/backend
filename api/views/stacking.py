@@ -1,5 +1,5 @@
 from asgiref.sync import sync_to_async, async_to_sync
-from django.db.models import Sum
+from django.db.models import F, Sum
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 from rest_framework import status
@@ -58,6 +58,7 @@ class StackingView(APIView):
         ```python
         request.data = {
             "address": "0x123...",
+            "withdraw": bool
             "amount": int,
             "slot": int,
         }
@@ -78,10 +79,15 @@ class StackingView(APIView):
         stacking.save(user=user)
 
         if stacking.instance:
+
             stacking.instance = await stacking.instance
-            stacking.instance.amount = stacking.validated_data["amount"]
+            amount = stacking.validated_data["amount"] * (
+                -1 if stacking.validated_data["withdraw"] else 1
+            )
+
+            stacking.instance.amount = F("amount") + amount
             await stacking.instance.asave(update_fields=["amount"])
-            stacking.validated_data["amount"] = stacking.data["amount"]
+            stacking.validated_data["amount"] = "{0:f}".format(amount)
 
             await channel_layer.group_send(  # type: ignore
                 WebsocketConsumer.groups[0],
@@ -224,7 +230,11 @@ class GlobalStackingView(APIView):
     async def get(self, request):
         """Retrieves the global stacking amount"""
 
-        stacks = Stacking.objects.values_list("slot").annotate(amount=Sum("amount")).order_by("-slot")
+        stacks = (
+            Stacking.objects.values_list("slot")
+            .annotate(amount=Sum("amount"))
+            .order_by("-slot")
+        )
         return Response(stacks, status=status.HTTP_200_OK)
 
 

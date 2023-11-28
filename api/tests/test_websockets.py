@@ -75,18 +75,12 @@ class WebsocketFramesTestCase(APITestCase):
         self.assertTrue(connected, "The websocket should be connected on test startup")
 
         data = {
-            "address": Address(
-                "0xF17f52151EbEF6C7334FAD080c5704D77216b732"
-            ),
+            "address": Address("0xF17f52151EbEF6C7334FAD080c5704D77216b732"),
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
-            "base_token": Address(
-                "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520"
-            ),
-            "quote_token": Address(
-                "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
-            ),
+            "base_token": Address("0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520"),
+            "quote_token": Address("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"),
             "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
             "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
             "is_buyer": False,
@@ -112,7 +106,7 @@ class WebsocketFramesTestCase(APITestCase):
         """Checks a websocket frame is sent on bot creation"""
 
         async for bot in Bot.objects.all():
-            await bot.adelete() #type: ignore
+            await bot.adelete()  # type: ignore
         communicator = WebsocketCommunicator(ws_asgi_app, "/ws")
         connected, _ = await communicator.connect()
         self.assertTrue(connected, "The websocket should be connected on test startup")
@@ -141,19 +135,53 @@ class WebsocketFramesTestCase(APITestCase):
             "The websocket message should contain the bot just created",
         )
 
-    async def test_websocket_frame_stacking_creation(self):
-        """Checks a websocket frame is sent on stacking entry creation"""
+    async def test_websocket_frame_stacking_deposit_creation(self):
+        """Checks a websocket frame is sent on stacking deposit"""
 
         communicator = WebsocketCommunicator(ws_asgi_app, "/ws")
         connected, _ = await communicator.connect()
         self.assertTrue(connected, "The websocket should be connected on test startup")
 
         data = {
-            "address": Address(
-                "0xC5fdF4076b8F3A5357c5E395ab970B5B54098Fef"
-            ),
+            "address": Address("0xC5fdF4076b8F3A5357c5E395ab970B5B54098Fef"),
             "amount": "{0:f}".format(Decimal("173e16")),
             "slot": "23",
+            "withdraw": "0",
+        }
+
+        data["timestamp"] = str(int(time()) * 1000)
+        data["signature"] = hmac.new(
+            key=settings.WATCH_TOWER_KEY.encode(),
+            msg=dumps(data).encode(),
+            digestmod="sha256",
+        ).hexdigest()
+        data["withdraw"] = int(data["withdraw"])
+
+        await self.async_client.post(reverse("api:stacking"), data=data)  # type: ignore
+        message = await communicator.receive_from()
+
+        data["slot"] = int(data["slot"])
+        del data["timestamp"]
+        del data["signature"]
+
+        self.assertDictEqual(
+            loads(message),
+            {WStypes.NEW_STACKING: data},
+            "The websocket message should contain the stacking entry just created",
+        )
+
+    async def test_websocket_frame_stacking_wthdrawal_creation(self):
+        """Checks a websocket frame is sent on stacking withdrawal"""
+
+        communicator = WebsocketCommunicator(ws_asgi_app, "/ws")
+        connected, _ = await communicator.connect()
+        self.assertTrue(connected, "The websocket should be connected on test startup")
+
+        data = {
+            "address": Address("0xC5fdF4076b8F3A5357c5E395ab970B5B54098Fef"),
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "slot": "23",
+            "withdraw": "1",
         }
 
         data["timestamp"] = str(int(time()) * 1000)
@@ -167,6 +195,8 @@ class WebsocketFramesTestCase(APITestCase):
         message = await communicator.receive_from()
 
         data["slot"] = int(data["slot"])
+        data["withdraw"] = True
+        data["amount"] = ("-" if data["withdraw"] else "") + data["amount"]
         del data["timestamp"]
         del data["signature"]
 
@@ -184,9 +214,7 @@ class WebsocketFramesTestCase(APITestCase):
         self.assertTrue(connected, "The websocket should be connected on test startup")
 
         data = {
-            "token": Address(
-                "0xC5fdF4076b8F3A5357c5E395ab970B5B54098Fef"
-            ),
+            "token": Address("0xC5fdF4076b8F3A5357c5E395ab970B5B54098Fef"),
             "amount": "{0:f}".format(Decimal("173e16")),
             "slot": "23",
         }
@@ -219,9 +247,7 @@ class WebsocketFramesTestCase(APITestCase):
         self.assertTrue(connected, "The websocket should be connected on test startup")
 
         data = {
-            "token": Address(
-                "0xC5fdF4076b8F3A5357c5E395ab970B5B54098Fef"
-            ),
+            "token": Address("0xC5fdF4076b8F3A5357c5E395ab970B5B54098Fef"),
             "address": "0xC5fdF4176b8F3A5357c5E395ab970B5B54098Fef",
             "slot": "23",
         }
@@ -273,9 +299,7 @@ class WebsocketFramesTestCase(APITestCase):
     async def test_websocket_frame_maker_update(self):
         """Checks the websocket frame is sent well on order update"""
 
-        taker_address = Address(
-            "0xf17f52151EbEF6C7334FAD080c5704D77216b733"
-        )
+        taker_address = Address("0xf17f52151EbEF6C7334FAD080c5704D77216b733")
         block = 19
         prev_fees = Decimal("100e18")
         communicator = WebsocketCommunicator(ws_asgi_app, "/ws")
@@ -351,7 +375,7 @@ class WebsocketFramesTestCase(APITestCase):
                         "upper_bound": "{0:f}".format(maker.bot.upper_bound),
                         "lower_bound": "{0:f}".format(maker.bot.lower_bound),
                         "fees_earned": "{0:f}".format(fees),
-                        "timestamp": int(maker.bot.timestamp.timestamp())
+                        "timestamp": int(maker.bot.timestamp.timestamp()),
                     },
                 },
             ],

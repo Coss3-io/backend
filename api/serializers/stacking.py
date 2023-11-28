@@ -1,4 +1,6 @@
-from rest_framework.serializers import ModelSerializer, CharField
+from rest_framework.serializers import ModelSerializer, CharField, BooleanField
+from rest_framework.validators import ValidationError
+from api.errors import General
 from api.models.stacking import Stacking, StackingFees, StackingFeesWithdrawal
 from api.utils import validate_address, validate_decimal_integer
 
@@ -7,15 +9,22 @@ class StackingSerializer(ModelSerializer):
     """Class used to serialize user stacking entries"""
 
     address = CharField(required=True, allow_blank=False, write_only=True)
+    withdraw = BooleanField(allow_null=True, default=None, write_only=True)  # type: ignore
 
     async def create(self, validated_data):
         del validated_data["amount"]
         del validated_data["address"]
+        del validated_data["withdraw"]
         return (await Stacking.objects.aget_or_create(**validated_data))[0]
 
     class Meta:
         model = Stacking
-        fields = ["slot", "amount", "address"]
+        fields = ["slot", "amount", "address", "withdraw"]
+
+    def validate_withdraw(self, value):
+        if value is None:
+            raise ValidationError(General.MISSING_FIELD)
+        return value
 
     def validate_slot(self, value):
         return validate_decimal_integer(value, "slot")
@@ -49,7 +58,9 @@ class StackingFeesWithdrawalSerializer(ModelSerializer):
 
     async def create(self, validated_data):
         del validated_data["address"]
-        return (await StackingFeesWithdrawal.objects.aget_or_create(**validated_data))[0]
+        return (await StackingFeesWithdrawal.objects.aget_or_create(**validated_data))[
+            0
+        ]
 
     class Meta:
         model = StackingFeesWithdrawal

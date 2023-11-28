@@ -10,6 +10,7 @@ from rest_framework import exceptions
 from rest_framework.test import APITestCase
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
 from api.models.stacking import Stacking, StackingFees, StackingFeesWithdrawal
+from rest_framework.serializers import BooleanField
 from api.models.types import Address
 from api.models import User
 import api.errors as errors
@@ -25,13 +26,14 @@ class StackingTestCase(APITestCase):
             address=Address("0xC5Fdf4076b8F3A5357c5E395ab970B5B54098Fef")
         )
 
-    def test_stacking_entries_creation_from_wt_work(self):
+    def test_stacking_entries_creation_from_wt_work_withdrawal(self):
         """Checks stacking entries creation works well"""
 
         data = {
             "address": "0xC5fdF4076b8F3A5357c5E395ab970B5B54098Fef",
             "amount": "{0:f}".format(Decimal("173e16")),
             "slot": "23",
+            "withdraw": "1"
         }
 
         data["timestamp"] = str(int(time()) * 1000)
@@ -40,6 +42,46 @@ class StackingTestCase(APITestCase):
             msg=dumps(data).encode(),
             digestmod="sha256",
         ).hexdigest()
+        data["withdraw"] = int(data["withdraw"]) #type: ignore
+
+        response = self.client.post(reverse("api:stacking"), data=data)
+        stack_entry = Stacking.objects.get(user__address=Address(data["address"]))
+
+        self.assertEqual(
+            response.status_code, HTTP_200_OK, "the stacking entry creation should work"
+        )
+        self.assertDictEqual(
+            response.json(), {}, "no data should be returned on stacking entry creation"
+        )
+        self.assertEqual(
+            stack_entry.amount,
+            -Decimal(data["amount"]),
+            "The amount of the stacking entry should match the amount sent and wether its a withdraw or not",
+        )
+
+        self.assertEqual(
+            stack_entry.slot,
+            Decimal(data["slot"]),
+            "The slot of the stacking entry should match the slot sent",
+        )
+
+    def test_stacking_entries_creation_from_wt_work_deposit(self):
+        """Checks stacking entries creation works well"""
+
+        data = {
+            "address": "0xC5fdF4076b8F3A5357c5E395ab970B5B54098Fef",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "slot": "23",
+            "withdraw": "0"
+        }
+
+        data["timestamp"] = str(int(time()) * 1000)
+        data["signature"] = hmac.new(
+            key=settings.WATCH_TOWER_KEY.encode(),
+            msg=dumps(data).encode(),
+            digestmod="sha256",
+        ).hexdigest()
+        data["withdraw"] = int(data["withdraw"]) #type: ignore
 
         response = self.client.post(reverse("api:stacking"), data=data)
         stack_entry = Stacking.objects.get(user__address=Address(data["address"]))
@@ -53,7 +95,7 @@ class StackingTestCase(APITestCase):
         self.assertEqual(
             stack_entry.amount,
             Decimal(data["amount"]),
-            "The amount of the stacking entry should match the amount sent",
+            "The amount of the stacking entry should match the amount sent and wether its a withdraw or not",
         )
 
         self.assertEqual(
@@ -62,16 +104,18 @@ class StackingTestCase(APITestCase):
             "The slot of the stacking entry should match the slot sent",
         )
 
-    def test_stacking_entry_update_from_wt(self):
+    def test_stacking_entry_update_from_wt_deposit(self):
         """Checks the stacking entry update from watch tower works"""
 
+        initial_amount = Decimal("239e18")
         data = {
             "address": "0xC5FdF4076b8F3A5357c5E395ab970B5B54098Fef",
             "amount": "{0:f}".format(Decimal("173e16")),
             "slot": "23",
+            "withdraw": "0"
         }
 
-        Stacking.objects.create(amount=Decimal("239e18"), slot=23, user=self.user)
+        Stacking.objects.create(amount=initial_amount, slot=23, user=self.user)
 
         data["timestamp"] = str(int(time()) * 1000)
         data["signature"] = hmac.new(
@@ -79,6 +123,7 @@ class StackingTestCase(APITestCase):
             msg=dumps(data).encode(),
             digestmod="sha256",
         ).hexdigest()
+        data["withdraw"] = int(data["withdraw"]) #type: ignore
 
         response = self.client.post(reverse("api:stacking"), data=data)
         stack_entry = Stacking.objects.get(user__address=Address(data["address"]))
@@ -91,8 +136,50 @@ class StackingTestCase(APITestCase):
         )
         self.assertEqual(
             stack_entry.amount,
-            Decimal(data["amount"]),
-            "The amount of the stacking entry update should match the amount sent",
+            Decimal(data["amount"]) + initial_amount,
+            "The amount of the stacking entry update should be added to the previous amount as its a deposit",
+        )
+
+        self.assertEqual(
+            stack_entry.slot,
+            Decimal(data["slot"]),
+            "The slot of the stacking entry update should match the slot sent",
+        )
+
+    def test_stacking_entry_update_from_wt_withdraw(self):
+        """Checks the stacking entry update from watch tower works"""
+
+        initial_amount = Decimal("239e18")
+        data = {
+            "address": "0xC5FdF4076b8F3A5357c5E395ab970B5B54098Fef",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "slot": "23",
+            "withdraw": "1"
+        }
+
+        Stacking.objects.create(amount=initial_amount, slot=23, user=self.user)
+
+        data["timestamp"] = str(int(time()) * 1000)
+        data["signature"] = hmac.new(
+            key=settings.WATCH_TOWER_KEY.encode(),
+            msg=dumps(data).encode(),
+            digestmod="sha256",
+        ).hexdigest()
+        data["withdraw"] = int(data["withdraw"]) #type: ignore
+
+        response = self.client.post(reverse("api:stacking"), data=data)
+        stack_entry = Stacking.objects.get(user__address=Address(data["address"]))
+
+        self.assertEqual(
+            response.status_code, HTTP_200_OK, "the stacking entry update should work"
+        )
+        self.assertDictEqual(
+            response.json(), {}, "no data should be returned on stacking entry update"
+        )
+        self.assertEqual(
+            stack_entry.amount,
+            -Decimal(data["amount"]) + initial_amount,
+            "The amount of the stacking entry update should be substracted to the previous amount as its a withdrawal",
         )
 
         self.assertEqual(
@@ -110,6 +197,7 @@ class StackingTestCase(APITestCase):
             "address": "0xC5fdf4076B8F3A5357c5E395ab970B5B54098Fef",
             "amount": "{0:f}".format(Decimal("173e16")),
             "slot": "23",
+            "withdraw": "1"
         }
 
         data["timestamp"] = str(int(time()) * 1000)
@@ -143,6 +231,7 @@ class StackingTestCase(APITestCase):
             "address": "0xC5fdf4076b8f3A5357c5E395ab970B5B54098Fea",
             "amount": "{0:f}".format(Decimal("173e16")),
             "slot": "23",
+            "withdraw": "1"
         }
 
         data["timestamp"] = str(int(time()) * 1000)
@@ -169,6 +258,7 @@ class StackingTestCase(APITestCase):
             "address": "0xZ5fdf4076b8F3A5357C5E395ab970B5B54098Fef",
             "amount": "{0:f}".format(Decimal("193e16")),
             "slot": "23",
+            "withdraw": "1"
         }
 
         data["timestamp"] = str(int(time()) * 1000)
@@ -198,6 +288,7 @@ class StackingTestCase(APITestCase):
             # "address": "0xZ5fdf4076b8F3A5357c5E395ab970B5B54098Fef",
             "amount": "{0:f}".format(Decimal("193e16")),
             "slot": "23",
+            "withdraw": "1"
         }
 
         data["timestamp"] = str(int(time()) * 1000)
@@ -227,6 +318,7 @@ class StackingTestCase(APITestCase):
             "address": "0xC5fdf4076b8F3A5357c5e395ab970B5B54098Fef",
             "amount": "{0:f}".format(Decimal("193e16")),
             "slot": "a23",
+            "withdraw": "1"
         }
 
         data["timestamp"] = str(int(time()) * 1000)
@@ -256,6 +348,7 @@ class StackingTestCase(APITestCase):
             "address": "0xC5fdf4076b8F3a5357c5E395ab970B5B54098Fef",
             "amount": "{0:f}".format(Decimal("193e16")),
             # "slot": "a23",
+            "withdraw": "1"
         }
 
         data["timestamp"] = str(int(time()) * 1000)
@@ -278,6 +371,66 @@ class StackingTestCase(APITestCase):
             "the request with an empty slot should fail",
         )
 
+    def test_stacking_entries_creation_empty_withdrawal(self):
+        """Checks stacking entries creation fails without withdraw field"""
+
+        data = {
+            "address": "0xC5fdF4076b8F3A5357c5E395ab970B5B54098Fef",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "slot": "23",
+            #"withdraw": "1"
+        }
+
+        data["timestamp"] = str(int(time()) * 1000)
+        data["signature"] = hmac.new(
+            key=settings.WATCH_TOWER_KEY.encode(),
+            msg=dumps(data).encode(),
+            digestmod="sha256",
+        ).hexdigest()
+        #data["withdraw"] = int(data["withdraw"]) #type: ignore
+
+        response = self.client.post(reverse("api:stacking"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {"withdraw": [errors.General.MISSING_FIELD]},
+            "the response should contain details about the missing withdraw error",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "the request with an empty slot should fail",
+        )
+
+    def test_stacking_entries_creation_wrong_withdrawal(self):
+        """Checks stacking entries creation doesn't work with wrong format withdrawal fieldƒ"""
+
+        data = {
+            "address": "0xC5fdF4076b8F3A5357c5E395ab970B5B54098Fef",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "slot": "23",
+            "withdraw": "abc"
+        }
+
+        data["timestamp"] = str(int(time()) * 1000)
+        data["signature"] = hmac.new(
+            key=settings.WATCH_TOWER_KEY.encode(),
+            msg=dumps(data).encode(),
+            digestmod="sha256",
+        ).hexdigest()
+
+        response = self.client.post(reverse("api:stacking"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {"withdraw": [BooleanField.default_error_messages["invalid"]]},
+            "the response should contain details about the wrong withdraw error",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "the request with an empty slot should fail",
+        )
 
 class StackingRetrievalTestCase(APITestCase):
     """Class used to test the retrieval of stacking behaviour"""
@@ -782,7 +935,7 @@ class GlobalStackingRetrievalTestCase(APITestCase):
             amount=Decimal("23e18"), slot=23, user=self.user
         )
         self.stacking_1_2 = Stacking.objects.create(
-            amount=Decimal("46e18"), slot=23, user=self.user_2
+            amount=-Decimal("46e18"), slot=23, user=self.user_2
         )
 
         self.stacking_2_1 = Stacking.objects.create(
@@ -794,7 +947,7 @@ class GlobalStackingRetrievalTestCase(APITestCase):
         )
 
         self.stacking_3_1 = Stacking.objects.create(
-            amount=Decimal("21e18"), slot=21, user=self.user
+            amount=-Decimal("21e18"), slot=21, user=self.user
         )
 
         self.stacking_3_2 = Stacking.objects.create(

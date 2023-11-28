@@ -39,7 +39,7 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         base_token_amount = Decimal("0")
         quote_token_amount = Decimal("0")
 
-        User.objects.get(address=Web3.to_checksum_address(data.get("address", "")))
+        User.objects.get(address=Address(data.get("address", "")))
         orders = self.client.get(
             reverse("api:orders"),
             data={
@@ -64,7 +64,7 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         for order in orders:
             self.assertEqual(
                 order["address"],
-                Web3.to_checksum_address(data.get("address", "")),
+                Address(data.get("address", "")),
                 "The address on the returned order should match the bot creator address",
             )
 
@@ -129,12 +129,12 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             )
             self.assertEqual(
                 order.get("base_token"),
-                Web3.to_checksum_address(data.get("base_token", "")),
+                Address(data.get("base_token", "")),
                 "The orders base_token should match the bot base_token",
             )
             self.assertEqual(
                 order.get("quote_token"),
-                Web3.to_checksum_address(data.get("quote_token", "")),
+                Address(data.get("quote_token", "")),
                 "The orders quote_token should match the bot quote_token",
             )
 
@@ -146,9 +146,9 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         del data["signature"]
         del data["amount"]
         del data["is_buyer"]
-        data["address"] = Web3.to_checksum_address(data.get("address", ""))
-        data["base_token"] = Web3.to_checksum_address(data.get("base_token", ""))
-        data["quote_token"] = Web3.to_checksum_address(data.get("quote_token", ""))
+        data["address"] = Address(data.get("address", ""))
+        data["base_token"] = Address(data.get("base_token", ""))
+        data["quote_token"] = Address(data.get("quote_token", ""))
 
         bot_data = response.json()
         bot_timestamp = bot_data["timestamp"]
@@ -1585,13 +1585,13 @@ class BotRetrievalTestCase(APITestCase):
         del self.data["amount"]
         del self.data["is_buyer"]
 
-        self.data["base_token"] = Web3.to_checksum_address(
+        self.data["base_token"] = Address(
             self.data.get("base_token", "")
         )
-        self.data["quote_token"] = Web3.to_checksum_address(
+        self.data["quote_token"] = Address(
             self.data.get("quote_token", "")
         )
-        self.data["address"] = Web3.to_checksum_address(self.data.get("address", ""))
+        self.data["address"] = Address(self.data.get("address", ""))
         
         bot_timestamp = data[0]["timestamp"]
         del data[0]["timestamp"]
@@ -1640,15 +1640,15 @@ class BotRetrievalTestCase(APITestCase):
         buyer: Maker = Maker.objects.filter(
             bot=bot,
             is_buyer=True,
-            base_token=Web3.to_checksum_address(self.data.get("base_token", "")),
-            quote_token=Web3.to_checksum_address(self.data.get("quote_token", "")),
+            base_token=Address(self.data.get("base_token", "")),
+            quote_token=Address(self.data.get("quote_token", "")),
         ).first()  # type: ignore
 
         seller: Maker = Maker.objects.filter(
             bot=bot,
             is_buyer=False,
-            base_token=Web3.to_checksum_address(self.data.get("base_token", "")),
-            quote_token=Web3.to_checksum_address(self.data.get("quote_token", "")),
+            base_token=Address(self.data.get("base_token", "")),
+            quote_token=Address(self.data.get("quote_token", "")),
         ).first()  # type: ignore
 
         buyer.filled = F("amount") / 2
@@ -1683,11 +1683,11 @@ class BotRetrievalTestCase(APITestCase):
             }
         )
 
-        self.data["base_token"] = Web3.to_checksum_address(
+        self.data["base_token"] = Address(
             self.data.get("base_token", "")
         )
-        self.data["address"] = Web3.to_checksum_address(self.data.get("address", ""))
-        self.data["quote_token"] = Web3.to_checksum_address(
+        self.data["address"] = Address(self.data.get("address", ""))
+        self.data["quote_token"] = Address(
             self.data.get("quote_token", "")
         )
         bot_timestamp = data[0]["timestamp"]
@@ -1760,14 +1760,14 @@ class BotRetrievalTestCase(APITestCase):
             response.json(), key=lambda b: int(b["base_token_amount"])
         )
 
-        data["base_token"] = Web3.to_checksum_address(data.get("base_token", ""))
-        self.data["base_token"] = Web3.to_checksum_address(
+        data["base_token"] = Address(data.get("base_token", ""))
+        self.data["base_token"] = Address(
             self.data.get("base_token", "")
         )
-        data["address"] = Web3.to_checksum_address(data.get("address", ""))
-        self.data["address"] = Web3.to_checksum_address(self.data.get("address", ""))
-        data["quote_token"] = Web3.to_checksum_address(data.get("quote_token", ""))
-        self.data["quote_token"] = Web3.to_checksum_address(
+        data["address"] = Address(data.get("address", ""))
+        self.data["address"] = Address(self.data.get("address", ""))
+        data["quote_token"] = Address(data.get("quote_token", ""))
+        self.data["quote_token"] = Address(
             self.data.get("quote_token", "")
         )
 

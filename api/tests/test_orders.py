@@ -44,7 +44,7 @@ class MakerOrderTestCase(APITestCase):
         }
         response = self.client.post(reverse("api:order"), data=data)
         order = Maker.objects.select_related("user").get(order_hash=data["order_hash"])
-        data["address"] = Web3.to_checksum_address(data["address"])
+        data["address"] = Address(data["address"])
         data["bot"] = None
         self.assertDictEqual(
             data, response.json(), "The returned order should match the order sent"
@@ -55,7 +55,7 @@ class MakerOrderTestCase(APITestCase):
 
         self.assertEqual(
             order.user.address,
-            Web3.to_checksum_address(data["address"]),
+            Address(data["address"]),
             "The owner of the order should have the same address than sent",
         )
 
@@ -266,8 +266,8 @@ class MakerOrderTestCase(APITestCase):
             amount=data["amount"],
             expiry=data["expiry"],
             price=data["price"],
-            base_token=Web3.to_checksum_address(data["base_token"]),
-            quote_token=Web3.to_checksum_address(data["quote_token"]),
+            base_token=Address(data["base_token"]),
+            quote_token=Address(data["quote_token"]),
             signature=data["signature"],
             order_hash=data["order_hash"],
             is_buyer=data["is_buyer"],
@@ -286,9 +286,9 @@ class MakerOrderTestCase(APITestCase):
         )
         data["bot"] = None
         data["expiry"] = int(data["expiry"].timestamp())
-        data["address"] = Web3.to_checksum_address(data["address"])
-        data["base_token"] = Web3.to_checksum_address(data["base_token"])
-        data["quote_token"] = Web3.to_checksum_address(data["quote_token"])
+        data["address"] = Address(data["address"])
+        data["base_token"] = Address(data["base_token"])
+        data["quote_token"] = Address(data["quote_token"])
         self.assertListEqual([data], response.json())
 
     def test_retrieving_own_order(self):
@@ -315,8 +315,8 @@ class MakerOrderTestCase(APITestCase):
             amount=data["amount"],
             expiry=data["expiry"],
             price=data["price"],
-            base_token=Web3.to_checksum_address(data["base_token"]),
-            quote_token=Web3.to_checksum_address(data["quote_token"]),
+            base_token=Address(data["base_token"]),
+            quote_token=Address(data["quote_token"]),
             signature=data["signature"],
             order_hash=data["order_hash"],
             is_buyer=data["is_buyer"],
@@ -337,9 +337,9 @@ class MakerOrderTestCase(APITestCase):
         )
         data["bot"] = None
         data["expiry"] = int(data["expiry"].timestamp())
-        data["address"] = Web3.to_checksum_address(data["address"])
-        data["base_token"] = Web3.to_checksum_address(data["base_token"])
-        data["quote_token"] = Web3.to_checksum_address(data["quote_token"])
+        data["address"] = Address(data["address"])
+        data["base_token"] = Address(data["base_token"])
+        data["quote_token"] = Address(data["quote_token"])
         self.assertListEqual([data], response.json())
 
     def test_sending_id_field_is_not_taken_in_account(self):
@@ -1261,16 +1261,16 @@ class MakerOrderTestCase(APITestCase):
             "status": "OPEN",
         }
         response = self.client.post(reverse("api:order"), data=data)
-        User.objects.get(address=Web3.to_checksum_address(data["address"]))
+        User.objects.get(address=Address(data["address"]))
 
         self.assertEqual(
             response.status_code, HTTP_200_OK, "The order resquest should not fail"
         )
 
         data["bot"] = None
-        data["address"] = Web3.to_checksum_address(data["address"])
-        data["base_token"] = Web3.to_checksum_address(data["base_token"])
-        data["quote_token"] = Web3.to_checksum_address(data["quote_token"])
+        data["address"] = Address(data["address"])
+        data["base_token"] = Address(data["base_token"])
+        data["quote_token"] = Address(data["quote_token"])
 
         self.assertDictEqual(
             response.json(), data, "The returned data should match the data sent"
@@ -1283,33 +1283,33 @@ class MakerOrderRetrievingTestCase(APITestCase):
     def setUp(self) -> None:
         self.user_1: User = async_to_sync(User.objects.create_user)(
             address=Address(
-                Web3.to_checksum_address("0xF17f52151EbEF6C7334FAD080c5704D77216b732")
+                Address("0xF17f52151EbEF6C7334FAD080c5704D77216b732")
             )
         )
 
         self.user_2: User = async_to_sync(User.objects.create_user)(
             address=Address(
-                Web3.to_checksum_address("0xC5FDF4076b8F3A5357c5E395ab970B5B54098Fef")
+                Address("0xC5FDF4076b8F3A5357c5E395ab970B5B54098Fef")
             )
         )
 
         self.user_3: User = async_to_sync(User.objects.create_user)(
             address=Address(
-                Web3.to_checksum_address("0xC6FDF4076b8F3A5357c5E395ab970B5B54098Fef")
+                Address("0xC6FDF4076b8F3A5357c5E395ab970B5B54098Fef")
             )
         )
 
         self.order_1_1 = {
-            "address": Web3.to_checksum_address(
+            "address": Address(
                 "0xf17f52151EbEF6C7334FAD080c5704D77216B732"
             ),
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 1696667304,
             "price": "{0:f}".format(Decimal("2e20")),
-            "base_token": Web3.to_checksum_address(
+            "base_token": Address(
                 "0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520"
             ),
-            "quote_token": Web3.to_checksum_address(
+            "quote_token": Address(
                 "0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
             ),
             "signature": "0xfabfac7f7a8bbb7f87747c940a6a9be667a57c86c145fd2bb91d8286cdbde0253e1cf2c95bdfb87a46669bc8ba0d4f92b4786d00df7f90aea8004d2b953b27cb1b",
@@ -1323,16 +1323,16 @@ class MakerOrderRetrievingTestCase(APITestCase):
         }
 
         self.order_1_2 = {
-            "address": Web3.to_checksum_address(
+            "address": Address(
                 "0xf17f52151Ebef6C7334FAD080c5704D77216b732"
             ),
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
-            "base_token": Web3.to_checksum_address(
+            "base_token": Address(
                 "0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520"
             ),
-            "quote_token": Web3.to_checksum_address(
+            "quote_token": Address(
                 "0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
             ),
             "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
@@ -1346,16 +1346,16 @@ class MakerOrderRetrievingTestCase(APITestCase):
         }
 
         self.order_1_3 = {
-            "address": Web3.to_checksum_address(
+            "address": Address(
                 "0xf17f52151Ebef6C7334FAD080c5704D77216b732"
             ),
             "amount": "{0:f}".format(Decimal("171e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("21e19")),
-            "base_token": Web3.to_checksum_address(
+            "base_token": Address(
                 "0x3Aa5f43c7C4e2C5671A96439F1fbFfe1d58929Cb"
             ),
-            "quote_token": Web3.to_checksum_address(
+            "quote_token": Address(
                 "0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
             ),
             "signature": "0x139c033404a061eae0d17dbb366f153791569d6a7ad42bc6ad7b902a341bec6d7eca9102499ff60fe566fcd53642fb254c6efa2a8ca933ba917571fbfee73d261c",
@@ -1369,16 +1369,16 @@ class MakerOrderRetrievingTestCase(APITestCase):
         }
 
         self.order_2_1 = {
-            "address": Web3.to_checksum_address(
+            "address": Address(
                 "0xC5FDF4076b8F3A5357c5E395ab970B5B54098Fef"
             ),
             "amount": "{0:f}".format(Decimal("111e16")),
             "expiry": 2114380801,
             "price": "{0:f}".format(Decimal("24e19")),
-            "base_token": Web3.to_checksum_address(
+            "base_token": Address(
                 "0x3AA5f43c7c4e2C5671A96439F1fbFfe1d58929Cb"
             ),
-            "quote_token": Web3.to_checksum_address(
+            "quote_token": Address(
                 "0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
             ),
             "signature": "0x346d7e67d76b8de75de2c18855818261394323565f0c246bd565ec448f670fa91c3139086f11ef6853fcae56cd67d89cbf4f60916898579836dec681b7f9249d1c",
@@ -1392,16 +1392,16 @@ class MakerOrderRetrievingTestCase(APITestCase):
         }
 
         self.order_2_2 = {
-            "address": Web3.to_checksum_address(
+            "address": Address(
                 "0xC5FDF4076b8F3A5357c5E395ab970B5B54098Fef"
             ),
             "amount": "{0:f}".format(Decimal("141e16")),
             "expiry": 2114380801,
             "price": "{0:f}".format(Decimal("25e19")),
-            "base_token": Web3.to_checksum_address(
+            "base_token": Address(
                 "0x3AA5f43c7c4e2C5671A96439F1fbFfe1d58929Cb"
             ),
-            "quote_token": Web3.to_checksum_address(
+            "quote_token": Address(
                 "0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
             ),
             "signature": "0xee7433f9f83b59019723f08c8348895a767eb1aae16536847b54de37b3e92ff93f916e4c302309b7317335c9f9aad8e18927371994ef08ce75d8357376e2ef0a1b",
@@ -1415,16 +1415,16 @@ class MakerOrderRetrievingTestCase(APITestCase):
         }
 
         self.order_2_3 = {
-            "address": Web3.to_checksum_address(
+            "address": Address(
                 "0xC5FDF4076b8F3A5357c5E395ab970B5B54098Fef"
             ),
             "amount": "{0:f}".format(Decimal("182e16")),
             "expiry": 2114380801,
             "price": "{0:f}".format(Decimal("27e19")),
-            "base_token": Web3.to_checksum_address(
+            "base_token": Address(
                 "0x3AA5f43c7c4e2C5671A96439F1fbFfe1d58929Cb"
             ),
-            "quote_token": Web3.to_checksum_address(
+            "quote_token": Address(
                 "0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
             ),
             "signature": "0x69b2da58758a256e2d24a6f04ca5d8dc7d4834b96a6246e18c2b9e8ecba80992145267c18e8add3a7b952121a9ae82ad090fc05ba44688f445e54a5b21caa6a81b",
@@ -1438,16 +1438,16 @@ class MakerOrderRetrievingTestCase(APITestCase):
         }
 
         self.order_2_4 = {
-            "address": Web3.to_checksum_address(
+            "address": Address(
                 "0xC5FDF4076b8F3A5357c5E395ab970B5B54098Fef"
             ),
             "amount": "{0:f}".format(Decimal("189e16")),
             "expiry": 2114380801,
             "price": "{0:f}".format(Decimal("29e19")),
-            "base_token": Web3.to_checksum_address(
+            "base_token": Address(
                 "0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520"
             ),
-            "quote_token": Web3.to_checksum_address(
+            "quote_token": Address(
                 "0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
             ),
             "signature": "0x422b8570187908abb3a18a2f224e7fa4870c18944f9b4b86bc4b498c738739b90e6db92a52b994920908d64404482856226065001156ca2dbbe6b330d31116811b",
@@ -1495,8 +1495,8 @@ class MakerOrderRetrievingTestCase(APITestCase):
                 amount=data["amount"],
                 expiry=datetime.fromtimestamp(data["expiry"]),
                 price=data["price"],
-                base_token=Web3.to_checksum_address(data["base_token"]),
-                quote_token=Web3.to_checksum_address(data["quote_token"]),
+                base_token=Address(data["base_token"]),
+                quote_token=Address(data["quote_token"]),
                 signature=data["signature"],
                 order_hash=data["order_hash"],
                 is_buyer=data["is_buyer"],
@@ -2110,16 +2110,16 @@ class MakerTakersFeesRetrieval(APITestCase):
         )
 
         self.data = {
-            "address": Web3.to_checksum_address(
+            "address": Address(
                 "0xf17f52151EbEF6C7334FAD080c5704D77216B732"
             ),
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 1696667304,
             "price": "{0:f}".format(Decimal("2e20")),
-            "base_token": Web3.to_checksum_address(
+            "base_token": Address(
                 "0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520"
             ),
-            "quote_token": Web3.to_checksum_address(
+            "quote_token": Address(
                 "0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
             ),
             "signature": "0xfabfac7f7a8bbb7f87747c940a6a9be667a57c86c145fd2bb91d8286cdbde0253e1cf2c95bdfb87a46669bc8ba0d4f92b4786d00df7f90aea8004d2b953b27cb1b",
@@ -2136,8 +2136,8 @@ class MakerTakersFeesRetrieval(APITestCase):
             amount=self.data["amount"],
             expiry=datetime.fromtimestamp(self.data["expiry"]),
             price=self.data["price"],
-            base_token=Web3.to_checksum_address(self.data["base_token"]),
-            quote_token=Web3.to_checksum_address(self.data["quote_token"]),
+            base_token=Address(self.data["base_token"]),
+            quote_token=Address(self.data["quote_token"]),
             signature=self.data["signature"],
             order_hash=self.data["order_hash"],
             is_buyer=self.data["is_buyer"],
@@ -2476,16 +2476,16 @@ class MakerTakersFeesRetrieval(APITestCase):
         """Checks two maker with base and quote taker are well returned"""
 
         self.data = {
-            "address": Web3.to_checksum_address(
+            "address": Address(
                 "0xf17f52151Ebef6C7334FAD080c5704D77216b732"
             ),
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
-            "base_token": Web3.to_checksum_address(
+            "base_token": Address(
                 "0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520"
             ),
-            "quote_token": Web3.to_checksum_address(
+            "quote_token": Address(
                 "0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
             ),
             "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
@@ -2502,8 +2502,8 @@ class MakerTakersFeesRetrieval(APITestCase):
             amount=self.data["amount"],
             expiry=datetime.fromtimestamp(self.data["expiry"]),
             price=self.data["price"],
-            base_token=Web3.to_checksum_address(self.data["base_token"]),
-            quote_token=Web3.to_checksum_address(self.data["quote_token"]),
+            base_token=Address(self.data["base_token"]),
+            quote_token=Address(self.data["quote_token"]),
             signature=self.data["signature"],
             order_hash=self.data["order_hash"],
             is_buyer=self.data["is_buyer"],
@@ -2657,16 +2657,16 @@ class TakerRetrievalTestCase(APITestCase):
         )
         self.datetime = datetime.now()
         self.data = {
-            "address": Web3.to_checksum_address(
+            "address": Address(
                 "0xf17f52151EbEF6C7334FAD080c5704D77216B732"
             ),
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 1696667304,
             "price": "{0:f}".format(Decimal("2e20")),
-            "base_token": Web3.to_checksum_address(
+            "base_token": Address(
                 "0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520"
             ),
-            "quote_token": Web3.to_checksum_address(
+            "quote_token": Address(
                 "0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
             ),
             "signature": "0xfabfac7f7a8bbb7f87747c940a6a9be667a57c86c145fd2bb91d8286cdbde0253e1cf2c95bdfb87a46669bc8ba0d4f92b4786d00df7f90aea8004d2b953b27cb1b",
@@ -2683,8 +2683,8 @@ class TakerRetrievalTestCase(APITestCase):
             amount=self.data["amount"],
             expiry=datetime.fromtimestamp(self.data["expiry"]),
             price=self.data["price"],
-            base_token=Web3.to_checksum_address(self.data["base_token"]),
-            quote_token=Web3.to_checksum_address(self.data["quote_token"]),
+            base_token=Address(self.data["base_token"]),
+            quote_token=Address(self.data["quote_token"]),
             signature=self.data["signature"],
             order_hash=self.data["order_hash"],
             is_buyer=self.data["is_buyer"],

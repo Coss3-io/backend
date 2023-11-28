@@ -43,8 +43,8 @@ class WebsocketFramesTestCase(APITestCase):
             amount=self.data["amount"],
             expiry=datetime.fromtimestamp(self.data["expiry"]),
             price=self.data["price"],
-            base_token=Web3.to_checksum_address(self.data["base_token"]),
-            quote_token=Web3.to_checksum_address(self.data["quote_token"]),
+            base_token=Address(self.data["base_token"]),
+            quote_token=Address(self.data["quote_token"]),
             signature=self.data["signature"],
             order_hash=self.data["order_hash"],
             is_buyer=self.data["is_buyer"],
@@ -75,16 +75,16 @@ class WebsocketFramesTestCase(APITestCase):
         self.assertTrue(connected, "The websocket should be connected on test startup")
 
         data = {
-            "address": Web3.to_checksum_address(
+            "address": Address(
                 "0xF17f52151EbEF6C7334FAD080c5704D77216b732"
             ),
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
-            "base_token": Web3.to_checksum_address(
+            "base_token": Address(
                 "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520"
             ),
-            "quote_token": Web3.to_checksum_address(
+            "quote_token": Address(
                 "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
             ),
             "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
@@ -149,7 +149,7 @@ class WebsocketFramesTestCase(APITestCase):
         self.assertTrue(connected, "The websocket should be connected on test startup")
 
         data = {
-            "address": Web3.to_checksum_address(
+            "address": Address(
                 "0xC5fdF4076b8F3A5357c5E395ab970B5B54098Fef"
             ),
             "amount": "{0:f}".format(Decimal("173e16")),
@@ -184,7 +184,7 @@ class WebsocketFramesTestCase(APITestCase):
         self.assertTrue(connected, "The websocket should be connected on test startup")
 
         data = {
-            "token": Web3.to_checksum_address(
+            "token": Address(
                 "0xC5fdF4076b8F3A5357c5E395ab970B5B54098Fef"
             ),
             "amount": "{0:f}".format(Decimal("173e16")),
@@ -219,7 +219,7 @@ class WebsocketFramesTestCase(APITestCase):
         self.assertTrue(connected, "The websocket should be connected on test startup")
 
         data = {
-            "token": Web3.to_checksum_address(
+            "token": Address(
                 "0xC5fdF4076b8F3A5357c5E395ab970B5B54098Fef"
             ),
             "address": "0xC5fdF4176b8F3A5357c5E395ab970B5B54098Fef",
@@ -237,7 +237,7 @@ class WebsocketFramesTestCase(APITestCase):
         message = await communicator.receive_from()
 
         data["slot"] = int(data["slot"])
-        data["address"] = Web3.to_checksum_address(data["address"])
+        data["address"] = Address(data["address"])
         del data["timestamp"]
         del data["signature"]
 
@@ -273,7 +273,7 @@ class WebsocketFramesTestCase(APITestCase):
     async def test_websocket_frame_maker_update(self):
         """Checks the websocket frame is sent well on order update"""
 
-        taker_address = Web3.to_checksum_address(
+        taker_address = Address(
             "0xf17f52151EbEF6C7334FAD080c5704D77216b733"
         )
         block = 19

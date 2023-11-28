@@ -43,7 +43,7 @@ class StackingTestCase(APITestCase):
 
         response = self.client.post(reverse("api:stacking"), data=data)
         stack_entry = Stacking.objects.get(
-            user__address=Web3.to_checksum_address(data["address"])
+            user__address=Address(data["address"])
         )
 
         self.assertEqual(
@@ -84,7 +84,7 @@ class StackingTestCase(APITestCase):
 
         response = self.client.post(reverse("api:stacking"), data=data)
         stack_entry = Stacking.objects.get(
-            user__address=Web3.to_checksum_address(data["address"])
+            user__address=Address(data["address"])
         )
 
         self.assertEqual(
@@ -164,7 +164,7 @@ class StackingTestCase(APITestCase):
             "The request with a non existing user should work",
         )
 
-        User.objects.get(address=Web3.to_checksum_address(data["address"]))
+        User.objects.get(address=Address(data["address"]))
 
     def test_stacking_entry_creation_wrong_address_fails(self):
         """Checks creating a stacking entry with a wrong address fails"""
@@ -383,7 +383,7 @@ class StackingFeesTestCase(APITestCase):
 
         response = self.client.post(reverse("api:stacking-fees"), data=data)
         stack_fees_entry = StackingFees.objects.get(
-            token=Web3.to_checksum_address(data["token"])
+            token=Address(data["token"])
         )
 
         self.assertEqual(
@@ -420,7 +420,7 @@ class StackingFeesTestCase(APITestCase):
         StackingFees.objects.create(
             amount=Decimal("23e18"),
             slot=23,
-            token=Web3.to_checksum_address(data["token"]),
+            token=Address(data["token"]),
         )
 
         data["timestamp"] = str(int(time()) * 1000)
@@ -432,7 +432,7 @@ class StackingFeesTestCase(APITestCase):
 
         response = self.client.post(reverse("api:stacking-fees"), data=data)
         stack_fees_entry = StackingFees.objects.get(
-            token=Web3.to_checksum_address(data["token"])
+            token=Address(data["token"])
         )
 
         self.assertEqual(
@@ -611,10 +611,10 @@ class StackingFeesRetrievalTestCase(APITestCase):
     """Class used to test the retrieval of stacking fees behaviour"""
 
     def setUp(self):
-        self.address_1 = Web3.to_checksum_address(
+        self.address_1 = Address(
             "0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520"
         )
-        self.address_2 = Web3.to_checksum_address(
+        self.address_2 = Address(
             "0xC02aaA39b223fe8D0A0e5C4F27eAD9083C756Cc2"
         )
 
@@ -695,7 +695,7 @@ class StackingFeesWithdrawalTestCase(APITestCase):
 
         response = self.client.post(reverse("api:fees-withdrawal"), data=data)
         stack_fees_withdrawal = StackingFeesWithdrawal.objects.get(
-            token=Web3.to_checksum_address(data["token"])
+            token=Address(data["token"])
         )
 
         self.assertEqual(
@@ -717,7 +717,7 @@ class StackingFeesWithdrawalTestCase(APITestCase):
 
         self.assertEqual(
             stack_fees_withdrawal.user,
-            User.objects.get(address=Web3.to_checksum_address(data["address"])),
+            User.objects.get(address=Address(data["address"])),
             "The user attached to the stacking fees withdrawal should correspond to the address sent",
         )
 
@@ -748,7 +748,7 @@ class StackingFeesWithdrawalTestCase(APITestCase):
         )
 
         with self.assertRaises(User.DoesNotExist):
-            User.objects.get(address=Web3.to_checksum_address(data["address"]))
+            User.objects.get(address=Address(data["address"]))
 
     def test_stacking_fees_withdrawal_entries_creation_wrong_token_fails(self):
         """Checks stacking fees withdrawal entries creation with a wrong token fails"""
@@ -775,4 +775,29 @@ class StackingFeesWithdrawalTestCase(APITestCase):
         )
 
         with self.assertRaises(User.DoesNotExist):
-            User.objects.get(address=Web3.to_checksum_address(data["address"]))
+            User.objects.get(address=Address(data["address"]))
+
+
+class GlobalStackingRetrievalTestCase(APITestCase):
+    """Test case used to retrieve the aggregation of all the stacking entries for the users"""
+
+    def setUp(self) -> None:
+
+        self.user = async_to_sync(User.objects.create_user)(
+            address=Address("0xC5fdF4076b8F3A5357c5E395ab970B5B54098Fef")
+        )
+
+        self.user_2 = async_to_sync(User.objects.create_user)(
+            address=Address("0xA5fdf4076b8F3A5357C5E395ab970B5B54098Fef")
+        )
+
+        self.stacking_3 = Stacking.objects.create(
+            amount=Decimal("21e18"), slot=21, user=self.user_2
+        )
+
+        self.stacking_1 = Stacking.objects.create(
+            amount=Decimal("23e18"), slot=23, user=self.user
+        )
+        self.stacking_2 = Stacking.objects.create(
+            amount=Decimal("134e17"), slot=12, user=self.user
+        )

@@ -20,6 +20,25 @@ class Stacking(models.Model):
     user = models.ForeignKey("User", on_delete=models.CASCADE, null=False, blank=False)
 
 
+class StackingFeesWithdrawal(models.Model):
+    """Model used to track the user FSA withdrawal from the contract"""
+
+    class Meta:
+        constraints = []
+
+    slot = models.IntegerField(null=False, blank=False)
+    token = models.CharField(
+        null=False,
+        blank=False,
+        max_length=42,
+        validators=[
+            MinLengthValidator(limit_value=42),
+            MaxLengthValidator(limit_value=42),
+        ],
+    )
+    user = models.ForeignKey("User", on_delete=models.CASCADE, null=False, blank=False)
+
+
 class StackingFees(models.Model):
     """Model used to track the fees sent to the stacking contract"""
 

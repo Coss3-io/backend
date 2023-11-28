@@ -7,3 +7,4 @@ class WStypes:
     MAKERS_UPDATE = "makers_update"
     BOT_FEES = "bot_fees"
     DEL_MAKER = "delete_maker"
+    NEW_FSA_WITHDRAWAL = "new_fsa_withdrawal"

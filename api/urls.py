@@ -2,7 +2,7 @@ from django.urls import path
 from api.views.orders import OrderView, MakerView, BotView, TakerView
 from api.views.watch_tower import WatchTowerView
 from api.views.user import UserCreateView, UserLogInView
-from api.views.stacking import StackingView, StackingFeesView
+from api.views.stacking import StackingView, StackingFeesView, StackingFeesWithdrawalView
 
 app_name = "api"
 urlpatterns = [
@@ -14,5 +14,6 @@ urlpatterns = [
     path("stacking", StackingView.as_view(), name="stacking"),
     path("bot", BotView.as_view(), name="bot"),
     path("stacking-fees", StackingFeesView.as_view(), name="stacking-fees"),
+    path("stacking-withdrawal", StackingFeesWithdrawalView.as_view(), name="fees-withdrawal"),
     path("wt", WatchTowerView.as_view(), name="wt"),
 ]

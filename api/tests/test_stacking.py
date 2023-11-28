@@ -9,7 +9,7 @@ from web3 import Web3
 from rest_framework import exceptions
 from rest_framework.test import APITestCase
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
-from api.models.stacking import Stacking, StackingFees
+from api.models.stacking import Stacking, StackingFees, StackingFeesWithdrawal
 from api.models.types import Address
 from api.models import User
 import api.errors as errors
@@ -672,3 +672,107 @@ class StackingFeesRetrievalTestCase(APITestCase):
             ),
             "The stacking fees entries should match the one into the database",
         )
+
+
+class StackingFeesWithdrawalTestCase(APITestCase):
+    """Class used to test the behaviour of the publication of fees withdrawal"""
+
+    def test_stacking_fees_withdrawal_entries_creation_from_wt_work(self):
+        """Checks stacking fees withdrawal entries creation works well"""
+
+        data = {
+            "token": "0xC5FDf4076b8F3A5357c5E395ab970B5B54098Fef",
+            "address": "0xC6FDf4076b8F3A5357c5E395ab970B5B54098Fef",
+            "slot": "23",
+        }
+
+        data["timestamp"] = str(int(time()) * 1000)
+        data["signature"] = hmac.new(
+            key=settings.WATCH_TOWER_KEY.encode(),
+            msg=dumps(data).encode(),
+            digestmod="sha256",
+        ).hexdigest()
+
+        response = self.client.post(reverse("api:fees-withdrawal"), data=data)
+        stack_fees_withdrawal = StackingFeesWithdrawal.objects.get(
+            token=Web3.to_checksum_address(data["token"])
+        )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_200_OK,
+            "the stacking fees withdrawal entry creation should work",
+        )
+        self.assertDictEqual(
+            response.json(),
+            {},
+            "no data should be returned on stacking fees withdrawal entry creation",
+        )
+
+        self.assertEqual(
+            stack_fees_withdrawal.slot,
+            Decimal(data["slot"]),
+            "The slot of the stacking fees entry should match the slot sent",
+        )
+
+        self.assertEqual(
+            stack_fees_withdrawal.user,
+            User.objects.get(address=Web3.to_checksum_address(data["address"])),
+            "The user attached to the stacking fees withdrawal should correspond to the address sent",
+        )
+
+    def test_stacking_fees_withdrawal_entries_creation_wrong_signature_fails(self):
+        """Checks stacking fees withdrawal entries creation with a wrong signature fails"""
+
+        data = {
+            "token": "0xC5FDf4076b8F3A5357c5E395ab970B5B54098Fef",
+            "address": "0xC6FDf4076b8F3A5357c5E395ab970B5B54098Fef",
+            "slot": "23",
+        }
+
+        data["timestamp"] = str(int(time()) * 1000)
+        data["signature"] = hmac.new(
+            key=settings.WATCH_TOWER_KEY.encode(),
+            msg=dumps(data).encode(),
+            digestmod="sha256",
+        ).hexdigest()
+
+        data["slot"] = "24"
+
+        response = self.client.post(reverse("api:fees-withdrawal"), data=data)
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_403_FORBIDDEN,
+            "The stacking fees creation should fail with a wrong signature",
+        )
+
+        with self.assertRaises(User.DoesNotExist):
+            User.objects.get(address=Web3.to_checksum_address(data["address"]))
+
+    def test_stacking_fees_withdrawal_entries_creation_wrong_token_fails(self):
+        """Checks stacking fees withdrawal entries creation with a wrong token fails"""
+
+        data = {
+            "token": "0xCgFDf4076b8F3A5357c5E395ab970B5B54098Fef",
+            "address": "0xC6FDf4076b8F3A5357c5E395ab970B5B54098Fef",
+            "slot": "23",
+        }
+
+        data["timestamp"] = str(int(time()) * 1000)
+        data["signature"] = hmac.new(
+            key=settings.WATCH_TOWER_KEY.encode(),
+            msg=dumps(data).encode(),
+            digestmod="sha256",
+        ).hexdigest()
+
+        response = self.client.post(reverse("api:fees-withdrawal"), data=data)
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The stacking fees creation should fail with a wrong token",
+        )
+
+        with self.assertRaises(User.DoesNotExist):
+            User.objects.get(address=Web3.to_checksum_address(data["address"]))

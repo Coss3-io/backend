@@ -211,6 +211,42 @@ class WebsocketFramesTestCase(APITestCase):
             "The websocket message should contain the stacking fees just created",
         )
 
+    async def test_websocket_frame_stacking_fees_withdrawal_creation(self):
+        """Checks a websocket frame is sent on stacking fees withdrawal creation"""
+
+        communicator = WebsocketCommunicator(ws_asgi_app, "/ws")
+        connected, _ = await communicator.connect()
+        self.assertTrue(connected, "The websocket should be connected on test startup")
+
+        data = {
+            "token": Web3.to_checksum_address(
+                "0xC5fdF4076b8F3A5357c5E395ab970B5B54098Fef"
+            ),
+            "address": "0xC5fdF4176b8F3A5357c5E395ab970B5B54098Fef",
+            "slot": "23",
+        }
+
+        data["timestamp"] = str(int(time()) * 1000)
+        data["signature"] = hmac.new(
+            key=settings.WATCH_TOWER_KEY.encode(),
+            msg=dumps(data).encode(),
+            digestmod="sha256",
+        ).hexdigest()
+
+        await self.async_client.post(reverse("api:fees-withdrawal"), data=data)  # type: ignore
+        message = await communicator.receive_from()
+
+        data["slot"] = int(data["slot"])
+        data["address"] = Web3.to_checksum_address(data["address"])
+        del data["timestamp"]
+        del data["signature"]
+
+        self.assertDictEqual(
+            loads(message),
+            {WStypes.NEW_FSA_WITHDRAWAL: data},
+            "The websocket message should contain the stacking fees withdrawal just created",
+        )
+
     async def test_websocket_frame_maker_deletion(self):
         """Checks the websocket frame is sent well on order deletion"""
 

@@ -29,7 +29,7 @@ def validate_eth_signed_message(
     ```
     """
     try:
-        match = Web3.to_checksum_address(address) == Account.recover_message(
+        match = Address(address) == Account.recover_message(
             messages.encode_defunct(message),
             signature=signature,
         )

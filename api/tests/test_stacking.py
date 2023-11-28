@@ -42,9 +42,7 @@ class StackingTestCase(APITestCase):
         ).hexdigest()
 
         response = self.client.post(reverse("api:stacking"), data=data)
-        stack_entry = Stacking.objects.get(
-            user__address=Address(data["address"])
-        )
+        stack_entry = Stacking.objects.get(user__address=Address(data["address"]))
 
         self.assertEqual(
             response.status_code, HTTP_200_OK, "the stacking entry creation should work"
@@ -83,9 +81,7 @@ class StackingTestCase(APITestCase):
         ).hexdigest()
 
         response = self.client.post(reverse("api:stacking"), data=data)
-        stack_entry = Stacking.objects.get(
-            user__address=Address(data["address"])
-        )
+        stack_entry = Stacking.objects.get(user__address=Address(data["address"]))
 
         self.assertEqual(
             response.status_code, HTTP_200_OK, "the stacking entry update should work"
@@ -382,9 +378,7 @@ class StackingFeesTestCase(APITestCase):
         ).hexdigest()
 
         response = self.client.post(reverse("api:stacking-fees"), data=data)
-        stack_fees_entry = StackingFees.objects.get(
-            token=Address(data["token"])
-        )
+        stack_fees_entry = StackingFees.objects.get(token=Address(data["token"]))
 
         self.assertEqual(
             response.status_code,
@@ -431,9 +425,7 @@ class StackingFeesTestCase(APITestCase):
         ).hexdigest()
 
         response = self.client.post(reverse("api:stacking-fees"), data=data)
-        stack_fees_entry = StackingFees.objects.get(
-            token=Address(data["token"])
-        )
+        stack_fees_entry = StackingFees.objects.get(token=Address(data["token"]))
 
         self.assertEqual(
             response.status_code,
@@ -611,12 +603,8 @@ class StackingFeesRetrievalTestCase(APITestCase):
     """Class used to test the retrieval of stacking fees behaviour"""
 
     def setUp(self):
-        self.address_1 = Address(
-            "0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520"
-        )
-        self.address_2 = Address(
-            "0xC02aaA39b223fe8D0A0e5C4F27eAD9083C756Cc2"
-        )
+        self.address_1 = Address("0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520")
+        self.address_2 = Address("0xC02aaA39b223fe8D0A0e5C4F27eAD9083C756Cc2")
 
         self.stacking_fees_3 = StackingFees.objects.create(
             amount=Decimal("21e18"), slot=21, token=self.address_1
@@ -782,7 +770,6 @@ class GlobalStackingRetrievalTestCase(APITestCase):
     """Test case used to retrieve the aggregation of all the stacking entries for the users"""
 
     def setUp(self) -> None:
-
         self.user = async_to_sync(User.objects.create_user)(
             address=Address("0xC5fdF4076b8F3A5357c5E395ab970B5B54098Fef")
         )
@@ -791,13 +778,85 @@ class GlobalStackingRetrievalTestCase(APITestCase):
             address=Address("0xA5fdf4076b8F3A5357C5E395ab970B5B54098Fef")
         )
 
-        self.stacking_3 = Stacking.objects.create(
-            amount=Decimal("21e18"), slot=21, user=self.user_2
-        )
-
-        self.stacking_1 = Stacking.objects.create(
+        self.stacking_1_1 = Stacking.objects.create(
             amount=Decimal("23e18"), slot=23, user=self.user
         )
-        self.stacking_2 = Stacking.objects.create(
+        self.stacking_1_2 = Stacking.objects.create(
+            amount=Decimal("46e18"), slot=23, user=self.user_2
+        )
+
+        self.stacking_2_1 = Stacking.objects.create(
             amount=Decimal("134e17"), slot=12, user=self.user
+        )
+
+        self.stacking_2_2 = Stacking.objects.create(
+            amount=Decimal("13e17"), slot=12, user=self.user_2
+        )
+
+        self.stacking_3_1 = Stacking.objects.create(
+            amount=Decimal("21e18"), slot=21, user=self.user
+        )
+
+        self.stacking_3_2 = Stacking.objects.create(
+            amount=Decimal("29e18"), slot=21, user=self.user_2
+        )
+
+    def test_global_stacking_retrieval_works(self):
+        """Checks the global stacking retrieval works properly"""
+
+        self.stacking_4_1 = Stacking.objects.create(
+            amount=Decimal("4658e18"), slot=46, user=self.user
+        )
+
+        response = self.client.get(reverse("api:global-stacking"))
+        data = response.json()
+
+        self.assertEqual(
+            response.status_code, HTTP_200_OK, "The response should be successfull"
+        )
+
+        self.assertListEqual(
+            data,
+            [
+                [
+                    self.stacking_1_1.slot,
+                    self.stacking_1_1.amount + self.stacking_1_2.amount,
+                ],
+                [
+                    self.stacking_3_1.slot,
+                    self.stacking_3_1.amount + self.stacking_3_2.amount,
+                ],
+                [
+                    self.stacking_2_1.slot,
+                    self.stacking_2_1.amount + self.stacking_2_2.amount,
+                ],
+            ],
+        )
+
+    def test_global_stacking_retrieval_caching_works(self):
+        """Checks the caching mecanism for the staking retrieval works"""
+
+        response = self.client.get(reverse("api:global-stacking"))
+        data = response.json()
+
+        self.assertEqual(
+            response.status_code, HTTP_200_OK, "The response should be successfull"
+        )
+
+        self.assertListEqual(
+            data,
+            [
+                [
+                    self.stacking_1_1.slot,
+                    self.stacking_1_1.amount + self.stacking_1_2.amount,
+                ],
+                [
+                    self.stacking_3_1.slot,
+                    self.stacking_3_1.amount + self.stacking_3_2.amount,
+                ],
+                [
+                    self.stacking_2_1.slot,
+                    self.stacking_2_1.amount + self.stacking_2_2.amount,
+                ],
+            ],
         )

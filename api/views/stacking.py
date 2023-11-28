@@ -1,5 +1,7 @@
-from asgiref.sync import sync_to_async
-from django.db.models import F
+from asgiref.sync import sync_to_async, async_to_sync
+from django.db.models import Sum
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.request import Request
@@ -10,7 +12,11 @@ from adrf.views import APIView
 from api.models import User
 from api.models.stacking import Stacking, StackingFees
 from api.views.permissions import WatchTowerPermission
-from api.serializers.stacking import StackingSerializer, StackingFeesSerializer
+from api.serializers.stacking import (
+    StackingSerializer,
+    StackingFeesSerializer,
+    StackingFeesWithdrawalSerializer,
+)
 from api.messages import WStypes
 from api.consumers.websocket import WebsocketConsumer
 from api.views.authentications import ApiAuthentication
@@ -79,7 +85,10 @@ class StackingView(APIView):
 
             await channel_layer.group_send(  # type: ignore
                 WebsocketConsumer.groups[0],
-                {"type": "send.json", "data": {WStypes.NEW_STACKING: stacking.validated_data}},
+                {
+                    "type": "send.json",
+                    "data": {WStypes.NEW_STACKING: stacking.validated_data},
+                },
             )
 
             return Response(
@@ -136,7 +145,10 @@ class StackingFeesView(APIView):
 
             await channel_layer.group_send(  # type: ignore
                 WebsocketConsumer.groups[0],
-                {"type": "send.json", "data": {WStypes.NEW_FEES: stacking_fees.validated_data}},
+                {
+                    "type": "send.json",
+                    "data": {WStypes.NEW_FEES: stacking_fees.validated_data},
+                },
             )
 
             return Response(
@@ -145,3 +157,76 @@ class StackingFeesView(APIView):
             )
         else:
             return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class StackingFeesWithdrawalView(APIView):
+    """View used to update the fees withdrawal entries per token per slot"""
+
+    def get_permissions(self):
+        data = super().get_permissions()
+        return data + [permission() for permission in getattr(getattr(self, self.request.method.lower(), self.http_method_not_allowed), "permission_classes", [])]  # type: ignore
+
+    @permission_classes([WatchTowerPermission])
+    async def post(self, request):
+        """Used by the watch tower to commit new stackingFees withdrawal entries
+
+        data received:
+
+        ```python
+        request.data = {
+            "slot": int,
+            "token": "0xadddress....",
+            "address": "0xadddress....",
+        }
+        ```"""
+
+        stacking_fees_withdrawal = StackingFeesWithdrawalSerializer(data=request.data)
+        await sync_to_async(stacking_fees_withdrawal.is_valid)(raise_exception=True)
+
+        if not isinstance(stacking_fees_withdrawal.validated_data, dict):
+            # never happens
+            return Response({}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = (
+            await User.objects.aget_or_create(
+                address=stacking_fees_withdrawal.validated_data["address"]
+            )
+        )[0]
+        stacking_fees_withdrawal.save(user=user)
+
+        if stacking_fees_withdrawal.instance:
+            stacking_fees_withdrawal.instance = await stacking_fees_withdrawal.instance
+
+            await channel_layer.group_send(  # type: ignore
+                WebsocketConsumer.groups[0],
+                {
+                    "type": "send.json",
+                    "data": {
+                        WStypes.NEW_FSA_WITHDRAWAL: stacking_fees_withdrawal.validated_data
+                    },
+                },
+            )
+
+            return Response(
+                {},
+                status=status.HTTP_200_OK,
+            )
+        else:
+            return Response({}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class GlobalStackingView(APIView):
+    """View used to retrieve the global staking amount for all the users"""
+
+    @sync_to_async
+    @method_decorator(cache_page(60 * 60 * 24))
+    @async_to_sync
+    async def get(self, request):
+        """Retrieves the global stacking amount"""
+
+        stacks = Stacking.objects.values_list("slot").annotate(amount=Sum("amount")).order_by("-slot")
+        return Response(stacks, status=status.HTTP_200_OK)
+
+
+class GlobalStackingFeesView:
+    pass

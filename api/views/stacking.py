@@ -79,7 +79,6 @@ class StackingView(APIView):
         stacking.save(user=user)
 
         if stacking.instance:
-
             stacking.instance = await stacking.instance
             amount = stacking.validated_data["amount"] * (
                 -1 if stacking.validated_data["withdraw"] else 1
@@ -112,10 +111,13 @@ class StackingFeesView(APIView):
         data = super().get_permissions()
         return data + [permission() for permission in getattr(getattr(self, self.request.method.lower(), self.http_method_not_allowed), "permission_classes", [])]  # type: ignore
 
+    @sync_to_async
+    @method_decorator(cache_page(60 * 60 * 24))
+    @async_to_sync
     async def get(self, request):
         """Used to get the fees entries for all the slots since the creation of the app"""
 
-        queryset = StackingFees.objects.all()
+        queryset = StackingFees.objects.all().order_by("-slot")
         data = await sync_to_async(
             lambda: StackingFeesSerializer(queryset, many=True).data
         )()
@@ -236,7 +238,3 @@ class GlobalStackingView(APIView):
             .order_by("-slot")
         )
         return Response(stacks, status=status.HTTP_200_OK)
-
-
-class GlobalStackingFeesView:
-    pass

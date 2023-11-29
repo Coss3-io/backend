@@ -33,7 +33,7 @@ class StackingTestCase(APITestCase):
             "address": "0xC5fdF4076b8F3A5357c5E395ab970B5B54098Fef",
             "amount": "{0:f}".format(Decimal("173e16")),
             "slot": "23",
-            "withdraw": "1"
+            "withdraw": "1",
         }
 
         data["timestamp"] = str(int(time()) * 1000)
@@ -42,7 +42,7 @@ class StackingTestCase(APITestCase):
             msg=dumps(data).encode(),
             digestmod="sha256",
         ).hexdigest()
-        data["withdraw"] = int(data["withdraw"]) #type: ignore
+        data["withdraw"] = int(data["withdraw"])  # type: ignore
 
         response = self.client.post(reverse("api:stacking"), data=data)
         stack_entry = Stacking.objects.get(user__address=Address(data["address"]))
@@ -72,7 +72,7 @@ class StackingTestCase(APITestCase):
             "address": "0xC5fdF4076b8F3A5357c5E395ab970B5B54098Fef",
             "amount": "{0:f}".format(Decimal("173e16")),
             "slot": "23",
-            "withdraw": "0"
+            "withdraw": "0",
         }
 
         data["timestamp"] = str(int(time()) * 1000)
@@ -81,7 +81,7 @@ class StackingTestCase(APITestCase):
             msg=dumps(data).encode(),
             digestmod="sha256",
         ).hexdigest()
-        data["withdraw"] = int(data["withdraw"]) #type: ignore
+        data["withdraw"] = int(data["withdraw"])  # type: ignore
 
         response = self.client.post(reverse("api:stacking"), data=data)
         stack_entry = Stacking.objects.get(user__address=Address(data["address"]))
@@ -112,7 +112,7 @@ class StackingTestCase(APITestCase):
             "address": "0xC5FdF4076b8F3A5357c5E395ab970B5B54098Fef",
             "amount": "{0:f}".format(Decimal("173e16")),
             "slot": "23",
-            "withdraw": "0"
+            "withdraw": "0",
         }
 
         Stacking.objects.create(amount=initial_amount, slot=23, user=self.user)
@@ -123,7 +123,7 @@ class StackingTestCase(APITestCase):
             msg=dumps(data).encode(),
             digestmod="sha256",
         ).hexdigest()
-        data["withdraw"] = int(data["withdraw"]) #type: ignore
+        data["withdraw"] = int(data["withdraw"])  # type: ignore
 
         response = self.client.post(reverse("api:stacking"), data=data)
         stack_entry = Stacking.objects.get(user__address=Address(data["address"]))
@@ -154,7 +154,7 @@ class StackingTestCase(APITestCase):
             "address": "0xC5FdF4076b8F3A5357c5E395ab970B5B54098Fef",
             "amount": "{0:f}".format(Decimal("173e16")),
             "slot": "23",
-            "withdraw": "1"
+            "withdraw": "1",
         }
 
         Stacking.objects.create(amount=initial_amount, slot=23, user=self.user)
@@ -165,7 +165,7 @@ class StackingTestCase(APITestCase):
             msg=dumps(data).encode(),
             digestmod="sha256",
         ).hexdigest()
-        data["withdraw"] = int(data["withdraw"]) #type: ignore
+        data["withdraw"] = int(data["withdraw"])  # type: ignore
 
         response = self.client.post(reverse("api:stacking"), data=data)
         stack_entry = Stacking.objects.get(user__address=Address(data["address"]))
@@ -197,7 +197,7 @@ class StackingTestCase(APITestCase):
             "address": "0xC5fdf4076B8F3A5357c5E395ab970B5B54098Fef",
             "amount": "{0:f}".format(Decimal("173e16")),
             "slot": "23",
-            "withdraw": "1"
+            "withdraw": "1",
         }
 
         data["timestamp"] = str(int(time()) * 1000)
@@ -231,7 +231,7 @@ class StackingTestCase(APITestCase):
             "address": "0xC5fdf4076b8f3A5357c5E395ab970B5B54098Fea",
             "amount": "{0:f}".format(Decimal("173e16")),
             "slot": "23",
-            "withdraw": "1"
+            "withdraw": "1",
         }
 
         data["timestamp"] = str(int(time()) * 1000)
@@ -258,7 +258,7 @@ class StackingTestCase(APITestCase):
             "address": "0xZ5fdf4076b8F3A5357C5E395ab970B5B54098Fef",
             "amount": "{0:f}".format(Decimal("193e16")),
             "slot": "23",
-            "withdraw": "1"
+            "withdraw": "1",
         }
 
         data["timestamp"] = str(int(time()) * 1000)
@@ -288,7 +288,7 @@ class StackingTestCase(APITestCase):
             # "address": "0xZ5fdf4076b8F3A5357c5E395ab970B5B54098Fef",
             "amount": "{0:f}".format(Decimal("193e16")),
             "slot": "23",
-            "withdraw": "1"
+            "withdraw": "1",
         }
 
         data["timestamp"] = str(int(time()) * 1000)
@@ -318,7 +318,7 @@ class StackingTestCase(APITestCase):
             "address": "0xC5fdf4076b8F3A5357c5e395ab970B5B54098Fef",
             "amount": "{0:f}".format(Decimal("193e16")),
             "slot": "a23",
-            "withdraw": "1"
+            "withdraw": "1",
         }
 
         data["timestamp"] = str(int(time()) * 1000)
@@ -348,7 +348,7 @@ class StackingTestCase(APITestCase):
             "address": "0xC5fdf4076b8F3a5357c5E395ab970B5B54098Fef",
             "amount": "{0:f}".format(Decimal("193e16")),
             # "slot": "a23",
-            "withdraw": "1"
+            "withdraw": "1",
         }
 
         data["timestamp"] = str(int(time()) * 1000)
@@ -378,7 +378,7 @@ class StackingTestCase(APITestCase):
             "address": "0xC5fdF4076b8F3A5357c5E395ab970B5B54098Fef",
             "amount": "{0:f}".format(Decimal("173e16")),
             "slot": "23",
-            #"withdraw": "1"
+            # "withdraw": "1"
         }
 
         data["timestamp"] = str(int(time()) * 1000)
@@ -387,7 +387,7 @@ class StackingTestCase(APITestCase):
             msg=dumps(data).encode(),
             digestmod="sha256",
         ).hexdigest()
-        #data["withdraw"] = int(data["withdraw"]) #type: ignore
+        # data["withdraw"] = int(data["withdraw"]) #type: ignore
 
         response = self.client.post(reverse("api:stacking"), data=data)
 
@@ -409,7 +409,7 @@ class StackingTestCase(APITestCase):
             "address": "0xC5fdF4076b8F3A5357c5E395ab970B5B54098Fef",
             "amount": "{0:f}".format(Decimal("173e16")),
             "slot": "23",
-            "withdraw": "abc"
+            "withdraw": "abc",
         }
 
         data["timestamp"] = str(int(time()) * 1000)
@@ -769,6 +769,9 @@ class StackingFeesRetrievalTestCase(APITestCase):
         self.stacking_fees_2 = StackingFees.objects.create(
             amount=Decimal("134e17"), slot=12, token=self.address_2
         )
+        self.stacking_fees_4 = StackingFees.objects.create(
+            amount=Decimal("131e17"), slot=14, token=self.address_2
+        )
 
     def test_stacking_fees_retrieval_works(self):
         """Checks stacking fees retrieval works"""
@@ -782,7 +785,7 @@ class StackingFeesRetrievalTestCase(APITestCase):
         )
 
         self.assertEqual(
-            len(response.json()), 3, "Three entries should be returned by the server"
+            len(response.json()), 4, "four entries should be returned by the server"
         )
 
         self.assertListEqual(
@@ -807,11 +810,69 @@ class StackingFeesRetrievalTestCase(APITestCase):
                                 "amount": "{0:f}".format(self.stacking_fees_3.amount),
                                 "slot": self.stacking_fees_3.slot,
                             },
+                            {
+                                "token": self.stacking_fees_4.token,
+                                "amount": "{0:f}".format(self.stacking_fees_4.amount),
+                                "slot": self.stacking_fees_4.slot,
+                            },
                         ]
                     )
                 ]
             ),
             "The stacking fees entries should match the one into the database",
+        )
+
+    def test_stacking_fees_retrieval_works_with_cache(self):
+        """Checks stacking fees caching works"""
+
+        StackingFees.objects.create(
+            amount=Decimal("21e18"), slot=210, token=self.address_1
+        )
+
+        response = self.client.get(reverse("api:stacking-fees"))
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_200_OK,
+            "The stacking entries retrieval should work",
+        )
+
+        self.assertEqual(
+            len(response.json()), 4, "four entries should be returned by the server"
+        )
+
+        self.assertListEqual(
+            sorted([hash(frozenset(item.items())) for item in response.json()]),
+            sorted(
+                [
+                    hash(frozenset(item.items()))
+                    for item in reversed(
+                        [
+                            {
+                                "token": self.stacking_fees_1.token,
+                                "amount": "{0:f}".format(self.stacking_fees_1.amount),
+                                "slot": self.stacking_fees_1.slot,
+                            },
+                            {
+                                "token": self.stacking_fees_2.token,
+                                "amount": "{0:f}".format(self.stacking_fees_2.amount),
+                                "slot": self.stacking_fees_2.slot,
+                            },
+                            {
+                                "token": self.stacking_fees_3.token,
+                                "amount": "{0:f}".format(self.stacking_fees_3.amount),
+                                "slot": self.stacking_fees_3.slot,
+                            },
+                            {
+                                "token": self.stacking_fees_4.token,
+                                "amount": "{0:f}".format(self.stacking_fees_4.amount),
+                                "slot": self.stacking_fees_4.slot,
+                            },
+                        ]
+                    )
+                ]
+            ),
+            "The stacking fees entries should match the one cached",
         )
 
 
@@ -957,10 +1018,6 @@ class GlobalStackingRetrievalTestCase(APITestCase):
     def test_global_stacking_retrieval_works(self):
         """Checks the global stacking retrieval works properly"""
 
-        self.stacking_4_1 = Stacking.objects.create(
-            amount=Decimal("4658e18"), slot=46, user=self.user
-        )
-
         response = self.client.get(reverse("api:global-stacking"))
         data = response.json()
 
@@ -986,8 +1043,12 @@ class GlobalStackingRetrievalTestCase(APITestCase):
             ],
         )
 
-    def test_global_stacking_retrieval_caching_works(self):
+    def test_global_stacking_retrieval_works_with_cache(self):
         """Checks the caching mecanism for the staking retrieval works"""
+
+        stacking = Stacking.objects.create(
+            amount=-Decimal("218e18"), slot=28, user=self.user
+        )
 
         response = self.client.get(reverse("api:global-stacking"))
         data = response.json()

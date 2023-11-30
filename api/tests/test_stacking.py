@@ -1029,16 +1029,16 @@ class GlobalStackingRetrievalTestCase(APITestCase):
             data,
             [
                 [
-                    self.stacking_1_1.slot,
-                    self.stacking_1_1.amount + self.stacking_1_2.amount,
+                    self.stacking_2_1.slot,
+                    self.stacking_2_1.amount + self.stacking_2_2.amount,
                 ],
                 [
                     self.stacking_3_1.slot,
                     self.stacking_3_1.amount + self.stacking_3_2.amount,
                 ],
                 [
-                    self.stacking_2_1.slot,
-                    self.stacking_2_1.amount + self.stacking_2_2.amount,
+                    self.stacking_1_1.slot,
+                    self.stacking_1_1.amount + self.stacking_1_2.amount,
                 ],
             ],
         )
@@ -1061,16 +1061,16 @@ class GlobalStackingRetrievalTestCase(APITestCase):
             data,
             [
                 [
-                    self.stacking_1_1.slot,
-                    self.stacking_1_1.amount + self.stacking_1_2.amount,
+                    self.stacking_2_1.slot,
+                    self.stacking_2_1.amount + self.stacking_2_2.amount,
                 ],
                 [
                     self.stacking_3_1.slot,
                     self.stacking_3_1.amount + self.stacking_3_2.amount,
                 ],
                 [
-                    self.stacking_2_1.slot,
-                    self.stacking_2_1.amount + self.stacking_2_2.amount,
+                    self.stacking_1_1.slot,
+                    self.stacking_1_1.amount + self.stacking_1_2.amount,
                 ],
             ],
         )

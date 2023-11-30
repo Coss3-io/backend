@@ -235,6 +235,6 @@ class GlobalStackingView(APIView):
         stacks = (
             Stacking.objects.values_list("slot")
             .annotate(amount=Sum("amount"))
-            .order_by("-slot")
+            .order_by("slot")
         )
         return Response(stacks, status=status.HTTP_200_OK)

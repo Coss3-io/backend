@@ -117,7 +117,7 @@ class StackingFeesView(APIView):
     async def get(self, request):
         """Used to get the fees entries for all the slots since the creation of the app"""
 
-        queryset = StackingFees.objects.all().order_by("-slot")
+        queryset = StackingFees.objects.all().order_by("slot")
         data = await sync_to_async(
             lambda: StackingFeesSerializer(queryset, many=True).data
         )()

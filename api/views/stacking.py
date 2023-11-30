@@ -44,7 +44,7 @@ class StackingView(APIView):
         if request.auth == "awaitable":
             request.user = (await User.objects.aget_or_create(address=request.user))[0]
 
-        stackings = Stacking.objects.filter(user=request.user)
+        stackings = Stacking.objects.filter(user=request.user).order_by("slot")
         data = await sync_to_async(
             lambda: StackingSerializer(stackings, many=True).data
         )()

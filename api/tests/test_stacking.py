@@ -432,6 +432,7 @@ class StackingTestCase(APITestCase):
             "the request with an empty slot should fail",
         )
 
+
 class StackingRetrievalTestCase(APITestCase):
     """Class used to test the retrieval of stacking behaviour"""
 
@@ -978,6 +979,43 @@ class StackingFeesWithdrawalTestCase(APITestCase):
 
         with self.assertRaises(User.DoesNotExist):
             User.objects.get(address=Address(data["address"]))
+
+    def test_stacking_fees_withdrawal_duplicate_creation_doesnt_create_a_new_one(self):
+        """Checks creating twice the same withdrawal doesnt create a new one"""
+
+        data = {
+            "token": "0xC5FDf4076b8F3A5357c5E395ab970B5B54098Fef",
+            "address": "0xC6FDf4076b8F3A5357c5E395ab970B5B54098Fef",
+            "slot": "23",
+        }
+
+        user = async_to_sync(User.objects.create_user)(address=Address(data["address"]))
+        StackingFeesWithdrawal.objects.create(
+            token=Address(data["token"]),
+            user=user,
+            slot=Decimal(data["slot"]),
+        )
+        data["timestamp"] = str(int(time()) * 1000)
+        data["signature"] = hmac.new(
+            key=settings.WATCH_TOWER_KEY.encode(),
+            msg=dumps(data).encode(),
+            digestmod="sha256",
+        ).hexdigest()
+
+        response = self.client.post(reverse("api:fees-withdrawal"), data=data)
+        stacks = StackingFeesWithdrawal.objects.all()
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_200_OK,
+            "the stacking fees withdrawal entry creation should work",
+        )
+
+        self.assertEqual(
+            len(stacks),
+            1,
+            "No additionnal stacking fees withdrawal entry should be created",
+        )
 
 
 class GlobalStackingRetrievalTestCase(APITestCase):

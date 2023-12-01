@@ -57,7 +57,7 @@ class StackingFeesWithdrawalSerializer(ModelSerializer):
     address = CharField(required=True, allow_blank=False, write_only=True)
 
     async def create(self, validated_data):
-        del validated_data["address"]
+        del validated_data['address']
         return (await StackingFeesWithdrawal.objects.aget_or_create(**validated_data))[
             0
         ]

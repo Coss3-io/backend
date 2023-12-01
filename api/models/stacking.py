@@ -24,7 +24,11 @@ class StackingFeesWithdrawal(models.Model):
     """Model used to track the user FSA withdrawal from the contract"""
 
     class Meta:
-        constraints = []
+        constraints = [
+            models.constraints.UniqueConstraint(
+                fields=("user", "slot", "token"), name="unique_withdrawal_per_user_token_slot"
+            )
+        ]
 
     slot = models.IntegerField(null=False, blank=False)
     token = models.CharField(

@@ -10,7 +10,7 @@ from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import IsAuthenticated
 from adrf.views import APIView
 from api.models import User
-from api.models.stacking import Stacking, StackingFees
+from api.models.stacking import Stacking, StackingFees, StackingFeesWithdrawal
 from api.views.permissions import WatchTowerPermission
 from api.serializers.stacking import (
     StackingSerializer,
@@ -170,9 +170,27 @@ class StackingFeesView(APIView):
 class StackingFeesWithdrawalView(APIView):
     """View used to update the fees withdrawal entries per token per slot"""
 
+    def get_authenticators(self):
+        data = super().get_authenticators()
+        return data + [auth() for auth in getattr(getattr(self, self.request.method.lower(), self.http_method_not_allowed), "authentication_classes", [])]  # type: ignore
+
     def get_permissions(self):
         data = super().get_permissions()
         return data + [permission() for permission in getattr(getattr(self, self.request.method.lower(), self.http_method_not_allowed), "permission_classes", [])]  # type: ignore
+
+    @authentication_classes([ApiAuthentication, SessionAuthentication])
+    @permission_classes([IsAuthenticated])
+    async def get(self, request):
+        """Function used to retrieve the fees withdrawn by the user"""
+
+        if request.auth == "awaitable":
+            request.user = (await User.objects.aget_or_create(address=request.user))[0]
+
+        stackings = StackingFeesWithdrawal.objects.filter(user=request.user).order_by("slot")
+        data = await sync_to_async(
+            lambda: StackingFeesWithdrawalSerializer(stackings, many=True).data
+        )()
+        return Response(data, status=status.HTTP_200_OK)
 
     @permission_classes([WatchTowerPermission])
     async def post(self, request):

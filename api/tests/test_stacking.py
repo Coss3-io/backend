@@ -1018,6 +1018,121 @@ class StackingFeesWithdrawalTestCase(APITestCase):
         )
 
 
+class StackingFeesWithdrawalRetrievalTestCase(APITestCase):
+    """Class used to retrieve the fees withdrawal test case"""
+
+    def setUp(self):
+        self.user = async_to_sync(User.objects.create_user)(
+            address=Address("0xC6FDf4076b8F3A5357c5E395ab970B5B54098Fef")
+        )
+        self.user2 = async_to_sync(User.objects.create_user)(
+            address=Address("0xC6aDf4076b8F3A5357c5E395ab970B5B54098Fef")
+        )
+        self.token_1 = "0xC1FDf4076b8F3A5357c5E395ab970B5B54098Fef"
+        self.token_2 = "0xC2FDf4076b8F3A5357c5E395ab970B5B54098Fef"
+        self.token_3 = "0xC3FDf4076b8F3A5357c5E395ab970B5B54098Fef"
+        self.slot_1 = 12
+        self.slot_2 = 13
+
+        stackingFees_withdrawal_3 = StackingFeesWithdrawal.objects.create(
+            token=Address(self.token_1),
+            user=self.user,
+            slot=Decimal(self.slot_2),
+        )
+
+        stackingFees_withdrawal_1 = StackingFeesWithdrawal.objects.create(
+            token=Address(self.token_1),
+            user=self.user,
+            slot=Decimal(self.slot_1),
+        )
+
+        stackingFees_withdrawal_2 = StackingFeesWithdrawal.objects.create(
+            token=Address(self.token_2),
+            user=self.user,
+            slot=Decimal(self.slot_1),
+        )
+
+        stackingFees_withdrawal_4 = StackingFeesWithdrawal.objects.create(
+            token=Address(self.token_2),
+            user=self.user,
+            slot=Decimal(self.slot_2),
+        )
+
+        stackingFees_withdrawal_5 = StackingFeesWithdrawal.objects.create(
+            token=Address(self.token_1),
+            user=self.user2,
+            slot=Decimal(self.slot_1),
+        )
+
+        stackingFees_withdrawal_6 = StackingFeesWithdrawal.objects.create(
+            token=Address(self.token_2),
+            user=self.user2,
+            slot=Decimal(self.slot_1),
+        )
+
+        stackingFees_withdrawal_7 = StackingFeesWithdrawal.objects.create(
+            token=Address(self.token_1),
+            user=self.user2,
+            slot=Decimal(self.slot_2),
+        )
+
+        stackingFees_withdrawal_8 = StackingFeesWithdrawal.objects.create(
+            token=Address(self.token_3),
+            user=self.user2,
+            slot=Decimal(self.slot_2),
+        )
+
+    def test_stacking_fees_withdrawal_retrieval_works(self):
+        """Checks the stacking fees withdrawal retrieval works properly"""
+
+        self.client.force_authenticate(user=self.user)  # type: ignore
+        response = self.client.get(reverse("api:fees-withdrawal"))
+
+        self.assertEqual(
+            response.status_code, HTTP_200_OK, "The response should be successfull"
+        )
+
+        self.assertListEqual(
+            response.json(),
+            [
+                {"token": Address(self.token_1), "slot": self.slot_1},
+                {"token": Address(self.token_2), "slot": self.slot_1},
+                {"token": Address(self.token_1), "slot": self.slot_2},
+                {"token": Address(self.token_2), "slot": self.slot_2},
+            ],
+            "The returned list should match the used withdrawal and should be ordered by slot and fees",
+        )
+
+        self.client.force_authenticate(user=self.user2)  # type: ignore
+        response = self.client.get(reverse("api:fees-withdrawal"))
+
+        self.assertEqual(
+            response.status_code, HTTP_200_OK, "The response should be successfull"
+        )
+
+        self.assertListEqual(
+            response.json(),
+            [
+                {"token": Address(self.token_1), "slot": self.slot_1},
+                {"token": Address(self.token_2), "slot": self.slot_1},
+                {"token": Address(self.token_1), "slot": self.slot_2},
+                {"token": Address(self.token_3), "slot": self.slot_2},
+            ],
+            "The returned list should match the used withdrawal and should be ordered by slot and fees",
+        )
+
+    def test_stacking_fees_withdrawal_retrieval_fails_if_anon(self):
+        """Check anon users cannot get the result of the stacking fees withdrawal page"""
+
+        response = self.client.get(reverse("api:fees-withdrawal"))
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_403_FORBIDDEN,
+            "The request should be forbidden to anon users",
+        )
+
+
 class GlobalStackingRetrievalTestCase(APITestCase):
     """Test case used to retrieve the aggregation of all the stacking entries for the users"""
 

@@ -22,6 +22,9 @@ from api.consumers.websocket import WebsocketConsumer
 from api.views.authentications import ApiAuthentication
 from channels.layers import get_channel_layer
 
+from django.db.models import F, Value, CharField
+from django.db.models.functions import Concat
+
 channel_layer = get_channel_layer()
 
 
@@ -186,10 +189,11 @@ class StackingFeesWithdrawalView(APIView):
         if request.auth == "awaitable":
             request.user = (await User.objects.aget_or_create(address=request.user))[0]
 
-        stackings = StackingFeesWithdrawal.objects.filter(user=request.user).order_by("slot")
+        stackings = StackingFeesWithdrawal.objects.filter(user=request.user).order_by("slot", "token")
         data = await sync_to_async(
             lambda: StackingFeesWithdrawalSerializer(stackings, many=True).data
         )()
+
         return Response(data, status=status.HTTP_200_OK)
 
     @permission_classes([WatchTowerPermission])

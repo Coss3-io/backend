@@ -19,6 +19,9 @@ class Stacking(models.Model):
     slot = models.IntegerField(null=False, blank=False)
     user = models.ForeignKey("User", on_delete=models.CASCADE, null=False, blank=False)
 
+    def __str__(self):
+        return f"User: {self.user.address}, Deposited {self.amount}, at {self.slot} block"
+
 
 class StackingFeesWithdrawal(models.Model):
     """Model used to track the user FSA withdrawal from the contract"""

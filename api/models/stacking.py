@@ -20,7 +20,9 @@ class Stacking(models.Model):
     user = models.ForeignKey("User", on_delete=models.CASCADE, null=False, blank=False)
 
     def __str__(self):
-        return f"User: {self.user.address}, Deposited {self.amount}, at {self.slot} block"
+        return (
+            f"User: {self.user.address}, Deposited {self.amount}, at {self.slot} block"
+        )
 
 
 class StackingFeesWithdrawal(models.Model):
@@ -29,7 +31,8 @@ class StackingFeesWithdrawal(models.Model):
     class Meta:
         constraints = [
             models.constraints.UniqueConstraint(
-                fields=("user", "slot", "token"), name="unique_withdrawal_per_user_token_slot"
+                fields=("user", "slot", "token"),
+                name="unique_withdrawal_per_user_token_slot",
             )
         ]
 
@@ -44,6 +47,9 @@ class StackingFeesWithdrawal(models.Model):
         ],
     )
     user = models.ForeignKey("User", on_delete=models.CASCADE, null=False, blank=False)
+
+    def __str__(self):
+        return f"User: {self.user.address}, Withdrawn its {self.token}, at {self.slot} block"
 
 
 class StackingFees(models.Model):
@@ -69,3 +75,6 @@ class StackingFees(models.Model):
         max_digits=78, decimal_places=0, null=False, blank=False, default=Decimal(0)
     )
     slot = models.IntegerField(null=False, blank=False)
+
+    def __str__(self):
+        return f"Fees received Token: {self.token}, Amount {self.amount}, at {self.slot} block"

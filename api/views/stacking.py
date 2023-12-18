@@ -11,6 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from adrf.views import APIView
 from api.models import User
 from api.models.stacking import Stacking, StackingFees, StackingFeesWithdrawal
+from api.utils import validate_chain_id
 from api.views.permissions import WatchTowerPermission
 from api.serializers.stacking import (
     StackingSerializer,
@@ -47,7 +48,10 @@ class StackingView(APIView):
         if request.auth == "awaitable":
             request.user = (await User.objects.aget_or_create(address=request.user))[0]
 
-        stackings = Stacking.objects.filter(user=request.user).order_by("slot")
+        chain_id = validate_chain_id(request.query_params.get("chain_id", None))
+        stackings = Stacking.objects.filter(
+            user=request.user, chain_id=chain_id
+        ).order_by("slot")
         data = await sync_to_async(
             lambda: StackingSerializer(stackings, many=True).data
         )()
@@ -64,6 +68,7 @@ class StackingView(APIView):
             "withdraw": bool
             "amount": int,
             "slot": int,
+            "chaid_id": int,
         }
         ```"""
 
@@ -120,7 +125,8 @@ class StackingFeesView(APIView):
     async def get(self, request):
         """Used to get the fees entries for all the slots since the creation of the app"""
 
-        queryset = StackingFees.objects.all().order_by("slot")
+        chain_id = validate_chain_id(request.query_params.get("chain_id", None))
+        queryset = StackingFees.objects.filter(chain_id=chain_id).order_by("slot")
         data = await sync_to_async(
             lambda: StackingFeesSerializer(queryset, many=True).data
         )()
@@ -136,7 +142,8 @@ class StackingFeesView(APIView):
         request.data = {
             "slot": int,
             "token": "0xadddress....",
-            "amount": int
+            "amount": int,
+            "chain_id": int,
         }
         ```"""
 
@@ -189,7 +196,10 @@ class StackingFeesWithdrawalView(APIView):
         if request.auth == "awaitable":
             request.user = (await User.objects.aget_or_create(address=request.user))[0]
 
-        stackings = StackingFeesWithdrawal.objects.filter(user=request.user).order_by("slot", "token")
+        chain_id = validate_chain_id(request.query_params.get("chain_id", None))
+        stackings = StackingFeesWithdrawal.objects.filter(
+            user=request.user, chain_id=chain_id
+        ).order_by("slot", "token")
         data = await sync_to_async(
             lambda: StackingFeesWithdrawalSerializer(stackings, many=True).data
         )()
@@ -207,6 +217,7 @@ class StackingFeesWithdrawalView(APIView):
             "slot": int,
             "token": "0xadddress....",
             "address": "0xadddress....",
+            "chain_id": "int",
         }
         ```"""
 
@@ -253,9 +264,10 @@ class GlobalStackingView(APIView):
     @async_to_sync
     async def get(self, request):
         """Retrieves the global stacking amount"""
-
+        chain_id = validate_chain_id(request.query_params.get("chain_id", None))
         stacks = (
-            Stacking.objects.values_list("slot")
+            Stacking.objects.filter(chain_id=chain_id)
+            .values_list("slot")
             .annotate(amount=Sum("amount"))
             .order_by("slot")
         )

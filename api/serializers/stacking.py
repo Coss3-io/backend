@@ -19,7 +19,7 @@ class StackingSerializer(ModelSerializer):
 
     class Meta:
         model = Stacking
-        fields = ["slot", "amount", "address", "withdraw"]
+        fields = ["slot", "amount", "address", "withdraw", "chain_id"]
 
     def validate_withdraw(self, value):
         if value is None:
@@ -45,7 +45,7 @@ class StackingFeesSerializer(ModelSerializer):
 
     class Meta:
         model = StackingFees
-        fields = ["token", "amount", "slot"]
+        fields = ["token", "amount", "slot", "chaid_id"]
 
     def validate_token(self, value):
         return validate_address(value, "token")
@@ -57,14 +57,14 @@ class StackingFeesWithdrawalSerializer(ModelSerializer):
     address = CharField(required=True, allow_blank=False, write_only=True)
 
     async def create(self, validated_data):
-        del validated_data['address']
+        del validated_data["address"]
         return (await StackingFeesWithdrawal.objects.aget_or_create(**validated_data))[
             0
         ]
 
     class Meta:
         model = StackingFeesWithdrawal
-        fields = ["token", "slot", "address"]
+        fields = ["token", "slot", "address", "chain_id"]
 
     def validate_token(self, value):
         return validate_address(value, "token")

@@ -1,13 +1,14 @@
 from decimal import Decimal, ROUND_DOWN, InvalidOperation
 from time import time
 from eth_abi.packed import encode_packed
+from requests import Request
 from rest_framework.validators import ValidationError
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.response import Response
 from web3 import Web3
+from rest_framework.request import Request
 from eth_account import Account, messages
 import api.errors as errors
-from api.models import User
 from api.models.types import Address, Signature
 
 
@@ -132,6 +133,7 @@ def encode_order(order: dict):
             "address",
             "address",
             "uint64",
+            "uint64",
             "uint8",
             "bool",
         ],
@@ -146,6 +148,7 @@ def encode_order(order: dict):
             order.get("base_token", ""),
             order.get("quote_token", ""),
             int(order.get("expiry", "")),
+            int(order.get("chainId", "")),
             order.get("is_buyer"),
             order.get("replace_order"),  # a replace order
         ],
@@ -166,3 +169,18 @@ def compute_order_hash(order: dict):
         if order.get("replace_order")
         else str(Web3.to_hex(Web3.keccak(encoded_order)))
     )
+
+
+def validate_chain_id(chain_id):
+    """Function used to check the chain_id param,
+    the param has to be present and has to be a number"""
+
+    if chain_id == None:
+        raise ValidationError({"chain_id": errors.General.MISSING_FIELD})
+    try:
+        chain_id = int(chain_id)
+    except ValueError as e:
+        raise ValidationError(
+            {"chain_id": errors.Decimal.WRONG_DECIMAL_ERROR.format("chain_id")}
+        )
+    return chain_id

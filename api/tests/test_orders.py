@@ -21,21 +21,22 @@ class MakerOrderTestCase(APITestCase):
 
     def setUp(self) -> None:
         self.user = async_to_sync(User.objects.create_user)(
-            address=Address("0xF17f52151EbEF6C7334FAD080c5704D77216b732")
+            address=Address("0x70997970C51812dc3A010C7d01b50e0d17dc79C8")
         )
 
     def test_creating_maker_order_works(self):
         """Checks we can create an order"""
 
         data = {
-            "address": "0xF17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
-            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "chain_id": 31337,
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
             "filled": "0",
             "base_fees": "0",
@@ -102,6 +103,12 @@ class MakerOrderTestCase(APITestCase):
         )
 
         self.assertEqual(
+            int(order.chain_id),
+            data["chain_id"],
+            "The order chain_id should be reported on the order",
+        )
+
+        self.assertEqual(
             order.is_buyer,
             data["is_buyer"],
             "The order is_buyer should be reported on the order",
@@ -111,15 +118,20 @@ class MakerOrderTestCase(APITestCase):
         """Checks creating the same order twice fails"""
 
         data = {
-            "address": "0xF17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
-            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "chain_id": 31337,
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
+            "filled": "0",
+            "base_fees": "0",
+            "quote_fees": "0",
+            "status": "OPEN",
         }
         response = self.client.post(reverse("api:order"), data=data)
 
@@ -142,14 +154,15 @@ class MakerOrderTestCase(APITestCase):
         """Checks we can't create an order with a 0 amount"""
 
         data = {
-            "address": "0xF17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "0",
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
+            "chain_id": 31337,
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xf9170415347c6ef632eb640c498ef0b1376473fd690de5a56d60cc295c8361b7724e6d7b997bef12c2d73a2eafb894cba6589686744a78c85616e594e38128351b",
-            "order_hash": "0xb979428423525d098b0a9c351dff840fc31df5c71e8944f29523a243c24147d7",
+            "signature": "0x2a418b51c1a806de0bfb7ee20c4f1f2a2065215e114dced71459487fdff799585f4e580a5fed665a8d2627c166515fdb7548b797f299256645c2f6c24383c01c1c",
+            "order_hash": "0xfa429b30e2421f0bf298422705900bd922af5f5077e3eaf92cafd015c7ab97f8",
             "is_buyer": False,
         }
         response = self.client.post(reverse("api:order"), data=data)
@@ -169,14 +182,15 @@ class MakerOrderTestCase(APITestCase):
         """Checks we cannot create an order with the same base and the same quote token"""
 
         data = {
-            "address": "0xF17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
+            "chain_id": 31337,
             "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
             "quote_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "signature": "0x415229a73d001cadbf6765dfff0ee94c67fcca3e6b6697241373aacf32e44c6218450c66d07a5ca1426244f64493a0bc83b0dbdab9e5a72dfe43d26eb96cf82f1c",
-            "order_hash": "0x20126b2fcf1333c5efd0a330741e587f527573980114eb983fbeba0afc58e4a6",
+            "signature": "0xbea9ea25d62d32ef4ab82b300190ce631618ab95e45f4012bc8370acc0aafa5a0987f9da4e2e378b6116c7cd40d95b859d2b1a1e19f920f7da1bc5c2c5e453571c",
+            "order_hash": "0x59824d066777971a902fc0d023a399a6b90e4a2b3aead4049f21f1a17d763fa5",
             "is_buyer": False,
         }
         response = self.client.post(reverse("api:order"), data=data)
@@ -200,14 +214,15 @@ class MakerOrderTestCase(APITestCase):
         """
 
         data = {
-            "address": "0xF17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
+            "chain_id": 31337,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0xf25186b5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "signature": "0x415229a73d001cadbf6765dfff0ee94c67fcca3e6b6697241373aacf32e44c6218450c66d07a5ca1426244f64493a0bc83b0dbdab9e5a72dfe43d26eb96cf82f1c",
-            "order_hash": "0x20126b2fcf1333c5efd0a330741e587f527573980114eb983fbeba0afc58e4a6",
+            "quote_token": "0xf25186B5081ff5cE73482AD761DB0eB0d25abfBF",
+            "signature": "0xbea9ea25d62d32ef4ab82b300190ce631618ab95e45f4012bc8370acc0aafa5a0987f9da4e2e378b6116c7cd40d95b859d2b1a1e19f920f7da1bc5c2c5e453571c",
+            "order_hash": "0x59824d066777971a902fc0d023a399a6b90e4a2b3aead4049f21f1a17d763fa5",
             "is_buyer": False,
         }
         response = self.client.post(reverse("api:order"), data=data)
@@ -231,13 +246,14 @@ class MakerOrderTestCase(APITestCase):
             IntegrityError,
             partial(
                 async_to_sync(Maker.objects.create),
-                amount="1",
+                amount="{0:f}".format(Decimal("173e16")),
                 expiry=datetime.fromtimestamp(2114380800),
-                price="1",
-                base_token="0xf17f52151EbEF6C7334FAD080c5704D77216b732",
-                quote_token="0xf17f52151EbEF6C7334FAD080c5704D77216b731",
-                signature="0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
-                order_hash="0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+                price="{0:f}".format(Decimal("2e20")),
+                chain_id=31337,
+                base_token="0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+                quote_token="0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+                signature="0xbea9ea25d62d32ef4ab82b300190ce631618ab95e45f4012bc8370acc0aafa5a0987f9da4e2e378b6116c7cd40d95b859d2b1a1e19f920f7da1bc5c2c5e453571c",
+                order_hash="0x59824d066777971a902fc0d023a399a6b90e4a2b3aead4049f21f1a17d763fa5",
                 is_buyer=False,
             ),
         )
@@ -246,14 +262,15 @@ class MakerOrderTestCase(APITestCase):
         """checks we ca retrieve the maker orders being anon"""
 
         data = {
-            "address": "0xf17f52151EBEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
-            "expiry": datetime.fromtimestamp(1696667304),
+            "expiry": datetime.fromtimestamp(2114380800),
             "price": "{0:f}".format(Decimal("2e20")),
-            "base_token": "0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520",
-            "quote_token": "0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xfabfac7f7a8bbb7f87747c940a6a9be667a57c86c145fd2bb91d8286cdbde0253e1cf2c95bdfb87a46669bc8ba0d4f92b4786d00df7f90aea8004d2b953b27cb1b",
-            "order_hash": "0x0e3c530932af2cadc56e2cb633b4a4952b5ebb74888c19e1068c2d0213953e45",
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "chain_id": 31337,
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
             "filled": "0",
             "base_fees": "0",
@@ -266,6 +283,7 @@ class MakerOrderTestCase(APITestCase):
             amount=data["amount"],
             expiry=data["expiry"],
             price=data["price"],
+            chain_id=data["chain_id"],
             base_token=Address(data["base_token"]),
             quote_token=Address(data["quote_token"]),
             signature=data["signature"],
@@ -274,8 +292,9 @@ class MakerOrderTestCase(APITestCase):
         )
 
         query = {
-            "base_token": "0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520",
-            "quote_token": "0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756CC2",
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "chain_id": 31337,
         }
         response = self.client.get(reverse("api:orders"), data=query)
 
@@ -295,25 +314,27 @@ class MakerOrderTestCase(APITestCase):
         """Checks that no additional data is returned on own order query"""
 
         data = {
-            "address": "0xf17f52151EBEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
-            "expiry": datetime.fromtimestamp(1696667304),
+            "expiry": datetime.fromtimestamp(2114380800),
             "price": "{0:f}".format(Decimal("2e20")),
-            "base_token": "0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520",
-            "quote_token": "0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xfabfac7f7a8bbb7f87747c940a6a9be667a57c86c145fd2bb91d8286cdbde0253e1cf2c95bdfb87a46669bc8ba0d4f92b4786d00df7f90aea8004d2b953b27cb1b",
-            "order_hash": "0x0e3c530932af2cadc56e2cb633b4a4952b5ebb74888c19e1068c2d0213953e45",
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "chain_id": 31337,
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
             "filled": "0",
-            "status": "OPEN",
             "base_fees": "0",
             "quote_fees": "0",
+            "status": "OPEN",
         }
 
         async_to_sync(Maker.objects.create)(
             user=self.user,
             amount=data["amount"],
             expiry=data["expiry"],
+            chain_id=data["chain_id"],
             price=data["price"],
             base_token=Address(data["base_token"]),
             quote_token=Address(data["quote_token"]),
@@ -325,6 +346,7 @@ class MakerOrderTestCase(APITestCase):
         query = {
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "chain_id": 31337,
         }
 
         self.client.force_authenticate(user=self.user)  # type: ignore
@@ -347,14 +369,15 @@ class MakerOrderTestCase(APITestCase):
         not taken in account for order creation
         """
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
-            "expiry": datetime.fromtimestamp(1696667304),
+            "expiry": datetime.fromtimestamp(2114380800),
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xfabfac7f7a8bbb7f87747c940a6a9be667a57c86c145fd2bb91d8286cdbde0253e1cf2c95bdfb87a46669bc8ba0d4f92b4786d00df7f90aea8004d2b953b27cb1b",
-            "order_hash": "0x0e3c530932af2cadc56e2cb633b4a4952b5ebb74888c19e1068c2d0213953e45",
+            "chain_id": 31337,
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
         }
 
@@ -362,6 +385,7 @@ class MakerOrderTestCase(APITestCase):
             user=self.user,
             amount=data["amount"],
             expiry=data["expiry"],
+            chain_id=data["chain_id"],
             price=data["price"],
             base_token=data["base_token"],
             quote_token=data["quote_token"],
@@ -388,16 +412,18 @@ class MakerOrderTestCase(APITestCase):
         """Checks sending an order request without address fails"""
 
         data = {
-            # "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            # "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
-            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "chain_id": 31337,
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
         }
+
         response = self.client.post(reverse("api:order"), data=data)
 
         self.assertDictEqual(
@@ -415,16 +441,18 @@ class MakerOrderTestCase(APITestCase):
         """Checks sending an order request with wrong address fails"""
 
         data = {
-            "address": "0xz17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0xz0997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
-            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "chain_id": 31337,
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
         }
+
         response = self.client.post(reverse("api:order"), data=data)
 
         self.assertDictEqual(
@@ -442,14 +470,15 @@ class MakerOrderTestCase(APITestCase):
         """Checks sending an order request with short address fails"""
 
         data = {
-            "address": "0x17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x0997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
-            "expiry": 2114380800,
+            "expiry": "2114380800",
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
-            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "chain_id": 31337,
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
         }
         response = self.client.post(reverse("api:order"), data=data)
@@ -469,14 +498,15 @@ class MakerOrderTestCase(APITestCase):
         """Checks sending an order request with long address fails"""
 
         data = {
-            "address": "0xff17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x770997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
-            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "chain_id": 31337,
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
         }
         response = self.client.post(reverse("api:order"), data=data)
@@ -496,14 +526,15 @@ class MakerOrderTestCase(APITestCase):
         """Checks sending an order request without amount fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             # "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
-            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "chain_id": 31337,
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
         }
         response = self.client.post(reverse("api:order"), data=data)
@@ -523,14 +554,15 @@ class MakerOrderTestCase(APITestCase):
         """Checks sending an order request with wrong amount fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "a" + "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
-            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "chain_id": 31337,
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
         }
         response = self.client.post(reverse("api:order"), data=data)
@@ -550,14 +582,15 @@ class MakerOrderTestCase(APITestCase):
         """Checks sending an order request without expiry fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
             # "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
-            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "chain_id": 31337,
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
         }
         response = self.client.post(reverse("api:order"), data=data)
@@ -577,14 +610,15 @@ class MakerOrderTestCase(APITestCase):
         """Checks sending an order request with wrong expiry fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": "2114380800a",
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
-            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "chain_id": 31337,
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
         }
         response = self.client.post(reverse("api:order"), data=data)
@@ -604,14 +638,15 @@ class MakerOrderTestCase(APITestCase):
         """Checks sending an order request without price fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             # "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
-            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "chain_id": 31337,
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
         }
         response = self.client.post(reverse("api:order"), data=data)
@@ -631,14 +666,15 @@ class MakerOrderTestCase(APITestCase):
         """Checks sending an order request with wrong price fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
-            "price": "a" + "{0:f}".format(Decimal("2e20")),
+            "price": "a{0:f}".format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
-            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "chain_id": 31337,
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
         }
         response = self.client.post(reverse("api:order"), data=data)
@@ -658,14 +694,15 @@ class MakerOrderTestCase(APITestCase):
         """Checks sending an order request without base_token fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
             # "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
-            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "chain_id": 31337,
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
         }
         response = self.client.post(reverse("api:order"), data=data)
@@ -685,14 +722,15 @@ class MakerOrderTestCase(APITestCase):
         """Checks sending an order request with wrong base_token fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0xzbbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
-            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "chain_id": 31337,
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
         }
         response = self.client.post(reverse("api:order"), data=data)
@@ -712,14 +750,15 @@ class MakerOrderTestCase(APITestCase):
         """Checks sending an order request with short base_token fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
-            "base_token": "0xbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "base_token": "0xbbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
-            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "chain_id": 31337,
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
         }
         response = self.client.post(reverse("api:order"), data=data)
@@ -745,14 +784,15 @@ class MakerOrderTestCase(APITestCase):
         """Checks sending an order request with long base_token fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
-            "base_token": "0xffbbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "base_token": "0x44bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
-            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "chain_id": 31337,
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
         }
         response = self.client.post(reverse("api:order"), data=data)
@@ -778,14 +818,15 @@ class MakerOrderTestCase(APITestCase):
         """Checks sending an order request without quote_token fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             # "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
-            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "chain_id": 31337,
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
         }
         response = self.client.post(reverse("api:order"), data=data)
@@ -805,14 +846,15 @@ class MakerOrderTestCase(APITestCase):
         """Checks sending an order request with wrong quote_token fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xZ02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
-            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "chain_id": 31337,
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
         }
         response = self.client.post(reverse("api:order"), data=data)
@@ -832,14 +874,15 @@ class MakerOrderTestCase(APITestCase):
         """Checks sending an order request with short quote_token fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0x02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
-            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "chain_id": 31337,
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
         }
         response = self.client.post(reverse("api:order"), data=data)
@@ -865,14 +908,15 @@ class MakerOrderTestCase(APITestCase):
         """Checks sending an order request with long quote_token fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
-            "quote_token": "0xCC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
-            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "quote_token": "0xcC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "chain_id": 31337,
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
         }
         response = self.client.post(reverse("api:order"), data=data)
@@ -898,14 +942,15 @@ class MakerOrderTestCase(APITestCase):
         """Checks sending an order request without signature fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            # "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
-            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "chain_id": 31337,
+            # "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
         }
         response = self.client.post(reverse("api:order"), data=data)
@@ -925,14 +970,15 @@ class MakerOrderTestCase(APITestCase):
         """Checks sending an order request with wrong signature fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xz49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
-            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "chain_id": 31337,
+            "signature": "0x6z343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
         }
         response = self.client.post(reverse("api:order"), data=data)
@@ -952,14 +998,15 @@ class MakerOrderTestCase(APITestCase):
         """Checks sending an order request with mismatch signature fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1d",
-            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "chain_id": 31337,
+            "signature": "0x67343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
         }
         response = self.client.post(reverse("api:order"), data=data)
@@ -979,14 +1026,15 @@ class MakerOrderTestCase(APITestCase):
         """Checks sending an order request with short signature fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0x49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
-            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "chain_id": 31337,
+            "signature": "0x8343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
         }
         response = self.client.post(reverse("api:order"), data=data)
@@ -1012,14 +1060,15 @@ class MakerOrderTestCase(APITestCase):
         """Checks sending an order request with long signature fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xcc49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
-            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "chain_id": 31337,
+            "signature": "0x687343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
         }
         response = self.client.post(reverse("api:order"), data=data)
@@ -1045,14 +1094,15 @@ class MakerOrderTestCase(APITestCase):
         """Checks sending an order request without order_hash fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
-            # "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "chain_id": 31337,
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            # "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
         }
         response = self.client.post(reverse("api:order"), data=data)
@@ -1072,14 +1122,15 @@ class MakerOrderTestCase(APITestCase):
         """Checks sending an order request mismatch order_hash fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
-            "order_hash": "0x2b156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "chain_id": 31337,
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0xa1f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
         }
         response = self.client.post(reverse("api:order"), data=data)
@@ -1099,14 +1150,15 @@ class MakerOrderTestCase(APITestCase):
         """Checks sending an order request with wrong order_hash fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
-            "order_hash": "0xZa156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "chain_id": 31337,
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x9zf4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
         }
         response = self.client.post(reverse("api:order"), data=data)
@@ -1126,14 +1178,15 @@ class MakerOrderTestCase(APITestCase):
         """Checks sending an order request with short order_hash fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
-            "order_hash": "0x156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "chain_id": 31337,
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x1f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
         }
         response = self.client.post(reverse("api:order"), data=data)
@@ -1159,14 +1212,15 @@ class MakerOrderTestCase(APITestCase):
         """Checks sending an order request with long order_hash fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
-            "order_hash": "0x2aa156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "chain_id": 31337,
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x991f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
         }
         response = self.client.post(reverse("api:order"), data=data)
@@ -1192,14 +1246,15 @@ class MakerOrderTestCase(APITestCase):
         """Checks sending an order request without is_buyer fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
-            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "chain_id": 31337,
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             # "is_buyer": False,
         }
         response = self.client.post(reverse("api:order"), data=data)
@@ -1219,15 +1274,16 @@ class MakerOrderTestCase(APITestCase):
         """Checks sending an order request with wrong is_buyer fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
-            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
-            "is_buyer": "Fgrtalse",
+            "chain_id": 31337,
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
+            "is_buyer": "aFalse",
         }
         response = self.client.post(reverse("api:order"), data=data)
 
@@ -1242,19 +1298,76 @@ class MakerOrderTestCase(APITestCase):
             "The order creation with wrong is_buyer should fail",
         )
 
+    def test_creating_maker_order_without_chain_id_fails(self):
+        """Checks sending an order request without chain id fails"""
+
+        data = {
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            # "chain_id": 31337,
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {"chain_id": [errors.General.MISSING_FIELD.format("chain_id")]},
+            "The chain_id field should be required",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The order creation without chain_id should fail",
+        )
+
+    def test_creating_maker_order_with_wrong_chain_id_fails(self):
+        """Checks sending an order request with wrong chain_id fails"""
+
+        data = {
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "chain_id": "a",
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
+            "is_buyer": False,
+        }
+        response = self.client.post(reverse("api:order"), data=data)
+
+        self.assertDictEqual(
+            response.json(),
+            {"chain_id": [serializers.IntegerField.default_error_messages["invalid"]]},
+            "The chain_id field should be a number",
+        )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The order creation with wrong chain_id should fail",
+        )
+
     def test_user_creation_on_order_request(self):
         """Checks user creation works well on unregistered user order"""
 
         data = {
-            "address": "0xC5FDF4076b8F3A5357c5E395ab970B5B54098FEF",
-            "amount": "{0:f}".format(Decimal("189e16")),
-            "expiry": 2114380801,
-            "price": "{0:f}".format(Decimal("28e19")),
-            "base_token": "0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520",
-            "quote_token": "0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0x9cc2023e1b0401282c9b8abb371e09f4ef5cf4ff54d08bdfb9bb6d05f14a70f36de2002f2f005cd3dfb5ae42d023b18010a4a234d3ce8ed5b915d0fcb40c4ed91b",
-            "order_hash": "0xddd97cfb8a661a4d513c78874c0ef707909f9a07fcd80d5aa147cbd23dae0aa6",
-            "is_buyer": True,
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
+            "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "chain_id": 31337,
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
+            "is_buyer": False,
             "filled": "0",
             "base_fees": "0",
             "quote_fees": "0",
@@ -1282,36 +1395,24 @@ class MakerOrderRetrievingTestCase(APITestCase):
 
     def setUp(self) -> None:
         self.user_1: User = async_to_sync(User.objects.create_user)(
-            address=Address(
-                Address("0xF17f52151EbEF6C7334FAD080c5704D77216b732")
-            )
+            address=Address(Address("0xF17f52151EbEF6C7334FAD080c5704D77216b732"))
         )
 
         self.user_2: User = async_to_sync(User.objects.create_user)(
-            address=Address(
-                Address("0xC5FDF4076b8F3A5357c5E395ab970B5B54098Fef")
-            )
+            address=Address(Address("0xC5FDF4076b8F3A5357c5E395ab970B5B54098Fef"))
         )
 
         self.user_3: User = async_to_sync(User.objects.create_user)(
-            address=Address(
-                Address("0xC6FDF4076b8F3A5357c5E395ab970B5B54098Fef")
-            )
+            address=Address(Address("0xC6FDF4076b8F3A5357c5E395ab970B5B54098Fef"))
         )
 
         self.order_1_1 = {
-            "address": Address(
-                "0xf17f52151EbEF6C7334FAD080c5704D77216B732"
-            ),
+            "address": Address("0xf17f52151EbEF6C7334FAD080c5704D77216B732"),
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 1696667304,
             "price": "{0:f}".format(Decimal("2e20")),
-            "base_token": Address(
-                "0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520"
-            ),
-            "quote_token": Address(
-                "0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
-            ),
+            "base_token": Address("0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520"),
+            "quote_token": Address("0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"),
             "signature": "0xfabfac7f7a8bbb7f87747c940a6a9be667a57c86c145fd2bb91d8286cdbde0253e1cf2c95bdfb87a46669bc8ba0d4f92b4786d00df7f90aea8004d2b953b27cb1b",
             "order_hash": "0x0e3c530932af2cadc56e2cb633b4a4952b5ebb74888c19e1068c2d0213953e45",
             "is_buyer": False,
@@ -1319,22 +1420,16 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "base_fees": "0",
             "quote_fees": "0",
             "status": "OPEN",
-            "bot": None
+            "bot": None,
         }
 
         self.order_1_2 = {
-            "address": Address(
-                "0xf17f52151Ebef6C7334FAD080c5704D77216b732"
-            ),
+            "address": Address("0xf17f52151Ebef6C7334FAD080c5704D77216b732"),
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
-            "base_token": Address(
-                "0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520"
-            ),
-            "quote_token": Address(
-                "0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
-            ),
+            "base_token": Address("0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520"),
+            "quote_token": Address("0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"),
             "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
             "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
             "is_buyer": False,
@@ -1342,22 +1437,16 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "base_fees": "0",
             "quote_fees": "0",
             "status": "OPEN",
-            "bot": None
+            "bot": None,
         }
 
         self.order_1_3 = {
-            "address": Address(
-                "0xf17f52151Ebef6C7334FAD080c5704D77216b732"
-            ),
+            "address": Address("0xf17f52151Ebef6C7334FAD080c5704D77216b732"),
             "amount": "{0:f}".format(Decimal("171e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("21e19")),
-            "base_token": Address(
-                "0x3Aa5f43c7C4e2C5671A96439F1fbFfe1d58929Cb"
-            ),
-            "quote_token": Address(
-                "0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
-            ),
+            "base_token": Address("0x3Aa5f43c7C4e2C5671A96439F1fbFfe1d58929Cb"),
+            "quote_token": Address("0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"),
             "signature": "0x139c033404a061eae0d17dbb366f153791569d6a7ad42bc6ad7b902a341bec6d7eca9102499ff60fe566fcd53642fb254c6efa2a8ca933ba917571fbfee73d261c",
             "order_hash": "0x54532cab462b29052d84773f9f4aef6e063642c8f6d334fc4fe96394b7dbd849",
             "is_buyer": False,
@@ -1365,22 +1454,16 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "base_fees": "0",
             "quote_fees": "0",
             "status": "OPEN",
-            "bot": None
+            "bot": None,
         }
 
         self.order_2_1 = {
-            "address": Address(
-                "0xC5FDF4076b8F3A5357c5E395ab970B5B54098Fef"
-            ),
+            "address": Address("0xC5FDF4076b8F3A5357c5E395ab970B5B54098Fef"),
             "amount": "{0:f}".format(Decimal("111e16")),
             "expiry": 2114380801,
             "price": "{0:f}".format(Decimal("24e19")),
-            "base_token": Address(
-                "0x3AA5f43c7c4e2C5671A96439F1fbFfe1d58929Cb"
-            ),
-            "quote_token": Address(
-                "0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
-            ),
+            "base_token": Address("0x3AA5f43c7c4e2C5671A96439F1fbFfe1d58929Cb"),
+            "quote_token": Address("0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"),
             "signature": "0x346d7e67d76b8de75de2c18855818261394323565f0c246bd565ec448f670fa91c3139086f11ef6853fcae56cd67d89cbf4f60916898579836dec681b7f9249d1c",
             "order_hash": "0x07f5c2584ffbf3b7d14ad3410c1c98fb3b71496a7e5cd14ab22a68f268915bca",
             "is_buyer": True,
@@ -1388,22 +1471,16 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "base_fees": "0",
             "quote_fees": "0",
             "status": "OPEN",
-            "bot": None
+            "bot": None,
         }
 
         self.order_2_2 = {
-            "address": Address(
-                "0xC5FDF4076b8F3A5357c5E395ab970B5B54098Fef"
-            ),
+            "address": Address("0xC5FDF4076b8F3A5357c5E395ab970B5B54098Fef"),
             "amount": "{0:f}".format(Decimal("141e16")),
             "expiry": 2114380801,
             "price": "{0:f}".format(Decimal("25e19")),
-            "base_token": Address(
-                "0x3AA5f43c7c4e2C5671A96439F1fbFfe1d58929Cb"
-            ),
-            "quote_token": Address(
-                "0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
-            ),
+            "base_token": Address("0x3AA5f43c7c4e2C5671A96439F1fbFfe1d58929Cb"),
+            "quote_token": Address("0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"),
             "signature": "0xee7433f9f83b59019723f08c8348895a767eb1aae16536847b54de37b3e92ff93f916e4c302309b7317335c9f9aad8e18927371994ef08ce75d8357376e2ef0a1b",
             "order_hash": "0x43a67aa1f3e53cad7f692f2ac249728f3369290b24a154e364c998fc9788b98f",
             "is_buyer": True,
@@ -1411,22 +1488,16 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "base_fees": "0",
             "quote_fees": "0",
             "status": "OPEN",
-            "bot": None
+            "bot": None,
         }
 
         self.order_2_3 = {
-            "address": Address(
-                "0xC5FDF4076b8F3A5357c5E395ab970B5B54098Fef"
-            ),
+            "address": Address("0xC5FDF4076b8F3A5357c5E395ab970B5B54098Fef"),
             "amount": "{0:f}".format(Decimal("182e16")),
             "expiry": 2114380801,
             "price": "{0:f}".format(Decimal("27e19")),
-            "base_token": Address(
-                "0x3AA5f43c7c4e2C5671A96439F1fbFfe1d58929Cb"
-            ),
-            "quote_token": Address(
-                "0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
-            ),
+            "base_token": Address("0x3AA5f43c7c4e2C5671A96439F1fbFfe1d58929Cb"),
+            "quote_token": Address("0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"),
             "signature": "0x69b2da58758a256e2d24a6f04ca5d8dc7d4834b96a6246e18c2b9e8ecba80992145267c18e8add3a7b952121a9ae82ad090fc05ba44688f445e54a5b21caa6a81b",
             "order_hash": "0xa8a829d6e7ad540c0d3140a37e9fb9408878e5b5b5d7d48e54ba132a5c968e6a",
             "is_buyer": True,
@@ -1434,22 +1505,16 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "base_fees": "0",
             "quote_fees": "0",
             "status": "OPEN",
-            "bot": None
+            "bot": None,
         }
 
         self.order_2_4 = {
-            "address": Address(
-                "0xC5FDF4076b8F3A5357c5E395ab970B5B54098Fef"
-            ),
+            "address": Address("0xC5FDF4076b8F3A5357c5E395ab970B5B54098Fef"),
             "amount": "{0:f}".format(Decimal("189e16")),
             "expiry": 2114380801,
             "price": "{0:f}".format(Decimal("29e19")),
-            "base_token": Address(
-                "0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520"
-            ),
-            "quote_token": Address(
-                "0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
-            ),
+            "base_token": Address("0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520"),
+            "quote_token": Address("0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"),
             "signature": "0x422b8570187908abb3a18a2f224e7fa4870c18944f9b4b86bc4b498c738739b90e6db92a52b994920908d64404482856226065001156ca2dbbe6b330d31116811b",
             "order_hash": "0x37ec83d93794625c87faa2aa937c3582bd310a147d019f7d1d56bc24b04d45ef",
             "is_buyer": True,
@@ -1457,7 +1522,7 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "base_fees": "0",
             "quote_fees": "0",
             "status": "OPEN",
-            "bot": None
+            "bot": None,
         }
 
         self.pair_1 = {
@@ -2110,18 +2175,12 @@ class MakerTakersFeesRetrieval(APITestCase):
         )
 
         self.data = {
-            "address": Address(
-                "0xf17f52151EbEF6C7334FAD080c5704D77216B732"
-            ),
+            "address": Address("0xf17f52151EbEF6C7334FAD080c5704D77216B732"),
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 1696667304,
             "price": "{0:f}".format(Decimal("2e20")),
-            "base_token": Address(
-                "0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520"
-            ),
-            "quote_token": Address(
-                "0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
-            ),
+            "base_token": Address("0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520"),
+            "quote_token": Address("0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"),
             "signature": "0xfabfac7f7a8bbb7f87747c940a6a9be667a57c86c145fd2bb91d8286cdbde0253e1cf2c95bdfb87a46669bc8ba0d4f92b4786d00df7f90aea8004d2b953b27cb1b",
             "order_hash": "0x0e3c530932af2cadc56e2cb633b4a4952b5ebb74888c19e1068c2d0213953e45",
             "is_buyer": False,
@@ -2476,18 +2535,12 @@ class MakerTakersFeesRetrieval(APITestCase):
         """Checks two maker with base and quote taker are well returned"""
 
         self.data = {
-            "address": Address(
-                "0xf17f52151Ebef6C7334FAD080c5704D77216b732"
-            ),
+            "address": Address("0xf17f52151Ebef6C7334FAD080c5704D77216b732"),
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
-            "base_token": Address(
-                "0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520"
-            ),
-            "quote_token": Address(
-                "0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
-            ),
+            "base_token": Address("0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520"),
+            "quote_token": Address("0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"),
             "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
             "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
             "is_buyer": False,
@@ -2657,18 +2710,12 @@ class TakerRetrievalTestCase(APITestCase):
         )
         self.datetime = datetime.now()
         self.data = {
-            "address": Address(
-                "0xf17f52151EbEF6C7334FAD080c5704D77216B732"
-            ),
+            "address": Address("0xf17f52151EbEF6C7334FAD080c5704D77216B732"),
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 1696667304,
             "price": "{0:f}".format(Decimal("2e20")),
-            "base_token": Address(
-                "0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520"
-            ),
-            "quote_token": Address(
-                "0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
-            ),
+            "base_token": Address("0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520"),
+            "quote_token": Address("0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"),
             "signature": "0xfabfac7f7a8bbb7f87747c940a6a9be667a57c86c145fd2bb91d8286cdbde0253e1cf2c95bdfb87a46669bc8ba0d4f92b4786d00df7f90aea8004d2b953b27cb1b",
             "order_hash": "0x0e3c530932af2cadc56e2cb633b4a4952b5ebb74888c19e1068c2d0213953e45",
             "is_buyer": False,
@@ -2740,7 +2787,9 @@ class TakerRetrievalTestCase(APITestCase):
             self.taker_details["taker_amount"]
         )
         self.taker_details["fees"] = "{0:f}".format(self.taker_details["fees"])
-        self.taker_details["timestamp"] = int(self.taker_details["timestamp"].timestamp())
+        self.taker_details["timestamp"] = int(
+            self.taker_details["timestamp"].timestamp()
+        )
 
         self.assertEqual(
             response.json()[0],
@@ -2795,7 +2844,9 @@ class TakerRetrievalTestCase(APITestCase):
             self.taker_details["taker_amount"]
         )
         self.taker_details["fees"] = "{0:f}".format(self.taker_details["fees"])
-        self.taker_details["timestamp"] = int(self.taker_details["timestamp"].timestamp())
+        self.taker_details["timestamp"] = int(
+            self.taker_details["timestamp"].timestamp()
+        )
 
         self.assertEqual(
             taker1,
@@ -2868,7 +2919,9 @@ class TakerRetrievalTestCase(APITestCase):
             self.taker_details["taker_amount"]
         )
         self.taker_details["fees"] = "{0:f}".format(self.taker_details["fees"])
-        self.taker_details["timestamp"] = int(self.taker_details["timestamp"].timestamp())
+        self.taker_details["timestamp"] = int(
+            self.taker_details["timestamp"].timestamp()
+        )
 
         self.assertEqual(
             taker1,
@@ -2942,4 +2995,4 @@ class TakerRetrievalTestCase(APITestCase):
         self.assertDictEqual(
             response.json(),
             {"quote_token": [errors.Address.WRONG_ADDRESS_ERROR.format("quote_token")]},
-        ) 
+        )

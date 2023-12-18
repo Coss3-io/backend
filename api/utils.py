@@ -1,5 +1,6 @@
 from decimal import Decimal, ROUND_DOWN, InvalidOperation
 from time import time
+from rest_framework import serializers
 from eth_abi.packed import encode_packed
 from requests import Request
 from rest_framework.validators import ValidationError
@@ -148,7 +149,7 @@ def encode_order(order: dict):
             order.get("base_token", ""),
             order.get("quote_token", ""),
             int(order.get("expiry", "")),
-            int(order.get("chainId", "")),
+            int(order.get("chain_id", "")),
             order.get("is_buyer"),
             order.get("replace_order"),  # a replace order
         ],
@@ -181,6 +182,6 @@ def validate_chain_id(chain_id):
         chain_id = int(chain_id)
     except ValueError as e:
         raise ValidationError(
-            {"chain_id": errors.Decimal.WRONG_DECIMAL_ERROR.format("chain_id")}
+            {"chain_id": serializers.IntegerField.default_error_messages["invalid"]}
         )
     return chain_id

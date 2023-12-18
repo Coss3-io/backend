@@ -84,7 +84,7 @@ class Maker(models.Model):
         null=False,
         blank=False,
     )
-    chainId = models.IntegerField(null=False, blank=False)
+    chain_id = models.IntegerField(null=False, blank=False)
     status = models.CharField(
         max_length=2, choices=STATUS_CHOICES, default=OPEN, null=False, blank=False
     )
@@ -159,7 +159,7 @@ class Bot(models.Model):
 
     user = models.ForeignKey("User", on_delete=models.CASCADE, null=False, blank=False)
     timestamp = models.DateTimeField(auto_now_add=True)
-    chainId = models.IntegerField(null=False, blank=False)
+    chain_id = models.IntegerField(null=False, blank=False)
     step = models.DecimalField(
         max_digits=78,
         decimal_places=0,

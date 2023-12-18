@@ -65,6 +65,7 @@ class BotSerializer(serializers.ModelSerializer):
             "step",
             "price",
             "amount",
+            "chain_id",
             "base_token",
             "quote_token",
             "maker_fees",
@@ -100,6 +101,7 @@ class BotSerializer(serializers.ModelSerializer):
                 price=str(price),
                 is_buyer=True if price <= int(validated_data["price"]) else False,
                 expiry=expiry,
+                chain_id=int(validated_data["chain_id"]),
                 signature=signature,
             )
             for price in range(
@@ -122,6 +124,7 @@ class BotSerializer(serializers.ModelSerializer):
                     "base_token": order.base_token,
                     "quote_token": order.quote_token,
                     "expiry": int(order.expiry.timestamp()),
+                    "chain_id": int(order.chain_id),
                     "is_buyer": 0 if is_buyer else 1,
                     "replace_order": True,
                 }
@@ -198,6 +201,7 @@ class BotSerializer(serializers.ModelSerializer):
                 "base_token": data["base_token"],
                 "quote_token": data["quote_token"],
                 "expiry": int(data["expiry"].timestamp()),
+                "chain_id": int(data["chain_id"]),
                 "is_buyer": 0 if data["is_buyer"] else 1,
                 "replace_order": True,
             }
@@ -220,7 +224,7 @@ class BotSerializer(serializers.ModelSerializer):
         data["address"] = instance.user.address
         if self.context.get("private", None):
             return data
-        
+
         base_token_amount = Decimal("0")
         quote_token_amount = Decimal("0")
         for order in instance.orders.all():
@@ -276,6 +280,7 @@ class MakerSerializer(serializers.ModelSerializer):
             "price",
             "is_buyer",
             "expiry",
+            "chain_id",
             "order_hash",
             "status",
             "filled",
@@ -367,6 +372,7 @@ class MakerSerializer(serializers.ModelSerializer):
                 "base_token": data["base_token"],
                 "quote_token": data["quote_token"],
                 "expiry": int(data["expiry"].timestamp()),
+                "chain_id": int(data["chain_id"]),
                 "is_buyer": 0 if data["is_buyer"] else 1,
                 "replace_order": False,
             }
@@ -401,6 +407,7 @@ class TakerSerializer(serializers.ModelSerializer):
     maker = MakerSerializer(required=False, write_only=True)
     maker_id = serializers.IntegerField(required=True, write_only=True)
     timestamp = TimestampField(required=False, read_only=True)
+
     class Meta:
         model = Taker
         list_serializer_class = TakerListSerializer

@@ -77,4 +77,5 @@ class BotTypedDict(TypedDict):
     price: Decimal
     is_buyer: bool
     expiry: datetime
+    chain_id: int
     signature: str

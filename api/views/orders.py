@@ -14,6 +14,7 @@ from api.models.types import Address
 from api.models import User
 import api.errors as errors
 from api.serializers.orders import MakerSerializer, BotSerializer, TakerSerializer
+from api.utils import validate_chain_id
 from api.views.authentications import ApiAuthentication
 from api.messages import WStypes
 from api.consumers.websocket import WebsocketConsumer
@@ -35,17 +36,23 @@ class OrderView(APIView):
                 {"detail": errors.Order.BASE_QUOTE_NEEDED},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
         try:
             base_token = Address(base_token, "base_token")
         except ValidationError as e:
             raise ValidationError({"base_token": e.detail})
+
         try:
             quote_token = Address(quote_token, "quote_token")
         except ValidationError as e:
             raise ValidationError({"quote_token": e.detail})
 
         queryset = (
-            Maker.objects.filter(base_token=base_token, quote_token=quote_token)
+            Maker.objects.filter(
+                base_token=base_token,
+                quote_token=quote_token,
+                chain_id=validate_chain_id(request.query_params.get("chain_id", None)),
+            )
             .select_related("user", "bot", "bot__user")
             .prefetch_related("takers")
         )
@@ -74,10 +81,11 @@ class MakerView(APIView):
 
         if request.auth == "awaitable":
             request.user = (await User.objects.aget_or_create(address=request.user))[0]
+        chain_id = validate_chain_id(request.query_params.get("chain_id", None))
 
         if request.query_params.get("all", None):
             queryset = (
-                Maker.objects.filter(user=request.user)
+                Maker.objects.filter(user=request.user, chain_id=chain_id)
                 .select_related("user")
                 .prefetch_related("takers")
             )
@@ -100,7 +108,10 @@ class MakerView(APIView):
                 raise ValidationError({"quote_token": e.detail})
 
             queryset = Maker.objects.filter(
-                user=request.user, base_token=base_token, quote_token=quote_token
+                user=request.user,
+                base_token=base_token,
+                quote_token=quote_token,
+                chain_id=chain_id,
             )
 
         length = await sync_to_async(len)(queryset)
@@ -139,9 +150,10 @@ class TakerView(APIView):
 
         if request.auth == "awaitable":
             request.user = (await User.objects.aget_or_create(address=request.user))[0]
+        chain_id = validate_chain_id(request.query_params.get("chain_id", None))
 
         if request.query_params.get("all", None):
-            queryset = Taker.objects.filter(user=request.user)
+            queryset = Taker.objects.filter(user=request.user, maker__chain_id=chain_id)
         else:
             if (base_token := request.query_params.get("base_token", "0")) == "0" or (
                 quote_token := request.query_params.get("quote_token", "0")
@@ -162,6 +174,7 @@ class TakerView(APIView):
 
             queryset = Taker.objects.filter(
                 user=request.user,
+                maker__chain_id=chain_id,
                 maker__base_token=base_token,
                 maker__quote_token=quote_token,
             )
@@ -187,9 +200,10 @@ class BotView(APIView):
         """Returns the user bots list,"""
         if request.auth == "awaitable":
             request.user = (await User.objects.aget_or_create(address=request.user))[0]
+        chain_id = validate_chain_id(request.query_params.get("chain_id", None))
 
         bots = (
-            Bot.objects.filter(user=request.user)
+            Bot.objects.filter(user=request.user, chain_id=chain_id)
             .select_related("user")
             .prefetch_related("orders")
         )

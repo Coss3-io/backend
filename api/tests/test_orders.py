@@ -2178,6 +2178,7 @@ class MakerAPILogInTestCase(APITestCase):
                 reverse("api:order"),
                 data={
                     "all": True,
+                    "chain_id": 31337,
                     "signature": signature,
                     "address": address,
                     "timestamp": timestamp,
@@ -2284,21 +2285,22 @@ class MakerTakersFeesRetrieval(APITestCase):
 
     def setUp(self):
         self.user = async_to_sync(User.objects.create_user)(
-            address=Address("0xf17f52151EbEF6C7334FAD080c5704D77216b732")
+            address=Address("0x70997970C51812dc3A010C7d01b50e0d17dc79C8")
         )
         self.taker_user = async_to_sync(User.objects.create_user)(
-            address=Address("0xf18f52151EbEF6C7334FAD080c5704D77216b732")
+            address=Address("0x70197970C51812dc3A010C7d01b50e0d17dc79C8")
         )
 
         self.data = {
-            "address": Address("0xf17f52151EbEF6C7334FAD080c5704D77216B732"),
+            "address": self.user.address,
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 1696667304,
+            "chain_id": 31337,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": Address("0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520"),
             "quote_token": Address("0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"),
-            "signature": "0xfabfac7f7a8bbb7f87747c940a6a9be667a57c86c145fd2bb91d8286cdbde0253e1cf2c95bdfb87a46669bc8ba0d4f92b4786d00df7f90aea8004d2b953b27cb1b",
-            "order_hash": "0x0e3c530932af2cadc56e2cb633b4a4952b5ebb74888c19e1068c2d0213953e45",
+            "signature": "0x3b5de7837c06364ed56c3ddf6476e7b91e28cac6d290abf3bcb04f7b090e6fe2667d3b1d88abc1e4357a4eda330be501ac4dafd08cced0a7572214212ef816721c",
+            "order_hash": "0x3716bca7ee25b52ad4f6dcb2592979f07acd2b9748a00931b496d25c48220f1b",
             "is_buyer": False,
             "filled": "0",
             "base_fees": "0",
@@ -2311,6 +2313,7 @@ class MakerTakersFeesRetrieval(APITestCase):
             amount=self.data["amount"],
             expiry=datetime.fromtimestamp(self.data["expiry"]),
             price=self.data["price"],
+            chain_id=self.data["chain_id"],
             base_token=Address(self.data["base_token"]),
             quote_token=Address(self.data["quote_token"]),
             signature=self.data["signature"],
@@ -2344,7 +2347,7 @@ class MakerTakersFeesRetrieval(APITestCase):
         )
 
         self.client.force_authenticate(user=self.user)  # type: ignore
-        response = self.client.get(reverse("api:order"), data={"all": True})
+        response = self.client.get(reverse("api:order"), data={"all": True, "chain_id": 31337,})
 
         self.assertEqual(
             response.status_code, HTTP_200_OK, "The request should work fine"
@@ -2403,7 +2406,7 @@ class MakerTakersFeesRetrieval(APITestCase):
         )
 
         self.client.force_authenticate(user=self.user)  # type: ignore
-        response = self.client.get(reverse("api:order"), data={"all": True})
+        response = self.client.get(reverse("api:order"), data={"all": True, "chain_id": 31337})
 
         self.assertEqual(
             response.status_code, HTTP_200_OK, "The request should work fine"
@@ -2442,7 +2445,7 @@ class MakerTakersFeesRetrieval(APITestCase):
         )
 
         self.client.force_authenticate(user=self.user)  # type: ignore
-        response = self.client.get(reverse("api:order"), data={"all": True})
+        response = self.client.get(reverse("api:order"), data={"all": True, "chain_id": 31337})
 
         self.assertEqual(
             response.status_code, HTTP_200_OK, "The request should work fine"
@@ -2502,7 +2505,7 @@ class MakerTakersFeesRetrieval(APITestCase):
         )
 
         self.client.force_authenticate(user=self.user)  # type: ignore
-        response = self.client.get(reverse("api:order"), data={"all": True})
+        response = self.client.get(reverse("api:order"), data={"all": True, "chain_id": 31337})
 
         self.assertEqual(
             response.status_code, HTTP_200_OK, "The request should work fine"
@@ -2561,7 +2564,7 @@ class MakerTakersFeesRetrieval(APITestCase):
         )
 
         self.client.force_authenticate(user=self.user)  # type: ignore
-        response = self.client.get(reverse("api:order"), data={"all": True})
+        response = self.client.get(reverse("api:order"), data={"all": True, 'chain_id': 31337})
 
         self.assertEqual(
             response.status_code, HTTP_200_OK, "The request should work fine"
@@ -2631,7 +2634,7 @@ class MakerTakersFeesRetrieval(APITestCase):
             )
 
         self.client.force_authenticate(user=self.user)  # type: ignore
-        response = self.client.get(reverse("api:order"), data={"all": True})
+        response = self.client.get(reverse("api:order"), data={"all": True, "chain_id": 31337})
 
         self.assertEqual(
             response.status_code, HTTP_200_OK, "The request should work fine"
@@ -2653,6 +2656,7 @@ class MakerTakersFeesRetrieval(APITestCase):
         self.data = {
             "address": Address("0xf17f52151Ebef6C7334FAD080c5704D77216b732"),
             "amount": "{0:f}".format(Decimal("173e16")),
+            "chain_id": 31337,
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": Address("0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520"),
@@ -2669,6 +2673,7 @@ class MakerTakersFeesRetrieval(APITestCase):
         maker2 = async_to_sync(Maker.objects.create)(
             user=self.user,
             amount=self.data["amount"],
+            chain_id=self.data["chain_id"],
             expiry=datetime.fromtimestamp(self.data["expiry"]),
             price=self.data["price"],
             base_token=Address(self.data["base_token"]),
@@ -2779,7 +2784,7 @@ class MakerTakersFeesRetrieval(APITestCase):
             )
 
         self.client.force_authenticate(user=self.user)  # type: ignore
-        response = self.client.get(reverse("api:order"), data={"all": True})
+        response = self.client.get(reverse("api:order"), data={"all": True, "chain_id": 31337})
 
         self.assertEqual(
             response.status_code, HTTP_200_OK, "The request should work fine"
@@ -2829,6 +2834,7 @@ class TakerRetrievalTestCase(APITestCase):
             "address": Address("0xf17f52151EbEF6C7334FAD080c5704D77216B732"),
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 1696667304,
+            "chain_id": 31337,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": Address("0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520"),
             "quote_token": Address("0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"),
@@ -2845,6 +2851,7 @@ class TakerRetrievalTestCase(APITestCase):
             user=self.user,
             amount=self.data["amount"],
             expiry=datetime.fromtimestamp(self.data["expiry"]),
+            chain_id=self.data["chain_id"],
             price=self.data["price"],
             base_token=Address(self.data["base_token"]),
             quote_token=Address(self.data["quote_token"]),
@@ -2878,7 +2885,9 @@ class TakerRetrievalTestCase(APITestCase):
     def test_anon_users_cannot_see_takers_orders(self):
         """The anonymous users should not be able to see taker orders"""
 
-        response = self.client.get(reverse("api:taker"), data={"all": True})
+        response = self.client.get(
+            reverse("api:taker"), data={"all": True, "chain_id": 31337}
+        )
         self.assertEqual(
             response.status_code,
             HTTP_403_FORBIDDEN,
@@ -2889,7 +2898,9 @@ class TakerRetrievalTestCase(APITestCase):
         """A logged in user should see its taker orders"""
 
         self.client.force_authenticate(user=self.taker_user)  # type: ignore
-        response = self.client.get(reverse("api:taker"), data={"all": True})
+        response = self.client.get(
+            reverse("api:taker"), data={"all": True, "chain_id": 31337}
+        )
 
         self.assertEqual(
             response.status_code,
@@ -2938,7 +2949,9 @@ class TakerRetrievalTestCase(APITestCase):
         )
 
         self.client.force_authenticate(user=self.taker_user)  # type: ignore
-        response = self.client.get(reverse("api:taker"), data={"all": True})
+        response = self.client.get(
+            reverse("api:taker"), data={"all": True, "chain_id": 31337}
+        )
         data = response.json()
 
         self.assertEqual(
@@ -3012,6 +3025,7 @@ class TakerRetrievalTestCase(APITestCase):
             data={
                 "base_token": self.maker.base_token,
                 "quote_token": self.maker.quote_token,
+                "chain_id": 31337,
             },
         )
         data = response.json()
@@ -3067,7 +3081,7 @@ class TakerRetrievalTestCase(APITestCase):
             HTTP_400_BAD_REQUEST,
             "The request without param should fail",
         )
-        self.assertEqual(response.json(), {"detail": errors.Order.BASE_QUOTE_NEEDED})
+        self.assertEqual(response.json(), {"chain_id": errors.General.MISSING_FIELD})
 
     def test_retrieve_takers_wrong_base_token(self):
         """Checks the taker retrieval fails with wrong base_token"""
@@ -3076,6 +3090,7 @@ class TakerRetrievalTestCase(APITestCase):
         response = self.client.get(
             reverse("api:taker"),
             data={
+                "chain_id": 31337,
                 "base_token": "0xz02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
                 "quote_token": self.maker.quote_token,
             },
@@ -3098,6 +3113,7 @@ class TakerRetrievalTestCase(APITestCase):
         response = self.client.get(
             reverse("api:taker"),
             data={
+                "chain_id": 31337,
                 "base_token": self.maker.base_token,
                 "quote_token": "0xz02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
             },
@@ -3111,4 +3127,27 @@ class TakerRetrievalTestCase(APITestCase):
         self.assertDictEqual(
             response.json(),
             {"quote_token": [errors.Address.WRONG_ADDRESS_ERROR.format("quote_token")]},
+        )
+
+    def test_retrieve_takers_wrong_chain_id(self):
+        """Checks the taker retrieval fails with wrong quote_token"""
+
+        self.client.force_authenticate(user=self.taker_user)  # type: ignore
+        response = self.client.get(
+            reverse("api:taker"),
+            data={
+                "base_token": self.maker.base_token,
+                "quote_token": self.maker.quote_token,
+                "chain_id": "a",
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "the request should fail with wrong chain_id",
+        )
+        self.assertDictEqual(
+            response.json(),
+            {"chain_id": serializers.IntegerField.default_error_messages["invalid"]},
         )

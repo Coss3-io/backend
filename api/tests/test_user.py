@@ -417,7 +417,7 @@ class UserLogInTestCase(APITestCase):
             response.status_code, HTTP_200_OK, "The request should be succesfull"
         )
 
-        response = self.client.get(reverse("api:order"), data={"all": True})
+        response = self.client.get(reverse("api:order"), data={"all": True, "chain_id": 31337})
         self.assertEqual(
             response.status_code, HTTP_200_OK, "The user should be logged in "
         )

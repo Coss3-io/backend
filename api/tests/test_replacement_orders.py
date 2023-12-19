@@ -3,10 +3,9 @@ from time import time
 from asgiref.sync import async_to_sync
 from django.urls import reverse
 from django.db.models import F
-from web3 import Web3
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
 from rest_framework.test import APITestCase
-from rest_framework.serializers import DecimalField, BooleanField
+from rest_framework.serializers import DecimalField, BooleanField, IntegerField
 from rest_framework.exceptions import NotAuthenticated
 from api.models import User
 from api.models.orders import Maker, Bot
@@ -21,9 +20,10 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks the bot creation works well"""
         timestamp = int(time())
         data = {
-            "address": "0xF17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -45,6 +45,7 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             data={
                 "base_token": data.get("base_token"),
                 "quote_token": data.get("quote_token"),
+                "chain_id": data.get("chain_id"),
             },
         ).json()
 
@@ -62,6 +63,12 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         ]
 
         for order in orders:
+            self.assertEqual(
+                order["chain_id"],
+                data.get("chain_id", ""),
+                "The chain_id on the returned order should match the bot creator chain_id",
+            )
+
             self.assertEqual(
                 order["address"],
                 Address(data.get("address", "")),
@@ -174,9 +181,10 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks that if a user send a date on bot creation the date is not taken in account"""
         timestamp = int(time())
         data = {
-            "address": "0xF17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -186,7 +194,7 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             "amount": "{0:f}".format(Decimal("2e18")),
             "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
             "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
-            "timestamp": 200000
+            "timestamp": 200000,
         }
 
         response = self.client.post(reverse("api:bot"), data=data).json()
@@ -202,9 +210,10 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """A user should not be able to create the same bot twice"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -212,8 +221,8 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         self.client.post(reverse("api:bot"), data=data)
@@ -235,9 +244,10 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Creating a bot with a 0 step should not be allowed"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0x0b0219373a4ae66877534990dad2e3376de8a456bc2a6bdf694fb8914456f1110a23d44fa11a5f025be0ebed89c56e41da70f42803dc70e858c7ad010f64cc641b",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "0",
             "price": "{0:f}".format(Decimal("1e18")),
@@ -245,8 +255,8 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -267,18 +277,19 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Creating a bot with a 0 amount should not be allowed"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe85fcb21e2409140501d4864c76f2dbe85e3bd22627ea596cb84ef5fdbf4cfd41650d2270fe33577415cb3204c3ede0818bc22b81853b94231abfaa926a7da6e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
             "maker_fees": "{0:f}".format(Decimal("50")),
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
-            "amount": "0",  # "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "amount": "0",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -296,21 +307,22 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         )
 
     def test_creating_bot_with_0_maker_fees_fails(self):
-        """Creating a bot with a 0 price should not be allowed"""
+        """Creating a bot with a 0 maker_fees should not be allowed"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xcbd9aab47e61f1dfeea5ab2ab67d74a5ad327dc727890fbd0b94baee1aa2c0542bcb5d6ebc07dbbbffa568ead302511d2c83781c287cf95b849956df177d09b01b",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
-            "price": "0",  # "{0:f}".format(Decimal("1e18")),
-            "maker_fees": "{0:f}".format(Decimal("50")),
+            "price": "{0:f}".format(Decimal("1e18")),
+            "maker_fees": "0",
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -323,7 +335,7 @@ class ReplacementOrdersCreationTestCase(APITestCase):
 
         self.assertDictEqual(
             response.json(),
-            {"price": [errors.Decimal.ZERO_DECIMAL_ERROR.format("price")]},
+            {"maker_fees": [errors.Decimal.ZERO_DECIMAL_ERROR.format("maker_fees")]},
             "the error returned should be about the 0 amount field",
         )
 
@@ -331,9 +343,10 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks that creating a bot with the same base and the same quote fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0x99afc3b74a0a04cbbaa84479ee95a4cb2f5527bb491fc85b6178596b28944bc55f3b1438a6d8963c2b9421e6cc5942c340eea8924c3f23d384a0f204729ad5121c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -341,8 +354,8 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -362,18 +375,19 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """The creation of a bot with price gt upper bound should fail"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xb35fef1442e7a63a165f4da7c6d460f94c3d090596f7b3323ef14ada90ffa7f7209565892d4673247595a4ced71ce2b940dc126f9b40c198bc0a12e3b4ca6fc11c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
-            "price": "{0:f}".format(Decimal("1e19")),
+            "price": "{0:f}".format(Decimal("16e17")),
             "maker_fees": "{0:f}".format(Decimal("50")),
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -393,9 +407,10 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """The creation of a bot with price gt upper bound should fail"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0x5434e66fb93872d2779023d9b706f8181bcbc07a808e37ac0846ef6587daf0c86893375542b606ab11f9276be23f0a144d5818a3eb5054efa2ab740a54a0ad361c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -403,8 +418,8 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("11e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -424,18 +439,19 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot with lower bound greater or equal to upper bound fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0x363bfa68e74b9351338923fa184f09a536fbb9ac59342e2bd73f526159e301ef03982a522aade72cb3e90f808aee53d73ee2a710d1de153bfaac07fdf8a7a62b1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
             "maker_fees": "{0:f}".format(Decimal("50")),
-            "upper_bound": "{0:f}".format(Decimal("1e18")),
-            "lower_bound": "{0:f}".format(Decimal("1e18")),
+            "upper_bound": "{0:f}".format(Decimal("15e17")),
+            "lower_bound": "{0:f}".format(Decimal("16e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -455,9 +471,10 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks with bot orders and regular order we can get all of them at once"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -465,19 +482,20 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         maker_data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
             "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
-            "signature": "0xd71e912a471c9d6df869a636e05adee17d1df3f4e929c030992bef54b35ddee93a3207665ee47ef9f4b09daf39d52f15007e5035fc391a65c7db0eb6f6ee60651c",
-            "order_hash": "0xd08bcea784907c943819f0e99571bbf34e01abce3d288528dee96da4f3eb868b",
+            "signature": "0x5e5c78f1462f8ac5c05a68b87f6bbcdc23e0cedb2f87c40780d63eb30a79fdc261fd045ad597bf61ba3cd91804e4ce1fb4f5e90a17838fa3623cdfa35815d6831b",
+            "order_hash": "0xcf6fc7283e9413379175d181adddd50251f33a3b3687c9cd07ad65bc18ac12b1",
             "is_buyer": False,
         }
         response = self.client.post(reverse("api:order"), data=maker_data)
@@ -488,6 +506,7 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             data={
                 "base_token": data.get("base_token"),
                 "quote_token": data.get("quote_token"),
+                "chain_id": 31337,
             },
         ).json()
 
@@ -524,9 +543,10 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot without address fails"""
 
         data = {
-            # "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            # "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -534,8 +554,8 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -555,9 +575,10 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot with a short address fails"""
 
         data = {
-            "address": "0x17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x0997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -565,8 +586,8 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -586,9 +607,10 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot with a long address fails"""
 
         data = {
-            "address": "0xff17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x470997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -596,8 +618,8 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -617,9 +639,10 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot with wrong address fails"""
 
         data = {
-            "address": "0xz17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0xz0997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -627,8 +650,8 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -648,9 +671,10 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot without expiry fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             # "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -658,8 +682,8 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -679,9 +703,10 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot with wrong expiry fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
-            "expiry": "a2114380800",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
+            "expiry": "z2114380800",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -689,8 +714,8 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -710,9 +735,10 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot without is_buyer fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             # "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -720,8 +746,8 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -741,18 +767,19 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot with wrong is_buyer fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
-            "is_buyer": "drengrtw",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
+            "is_buyer": "aFalse",
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
             "maker_fees": "{0:f}".format(Decimal("50")),
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -772,9 +799,10 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot without signature fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            # "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            # "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -782,8 +810,8 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -803,9 +831,10 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot with_short signature fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0x92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x04b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -813,8 +842,8 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -834,9 +863,10 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot with long signature fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xee92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4bb8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -844,8 +874,8 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -865,9 +895,10 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot with wrong signature fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xz92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0z4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -875,8 +906,8 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -896,9 +927,10 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot with a mismatch signature fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xa92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0a4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -906,8 +938,8 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -927,9 +959,10 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot without step fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             # "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -937,8 +970,8 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -958,18 +991,19 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot with wrong step fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
-            "step": "a" + "{0:f}".format(Decimal("1e17")),
+            "step": "a{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
             "maker_fees": "{0:f}".format(Decimal("50")),
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -989,9 +1023,10 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot without price fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             # "price": "{0:f}".format(Decimal("1e18")),
@@ -999,8 +1034,8 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -1020,18 +1055,19 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot with wrong price fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
-            "price": "a" + "{0:f}".format(Decimal("1e18")),
+            "price": "a{0:f}".format(Decimal("1e18")),
             "maker_fees": "{0:f}".format(Decimal("50")),
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -1051,9 +1087,10 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot without maker_fees fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -1061,8 +1098,8 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -1082,18 +1119,19 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot without price fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
-            "maker_fees": "a" + "{0:f}".format(Decimal("50")),
+            "maker_fees": "a{0:f}".format(Decimal("50")),
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -1113,9 +1151,10 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot without upper_bound fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -1123,8 +1162,8 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             # "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -1144,18 +1183,19 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot with wrong upper_bound fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
             "maker_fees": "{0:f}".format(Decimal("50")),
-            "upper_bound": "a" + "{0:f}".format(Decimal("15e17")),
+            "upper_bound": "a{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -1175,9 +1215,10 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot without lower_bound fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -1185,8 +1226,8 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             # "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -1206,18 +1247,19 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot with wrong lower_bound fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
             "maker_fees": "{0:f}".format(Decimal("50")),
-            "upper_bound": "{0:f}".format(Decimal("5e17")),
-            "lower_bound": "a" + "{0:f}".format(Decimal("15e17")),
+            "upper_bound": "{0:f}".format(Decimal("15e17")),
+            "lower_bound": "a{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -1237,9 +1279,10 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot without amount fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -1247,8 +1290,8 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             # "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -1268,18 +1311,19 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot with wrong amount fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
             "maker_fees": "{0:f}".format(Decimal("50")),
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
-            "amount": "a" + "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "amount": "a{0:f}".format(Decimal("2e18")),
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -1299,9 +1343,10 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot without base token fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -1309,8 +1354,8 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            # "base_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            # "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -1330,9 +1375,10 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot with wrong base token fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -1341,7 +1387,7 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
             "base_token": "0xz25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -1361,9 +1407,10 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot with short base token fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -1372,7 +1419,7 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
             "base_token": "0x25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -1392,9 +1439,10 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot with long base token fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -1402,8 +1450,8 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xff25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xFa25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -1423,9 +1471,10 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot without quote token fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -1433,8 +1482,8 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            # "quote_token": "0xf25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "base_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            # "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -1454,9 +1503,10 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot with wrong quote token fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -1464,8 +1514,8 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "quote_token": "0xz25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "base_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0xz45CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -1485,9 +1535,10 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot with short quote token fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -1495,8 +1546,8 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "quote_token": "0x25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "base_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x45CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -1516,9 +1567,10 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         """Checks creating a bot with long quote token fails"""
 
         data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -1526,8 +1578,8 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "quote_token": "0xff25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "base_token": "0x345cA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x3345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
 
         response = self.client.post(reverse("api:bot"), data=data)
@@ -1543,19 +1595,84 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             {"quote_token": [errors.Address.LONG_ADDRESS_ERROR.format("quote_token")]},
         )
 
+    def test_create_a_bot_without_chain_id_fails(self):
+        """Checks creating a bot without chain id fails"""
+
+        data = {
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            # "chain_id": 31337,
+            "expiry": 2114380800,
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
+            "is_buyer": False,
+            "step": "{0:f}".format(Decimal("1e17")),
+            "price": "{0:f}".format(Decimal("1e18")),
+            "maker_fees": "{0:f}".format(Decimal("50")),
+            "upper_bound": "{0:f}".format(Decimal("15e17")),
+            "lower_bound": "{0:f}".format(Decimal("5e17")),
+            "amount": "{0:f}".format(Decimal("2e18")),
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
+        }
+
+        response = self.client.post(reverse("api:bot"), data=data)
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The bot creation without chain_id should fail",
+        )
+
+        self.assertEqual(
+            response.json(),
+            {"chain_id": [errors.General.MISSING_FIELD]},
+        )
+
+    def test_create_a_bot_with_wrong_chain_id_fails(self):
+        """Checks creating a bot with wrong chain_id fails"""
+
+        data = {
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": "a31337",
+            "expiry": 2114380800,
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
+            "is_buyer": False,
+            "step": "{0:f}".format(Decimal("1e17")),
+            "price": "{0:f}".format(Decimal("1e18")),
+            "maker_fees": "{0:f}".format(Decimal("50")),
+            "upper_bound": "{0:f}".format(Decimal("15e17")),
+            "lower_bound": "{0:f}".format(Decimal("5e17")),
+            "amount": "{0:f}".format(Decimal("2e18")),
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
+        }
+
+        response = self.client.post(reverse("api:bot"), data=data)
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The bot creation with wrong chain_id should fail",
+        )
+
+        self.assertEqual(
+            response.json(),
+            {"chain_id": [IntegerField.default_error_messages["invalid"]]},
+        )
+
 
 class BotRetrievalTestCase(APITestCase):
     """Class used to test the retrieval of the users bots"""
 
     def setUp(self):
         self.user = async_to_sync(User.objects.create_user)(
-            address=Address("0xf17f52151EbEF6C7334FAD080c5704D77216b732")
+            address=Address("0x70997970C51812dc3A010C7d01b50e0d17dc79C8")
         )
         self.timestamp = int(time())
         self.data = {
-            "address": "0xF17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -1572,7 +1689,9 @@ class BotRetrievalTestCase(APITestCase):
         """Checks retrieving the bots of a user works"""
 
         self.client.force_authenticate(user=self.user)  # type: ignore
-        response = self.client.get(reverse("api:bot"))
+        response = self.client.get(
+            reverse("api:bot"), {"chain_id": self.data["chain_id"]}
+        )
         data = response.json()
         self.assertEqual(
             response.status_code,
@@ -1585,14 +1704,10 @@ class BotRetrievalTestCase(APITestCase):
         del self.data["amount"]
         del self.data["is_buyer"]
 
-        self.data["base_token"] = Address(
-            self.data.get("base_token", "")
-        )
-        self.data["quote_token"] = Address(
-            self.data.get("quote_token", "")
-        )
+        self.data["base_token"] = Address(self.data.get("base_token", ""))
+        self.data["quote_token"] = Address(self.data.get("quote_token", ""))
         self.data["address"] = Address(self.data.get("address", ""))
-        
+
         bot_timestamp = data[0]["timestamp"]
         del data[0]["timestamp"]
 
@@ -1619,7 +1734,9 @@ class BotRetrievalTestCase(APITestCase):
     def test_retrieving_bots_anon_fails(self):
         """Checks that a non authenticated user cannot get his bots list"""
 
-        response = self.client.get(reverse("api:bot"))
+        response = self.client.get(
+            reverse("api:bot"), {"chain_id": self.data["chain_id"]}
+        )
 
         self.assertEqual(
             response.status_code,
@@ -1629,6 +1746,22 @@ class BotRetrievalTestCase(APITestCase):
 
         self.assertDictEqual(
             response.json(), {"detail": NotAuthenticated.default_detail}
+        )
+
+    def test_retrieving_bots_without_chain_id_fails(self):
+        """Checks that not sending the chain id fails the request"""
+
+        self.client.force_authenticate(user=self.user)  # type: ignore
+        response = self.client.get(reverse("api:bot"))
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "Chain_id is required to get your bots list",
+        )
+
+        self.assertDictEqual(
+            response.json(), {"chain_id": errors.General.MISSING_FIELD}
         )
 
     def test_retrieving_user_bots_with_consummed_orders_works(self):
@@ -1656,7 +1789,9 @@ class BotRetrievalTestCase(APITestCase):
         Maker.objects.bulk_update([buyer, seller], fields=["filled"])
 
         self.client.force_authenticate(user=self.user)  # type: ignore
-        response = self.client.get(reverse("api:bot"))
+        response = self.client.get(
+            reverse("api:bot"), {"chain_id": self.data["chain_id"]}
+        )
         data = response.json()
 
         self.assertEqual(
@@ -1683,13 +1818,9 @@ class BotRetrievalTestCase(APITestCase):
             }
         )
 
-        self.data["base_token"] = Address(
-            self.data.get("base_token", "")
-        )
+        self.data["base_token"] = Address(self.data.get("base_token", ""))
         self.data["address"] = Address(self.data.get("address", ""))
-        self.data["quote_token"] = Address(
-            self.data.get("quote_token", "")
-        )
+        self.data["quote_token"] = Address(self.data.get("quote_token", ""))
         bot_timestamp = data[0]["timestamp"]
         del data[0]["timestamp"]
 
@@ -1712,9 +1843,10 @@ class BotRetrievalTestCase(APITestCase):
 
         timestamp = int(time())
         data = {
-            "address": "0xF17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380801,
-            "signature": "0x201a1a4decd1b648366cd1c3577f3f7e21f8064836b8b8543bd93fbe6be33f2104935687856f2fd5dd355b277ac5f826e14e068c3e63b15f0d8412665cbcdced1c",
+            "signature": "0xbf7645fa71f5c170b5c41ff81aea9d3c71e8c8746d415149210d6cf9f2755bfe49a2ddf50532a8c8ab2f566c910d02705296a1574b30c57dad35025412a407791c",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -1723,12 +1855,14 @@ class BotRetrievalTestCase(APITestCase):
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("1e18")),
             "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345cA3E014Aaf5dcA488057592ee47305D9B3e10",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
         self.client.post(reverse("api:bot"), data=data)
 
         self.client.force_authenticate(user=self.user)  # type: ignore
-        response = self.client.get(reverse("api:bot"))
+        response = self.client.get(
+            reverse("api:bot"), {"chain_id": self.data["chain_id"]}
+        )
         self.assertEqual(
             response.status_code,
             HTTP_200_OK,
@@ -1761,15 +1895,11 @@ class BotRetrievalTestCase(APITestCase):
         )
 
         data["base_token"] = Address(data.get("base_token", ""))
-        self.data["base_token"] = Address(
-            self.data.get("base_token", "")
-        )
+        self.data["base_token"] = Address(self.data.get("base_token", ""))
         data["address"] = Address(data.get("address", ""))
         self.data["address"] = Address(self.data.get("address", ""))
         data["quote_token"] = Address(data.get("quote_token", ""))
-        self.data["quote_token"] = Address(
-            self.data.get("quote_token", "")
-        )
+        self.data["quote_token"] = Address(self.data.get("quote_token", ""))
 
         bot1_timestamp = bot1["timestamp"]
         bot2_timestamp = bot2["timestamp"]

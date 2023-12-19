@@ -45,7 +45,7 @@ class StackingFeesSerializer(ModelSerializer):
 
     class Meta:
         model = StackingFees
-        fields = ["token", "amount", "slot", "chaid_id"]
+        fields = ["token", "amount", "slot", "chain_id"]
 
     def validate_token(self, value):
         return validate_address(value, "token")
@@ -65,6 +65,9 @@ class StackingFeesWithdrawalSerializer(ModelSerializer):
     class Meta:
         model = StackingFeesWithdrawal
         fields = ["token", "slot", "address", "chain_id"]
+        extra_kwargs = {
+            "chain_id": {"write_only": True},
+        }
 
     def validate_token(self, value):
         return validate_address(value, "token")

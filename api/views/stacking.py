@@ -68,7 +68,7 @@ class StackingView(APIView):
             "withdraw": bool
             "amount": int,
             "slot": int,
-            "chaid_id": int,
+            "chain_id": int,
         }
         ```"""
 

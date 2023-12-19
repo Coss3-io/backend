@@ -9,7 +9,8 @@ class Stacking(models.Model):
     class Meta:
         constraints = [
             models.constraints.UniqueConstraint(
-                fields=("user", "slot"), name="unique_user_and_slot"
+                fields=("user", "slot", "chain_id"),
+                name="unique_user_and_slot_and_chain_id",
             )
         ]
 
@@ -30,8 +31,8 @@ class StackingFeesWithdrawal(models.Model):
     class Meta:
         constraints = [
             models.constraints.UniqueConstraint(
-                fields=("user", "slot", "token"),
-                name="unique_withdrawal_per_user_token_slot",
+                fields=("user", "slot", "token", "chain_id"),
+                name="unique_withdrawal_per_user_token_slot_chain_id",
             )
         ]
 
@@ -58,7 +59,8 @@ class StackingFees(models.Model):
     class Meta:
         constraints = [
             models.constraints.UniqueConstraint(
-                fields=("token", "slot"), name="unique_token_and_slot"
+                fields=("token", "slot", "chain_id"),
+                name="unique_token_and_slot_and_chain_id",
             )
         ]
 

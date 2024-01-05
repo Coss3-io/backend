@@ -25,6 +25,7 @@ class MakerCommitTestCase(APITestCase):
             "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
+            "chain_id": 31337,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
@@ -35,6 +36,7 @@ class MakerCommitTestCase(APITestCase):
 
         async_to_sync(Maker.objects.create)(
             user=self.user,
+            chain_id=self.data["chain_id"],
             amount=self.data["amount"],
             expiry=datetime.fromtimestamp(self.data["expiry"]),
             price=self.data["price"],
@@ -219,6 +221,7 @@ class MakerCommitTestCase(APITestCase):
             "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
             "amount": "{0:f}".format(Decimal("273e16")),
             "expiry": 2114380800,
+            "chain_id": 31337,
             "price": "{0:f}".format(Decimal("3e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
@@ -230,6 +233,7 @@ class MakerCommitTestCase(APITestCase):
         async_to_sync(Maker.objects.create)(
             user=self.user,
             amount=data["amount"],
+            chain_id=data["chain_id"],
             expiry=datetime.fromtimestamp(data["expiry"]),
             price=data["price"],
             base_token=Address(data["base_token"]),
@@ -406,6 +410,7 @@ class MakerCommitTestCase(APITestCase):
             "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
             "amount": "{0:f}".format(Decimal("273e16")),
             "expiry": 2114380800,
+            "chain_id": 31337,
             "price": "{0:f}".format(Decimal("3e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
@@ -417,6 +422,7 @@ class MakerCommitTestCase(APITestCase):
         async_to_sync(Maker.objects.create)(
             user=self.user,
             amount=data["amount"],
+            chain_id=data["chain_id"],
             expiry=datetime.fromtimestamp(data["expiry"]),
             price=data["price"],
             base_token=Address(data["base_token"]),
@@ -743,6 +749,7 @@ class MakerCancellationTestCase(APITestCase):
             "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
+            "chain_id": 31337,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
@@ -753,6 +760,7 @@ class MakerCancellationTestCase(APITestCase):
 
         async_to_sync(Maker.objects.create)(
             user=self.user,
+            chain_id=self.data["chain_id"],
             amount=self.data["amount"],
             expiry=datetime.fromtimestamp(self.data["expiry"]),
             price=self.data["price"],
@@ -848,9 +856,10 @@ class MakerBotCommitTestCase(APITestCase):
         )
 
         self.data = {
-            "address": "0xF17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -1239,9 +1248,10 @@ class MakerBotFeesTestCase(APITestCase):
         )
 
         self.data = {
-            "address": "0xF17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),

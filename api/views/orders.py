@@ -132,7 +132,7 @@ class MakerView(APIView):
         data = await sync_to_async(lambda: maker.data)()
 
         await channel_layer.group_send(  # type: ignore
-            WebsocketConsumer.groups[0],
+            f"{str(data['chain_id']).lower()}{str(data['base_token']).lower()}{data['quote_token'].lower()}",
             {"type": "send.json", "data": {WStypes.NEW_MAKER: data}},
         )
 
@@ -229,7 +229,7 @@ class BotView(APIView):
         data = await sync_to_async(lambda: bot.data)()
 
         await channel_layer.group_send(  # type: ignore
-            WebsocketConsumer.groups[0],
+            f"{str(data['chain_id']).lower()}{str(data['base_token']).lower()}{data['quote_token'].lower()}",
             {"type": "send.json", "data": {WStypes.NEW_BOT: data}},
         )
 

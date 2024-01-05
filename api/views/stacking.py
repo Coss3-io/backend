@@ -97,7 +97,7 @@ class StackingView(APIView):
             stacking.validated_data["amount"] = "{0:f}".format(amount)
 
             await channel_layer.group_send(  # type: ignore
-                WebsocketConsumer.groups[0],
+                f"{request.data['chain_id']}",
                 {
                     "type": "send.json",
                     "data": {WStypes.NEW_STACKING: stacking.validated_data},
@@ -162,7 +162,7 @@ class StackingFeesView(APIView):
             stacking_fees.validated_data["amount"] = stacking_fees.data["amount"]
 
             await channel_layer.group_send(  # type: ignore
-                WebsocketConsumer.groups[0],
+                f"{request.data['chain_id']}",
                 {
                     "type": "send.json",
                     "data": {WStypes.NEW_FEES: stacking_fees.validated_data},
@@ -239,7 +239,7 @@ class StackingFeesWithdrawalView(APIView):
             stacking_fees_withdrawal.instance = await stacking_fees_withdrawal.instance
 
             await channel_layer.group_send(  # type: ignore
-                WebsocketConsumer.groups[0],
+                f"{request.data['chain_id']}",
                 {
                     "type": "send.json",
                     "data": {

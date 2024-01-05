@@ -1,5 +1,6 @@
 import hmac
 from decimal import Decimal
+from asyncio import TimeoutError
 from asgiref.sync import async_to_sync
 from datetime import datetime
 from unittest.mock import patch
@@ -23,18 +24,19 @@ class WebsocketFramesTestCase(APITestCase):
 
     def setUp(self):
         self.user = async_to_sync(User.objects.create_user)(
-            address=Address("0xf17f52151EbEF6C7334FAD080c5704D77216b732")
+            address=Address("0x70997970C51812dc3A010C7d01b50e0d17dc79C8")
         )
 
         self.data = {
-            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
             "amount": "{0:f}".format(Decimal("173e16")),
             "expiry": 2114380800,
             "price": "{0:f}".format(Decimal("2e20")),
             "base_token": "0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520",
             "quote_token": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-            "signature": "0xe4609ca8bec52beb499af0ac6e1934798c786b53e6f545f5af28f6117bb675a4500ebbfaa427533d8902e163767d14874ec1d67fcba8c42045ba96f482efc47d1b",
-            "order_hash": "0x44eba4e68fb71ce7c24129b2c31165df0a59f0802c90fa44040e7858e94c12e5",
+            "chain_id": 31337,
+            "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
+            "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
         }
 
@@ -47,13 +49,15 @@ class WebsocketFramesTestCase(APITestCase):
             quote_token=Address(self.data["quote_token"]),
             signature=self.data["signature"],
             order_hash=self.data["order_hash"],
+            chain_id=self.data["chain_id"],
             is_buyer=self.data["is_buyer"],
         )
 
         self.bot = {
-            "address": "0xF17f52151EbEF6C7334FAD080c5704D77216b732",
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
             "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -70,19 +74,26 @@ class WebsocketFramesTestCase(APITestCase):
     async def test_websocket_frame_order_creation(self):
         """Checks a websocket frame is sent on order creation"""
 
-        communicator = WebsocketCommunicator(ws_asgi_app, "/ws")
+        chain_id = 31337
+        base_token = Address("0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF")
+        quote_token = Address("0x345CA3e014Aaf5dcA488057592ee47305D9B3e10")
+
+        communicator = WebsocketCommunicator(
+            ws_asgi_app, f"/ws/trade/{chain_id}/{base_token}/{quote_token}"
+        )
         connected, _ = await communicator.connect()
         self.assertTrue(connected, "The websocket should be connected on test startup")
 
         data = {
-            "address": Address("0xF17f52151EbEF6C7334FAD080c5704D77216b732"),
-            "amount": "{0:f}".format(Decimal("173e16")),
-            "expiry": 2114380800,
-            "price": "{0:f}".format(Decimal("2e20")),
-            "base_token": Address("0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520"),
-            "quote_token": Address("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"),
-            "signature": "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b",
-            "order_hash": "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6",
+            "address": Address("0x70997970C51812dc3A010C7d01b50e0d17dc79C8"),
+            "amount": "{0:f}".format(Decimal("10e18")),
+            "expiry": 2114380801,
+            "price": "{0:f}".format(Decimal("1e18")),
+            "base_token": base_token,
+            "quote_token": quote_token,
+            "chain_id": chain_id,
+            "signature": "0x20ac5d31e978ea2f5d1dc16b08789d61bd58fcdf0ef6475db340354b1e3dab0c6f48576498037d4455e9c99695c22a02fa203ade35bb8b81e4e123a0e819a0041c",
+            "order_hash": "0xa6a16391a147c1af24904cd5d0bfda49786a85e6359ecb34cef2113a2b5550f8",
             "is_buyer": False,
             "filled": "0",
             "base_fees": "0",
@@ -102,19 +113,65 @@ class WebsocketFramesTestCase(APITestCase):
             "The websocket message should contain the maker just created",
         )
 
-    async def test_websocket_frame_bot_creation(self):
-        """Checks a websocket frame is sent on bot creation"""
+    async def test_websocket_other_pair_not_frame(self):
+        """Checks that the websockets of other pair are not received by other pairs"""
 
-        async for bot in Bot.objects.all():
-            await bot.adelete()  # type: ignore
-        communicator = WebsocketCommunicator(ws_asgi_app, "/ws")
+        chain_id = 31337
+        base_token = Address("0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF")
+        quote_token = Address("0x345CA3e014Aaf5dcA488057592ee47305D9B3e10")
+
+        communicator = WebsocketCommunicator(
+            ws_asgi_app,
+            f"/ws/trade/{chain_id}/{base_token}/0x345CA3e014Aaf5dcA488057592ee47305D9B3e11",
+        )
         connected, _ = await communicator.connect()
         self.assertTrue(connected, "The websocket should be connected on test startup")
 
         data = {
-            "address": "0xF17f52151EbEF6C7334FAD080c5704D77216b732",
-            "expiry": 2114380800,
-            "signature": "0xe92e492753888a2891e6ea28e445c952f08cb1fc67a75d8b91b89a70a1f4a86052233756c00ca1c3019de347af6ea15a3fbfb7c164d2468456aae2481105f70e1c",
+            "address": Address("0x70997970C51812dc3A010C7d01b50e0d17dc79C8"),
+            "amount": "{0:f}".format(Decimal("10e18")),
+            "expiry": 2114380801,
+            "price": "{0:f}".format(Decimal("1e18")),
+            "base_token": base_token,
+            "quote_token": quote_token,
+            "chain_id": chain_id,
+            "signature": "0x20ac5d31e978ea2f5d1dc16b08789d61bd58fcdf0ef6475db340354b1e3dab0c6f48576498037d4455e9c99695c22a02fa203ade35bb8b81e4e123a0e819a0041c",
+            "order_hash": "0xa6a16391a147c1af24904cd5d0bfda49786a85e6359ecb34cef2113a2b5550f8",
+            "is_buyer": False,
+            "filled": "0",
+            "base_fees": "0",
+            "quote_fees": "0",
+            "status": "OPEN",
+        }
+        response = await self.async_client.post(reverse("api:order"), data=data)  # type: ignore
+
+        self.assertEqual(
+            response.status_code, HTTP_200_OK, "The order creation request should work"
+        )
+
+        with self.assertRaises(TimeoutError):
+            await communicator.receive_from()
+
+    async def test_websocket_frame_bot_creation(self):
+        """Checks a websocket frame is sent on bot creation"""
+
+        chain_id = 31337
+        base_token = "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF"
+        quote_token = "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10"
+
+        async for bot in Bot.objects.all():
+            await bot.adelete()  # type: ignore
+        communicator = WebsocketCommunicator(
+            ws_asgi_app, f"/ws/trade/{chain_id}/{base_token}/{quote_token}"
+        )
+        connected, _ = await communicator.connect()
+        self.assertTrue(connected, "The websocket should be connected on test startup")
+
+        data = {
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "expiry": 2114380801,
+            "chain_id": chain_id,
+            "signature": "0xae1dd3d878120fef75d9f21890a1c13bc60a709a94186f32cbaf5feb10ffc076612bae739398e9d4f3fc451f19266207d2609a1885e953ec572c5738525a25fa1b",
             "is_buyer": False,
             "step": "{0:f}".format(Decimal("1e17")),
             "price": "{0:f}".format(Decimal("1e18")),
@@ -122,8 +179,8 @@ class WebsocketFramesTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": base_token,
+            "quote_token": quote_token,
         }
 
         response = await self.async_client.post(reverse("api:bot"), data=data)  # type: ignore
@@ -138,13 +195,15 @@ class WebsocketFramesTestCase(APITestCase):
     async def test_websocket_frame_stacking_deposit_creation(self):
         """Checks a websocket frame is sent on stacking deposit"""
 
-        communicator = WebsocketCommunicator(ws_asgi_app, "/ws")
+        chain_id = "31337"
+        communicator = WebsocketCommunicator(ws_asgi_app, f"/ws/stacking/{chain_id}")
         connected, _ = await communicator.connect()
         self.assertTrue(connected, "The websocket should be connected on test startup")
 
         data = {
             "address": Address("0xC5fdF4076b8F3A5357c5E395ab970B5B54098Fef"),
             "amount": "{0:f}".format(Decimal("173e16")),
+            "chain_id": chain_id,
             "slot": "23",
             "withdraw": "0",
         }
@@ -161,6 +220,7 @@ class WebsocketFramesTestCase(APITestCase):
         message = await communicator.receive_from()
 
         data["slot"] = int(data["slot"])
+        data["chain_id"] = int(data["chain_id"])
         del data["timestamp"]
         del data["signature"]
 
@@ -170,10 +230,11 @@ class WebsocketFramesTestCase(APITestCase):
             "The websocket message should contain the stacking entry just created",
         )
 
-    async def test_websocket_frame_stacking_wthdrawal_creation(self):
+    async def test_websocket_frame_stacking_withdrawal_creation(self):
         """Checks a websocket frame is sent on stacking withdrawal"""
 
-        communicator = WebsocketCommunicator(ws_asgi_app, "/ws")
+        chain_id = "31337"
+        communicator = WebsocketCommunicator(ws_asgi_app, f"/ws/stacking/{chain_id}")
         connected, _ = await communicator.connect()
         self.assertTrue(connected, "The websocket should be connected on test startup")
 
@@ -182,6 +243,7 @@ class WebsocketFramesTestCase(APITestCase):
             "amount": "{0:f}".format(Decimal("173e16")),
             "slot": "23",
             "withdraw": "1",
+            "chain_id": chain_id,
         }
 
         data["timestamp"] = str(int(time()) * 1000)
@@ -195,6 +257,7 @@ class WebsocketFramesTestCase(APITestCase):
         message = await communicator.receive_from()
 
         data["slot"] = int(data["slot"])
+        data["chain_id"] = int(data["chain_id"])
         data["withdraw"] = True
         data["amount"] = ("-" if data["withdraw"] else "") + data["amount"]
         del data["timestamp"]
@@ -209,7 +272,8 @@ class WebsocketFramesTestCase(APITestCase):
     async def test_websocket_frame_stacking_fees_creation(self):
         """Checks a websocket frame is sent on stacking fees entry creation"""
 
-        communicator = WebsocketCommunicator(ws_asgi_app, "/ws")
+        chain_id = "31337"
+        communicator = WebsocketCommunicator(ws_asgi_app, f"/ws/stacking/{chain_id}")
         connected, _ = await communicator.connect()
         self.assertTrue(connected, "The websocket should be connected on test startup")
 
@@ -217,6 +281,7 @@ class WebsocketFramesTestCase(APITestCase):
             "token": Address("0xC5fdF4076b8F3A5357c5E395ab970B5B54098Fef"),
             "amount": "{0:f}".format(Decimal("173e16")),
             "slot": "23",
+            "chain_id": chain_id,
         }
 
         data["timestamp"] = str(int(time()) * 1000)
@@ -230,6 +295,7 @@ class WebsocketFramesTestCase(APITestCase):
         message = await communicator.receive_from()
 
         data["slot"] = int(data["slot"])
+        data["chain_id"] = int(data["chain_id"])
         del data["timestamp"]
         del data["signature"]
 
@@ -242,7 +308,8 @@ class WebsocketFramesTestCase(APITestCase):
     async def test_websocket_frame_stacking_fees_withdrawal_creation(self):
         """Checks a websocket frame is sent on stacking fees withdrawal creation"""
 
-        communicator = WebsocketCommunicator(ws_asgi_app, "/ws")
+        chain_id = "31337"
+        communicator = WebsocketCommunicator(ws_asgi_app, f"/ws/stacking/{chain_id}")
         connected, _ = await communicator.connect()
         self.assertTrue(connected, "The websocket should be connected on test startup")
 
@@ -250,6 +317,7 @@ class WebsocketFramesTestCase(APITestCase):
             "token": Address("0xC5fdF4076b8F3A5357c5E395ab970B5B54098Fef"),
             "address": "0xC5fdF4176b8F3A5357c5E395ab970B5B54098Fef",
             "slot": "23",
+            "chain_id": chain_id,
         }
 
         data["timestamp"] = str(int(time()) * 1000)
@@ -263,6 +331,7 @@ class WebsocketFramesTestCase(APITestCase):
         message = await communicator.receive_from()
 
         data["slot"] = int(data["slot"])
+        data["chain_id"] = int(data["chain_id"])
         data["address"] = Address(data["address"])
         del data["timestamp"]
         del data["signature"]
@@ -276,7 +345,11 @@ class WebsocketFramesTestCase(APITestCase):
     async def test_websocket_frame_maker_deletion(self):
         """Checks the websocket frame is sent well on order deletion"""
 
-        communicator = WebsocketCommunicator(ws_asgi_app, "/ws")
+        chain_id = 31337
+        communicator = WebsocketCommunicator(
+            ws_asgi_app,
+            f"ws/trade/{chain_id}/{self.data['base_token']}/{self.data['quote_token']}",
+        )
         connected, _ = await communicator.connect()
         self.assertTrue(connected, "The websocket should be connected on test startup")
 
@@ -300,12 +373,16 @@ class WebsocketFramesTestCase(APITestCase):
         """Checks the websocket frame is sent well on order update"""
 
         taker_address = Address("0xf17f52151EbEF6C7334FAD080c5704D77216b733")
+        maker = await Maker.objects.select_related("bot").aget(price=Decimal("5e17"))
         block = 19
         prev_fees = Decimal("100e18")
-        communicator = WebsocketCommunicator(ws_asgi_app, "/ws")
+        chain_id = 31337
+
+        communicator = WebsocketCommunicator(
+            ws_asgi_app, f"/ws/trade/{chain_id}/{maker.base_token}/{maker.quote_token}"
+        )
         connected, _ = await communicator.connect()
         self.assertTrue(connected, "The websocket should be connected on test startup")
-        maker = await Maker.objects.select_related("bot").aget(price=Decimal("5e17"))
         maker.bot.fees_earned = prev_fees
         await maker.bot.asave()
 
@@ -332,6 +409,7 @@ class WebsocketFramesTestCase(APITestCase):
                     "taker": taker_address,
                     "block": block,
                     "trades": trades,
+                    "chain_id": chain_id,
                 },
             )
 
@@ -356,24 +434,26 @@ class WebsocketFramesTestCase(APITestCase):
             WStypes.MAKERS_UPDATE: [
                 self.data,
                 {
-                    "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+                    "address": self.user.address,
                     "amount": "{0:f}".format(Decimal("2e18")),
                     "expiry": 2114380800,
                     "price": "{0:f}".format(maker.price),
                     "base_token": maker.base_token,
                     "quote_token": maker.quote_token,
+                    "chain_id": chain_id,
                     "signature": maker.signature,
                     "order_hash": maker.order_hash,
                     "is_buyer": maker.is_buyer,
                     "filled": "{0:f}".format(maker.filled),
                     "status": maker.get_status_display(),
                     "bot": {
-                        "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+                        "address": self.user.address,
                         "step": "{0:f}".format(maker.bot.step),
                         "price": "{0:f}".format(maker.bot.price),
                         "maker_fees": "{0:f}".format(maker.bot.maker_fees),
                         "upper_bound": "{0:f}".format(maker.bot.upper_bound),
                         "lower_bound": "{0:f}".format(maker.bot.lower_bound),
+                        "chain_id": chain_id,
                         "fees_earned": "{0:f}".format(fees),
                         "timestamp": int(maker.bot.timestamp.timestamp()),
                     },
@@ -387,6 +467,7 @@ class WebsocketFramesTestCase(APITestCase):
                     "is_buyer": trades[maker.order_hash]["is_buyer"],
                     "base_fees": trades[maker.order_hash]["base_fees"],
                     "address": taker_address,
+                    "chain_id": chain_id,
                     "maker_hash": maker.order_hash,
                 },
                 {
@@ -396,6 +477,7 @@ class WebsocketFramesTestCase(APITestCase):
                     "is_buyer": trades[self.data["order_hash"]]["is_buyer"],
                     "base_fees": trades[self.data["order_hash"]]["base_fees"],
                     "address": taker_address,
+                    "chain_id": chain_id,
                     "maker_hash": self.data["order_hash"],
                 },
             ],

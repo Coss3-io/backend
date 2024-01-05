@@ -112,6 +112,7 @@ class WatchTowerView(APIView):
                         "base_fees": trades[maker.order_hash]["base_fees"],
                         "address": user.address,
                         "maker_hash": maker.order_hash,
+                        "chain_id": maker.chain_id,
                     }
                 )
 
@@ -264,7 +265,7 @@ class WatchTowerView(APIView):
             del data["maker_id"]
 
         await channel_layer.group_send(  # type: ignore
-            WebsocketConsumer.groups[0],
+            f"{str(makers[0].chain_id).lower()}{str(makers[0].base_token).lower()}{str(makers[0].quote_token.lower())}",
             {
                 "type": "send.json",
                 "data": {
@@ -298,7 +299,7 @@ class WatchTowerView(APIView):
         await maker.asave()
 
         await channel_layer.group_send(  # type: ignore
-            WebsocketConsumer.groups[0],
+            f"{str(maker.chain_id).lower()}{str(maker.base_token).lower()}{str(maker.quote_token.lower())}",
             {"type": "send.json", "data": {WStypes.DEL_MAKER: maker.order_hash}},
         )
         return Response({}, status=status.HTTP_200_OK)

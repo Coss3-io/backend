@@ -149,7 +149,6 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             prices, [], "All the prices of the range should be into the orders"
         )
 
-        del data["expiry"]
         del data["signature"]
         del data["amount"]
         del data["is_buyer"]
@@ -1699,7 +1698,6 @@ class BotRetrievalTestCase(APITestCase):
             "The bot retrieval request should be successfull",
         )
 
-        del self.data["expiry"]
         del self.data["signature"]
         del self.data["amount"]
         del self.data["is_buyer"]
@@ -1800,7 +1798,6 @@ class BotRetrievalTestCase(APITestCase):
             "The bot retrieval request should be successfull",
         )
 
-        del self.data["expiry"]
         del self.data["signature"]
         del self.data["amount"]
         del self.data["is_buyer"]
@@ -1869,7 +1866,6 @@ class BotRetrievalTestCase(APITestCase):
             "the request with the user having two bots should works",
         )
 
-        del self.data["expiry"], data["expiry"]
         del self.data["signature"], data["signature"]
         del self.data["amount"], data["amount"]
         del self.data["is_buyer"], data["is_buyer"]

@@ -240,6 +240,7 @@ class BotSerializer(serializers.ModelSerializer):
                 "quote_token": instance.orders.all()[0].quote_token,
                 "base_token_amount": "{0:f}".format(base_token_amount),
                 "quote_token_amount": "{0:f}".format(quote_token_amount),
+                "expiry": int(instance.orders.all()[0].expiry.timestamp())
             }
         )
         return data

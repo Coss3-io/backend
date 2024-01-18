@@ -78,7 +78,7 @@ class BotSerializer(serializers.ModelSerializer):
             "fees_earned": {"read_only": True},
         }
 
-    async def create(self, validated_data):
+    async def create(self, validated_data): 
         """Used to create the orders for the created bot"""
 
         user = (await User.objects.aget_or_create(address=validated_data["address"]))[0]
@@ -240,7 +240,8 @@ class BotSerializer(serializers.ModelSerializer):
                 "quote_token": instance.orders.all()[0].quote_token,
                 "base_token_amount": "{0:f}".format(base_token_amount),
                 "quote_token_amount": "{0:f}".format(quote_token_amount),
-                "expiry": int(instance.orders.all()[0].expiry.timestamp())
+                "expiry": int(instance.orders.all()[0].expiry.timestamp()),
+                "amount": "{0:f}".format(instance.orders.all()[0].amount)
             }
         )
         return data

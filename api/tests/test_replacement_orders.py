@@ -150,7 +150,6 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         )
 
         del data["signature"]
-        del data["amount"]
         del data["is_buyer"]
         data["address"] = Address(data.get("address", ""))
         data["base_token"] = Address(data.get("base_token", ""))
@@ -1699,7 +1698,6 @@ class BotRetrievalTestCase(APITestCase):
         )
 
         del self.data["signature"]
-        del self.data["amount"]
         del self.data["is_buyer"]
 
         self.data["base_token"] = Address(self.data.get("base_token", ""))
@@ -1799,7 +1797,6 @@ class BotRetrievalTestCase(APITestCase):
         )
 
         del self.data["signature"]
-        del self.data["amount"]
         del self.data["is_buyer"]
 
         self.data.update(
@@ -1867,7 +1864,6 @@ class BotRetrievalTestCase(APITestCase):
         )
 
         del self.data["signature"], data["signature"]
-        del self.data["amount"], data["amount"]
         del self.data["is_buyer"], data["is_buyer"]
 
         self.data.update(

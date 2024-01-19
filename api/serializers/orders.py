@@ -1,5 +1,6 @@
 from decimal import Decimal, ROUND_DOWN
 from datetime import datetime
+from django.db.models import F, DecimalField, ExpressionWrapper, Sum
 from web3 import Web3
 from eth_abi.packed import encode_packed
 from rest_framework import serializers
@@ -78,7 +79,7 @@ class BotSerializer(serializers.ModelSerializer):
             "fees_earned": {"read_only": True},
         }
 
-    async def create(self, validated_data): 
+    async def create(self, validated_data):
         """Used to create the orders for the created bot"""
 
         user = (await User.objects.aget_or_create(address=validated_data["address"]))[0]
@@ -99,14 +100,31 @@ class BotSerializer(serializers.ModelSerializer):
                 quote_token=quote_token,
                 amount=amount,
                 price=str(price),
-                is_buyer=True if price <= int(validated_data["price"]) else False,
+                is_buyer=True,
                 expiry=expiry,
                 chain_id=int(validated_data["chain_id"]),
                 signature=signature,
             )
             for price in range(
-                int(validated_data["lower_bound"]),
-                (int(validated_data["upper_bound"]) + int(validated_data["step"])),
+                int(validated_data["price"]),
+                (int(validated_data["lower_bound"])) - 1,
+                -int(validated_data["step"]),
+            )
+        ] + [
+            Maker(
+                bot=bot,
+                base_token=base_token,
+                quote_token=quote_token,
+                amount=amount,
+                price=str(price),
+                is_buyer=False,
+                expiry=expiry,
+                chain_id=int(validated_data["chain_id"]),
+                signature=signature,
+            )
+            for price in range(
+                int(validated_data["price"]) + int(validated_data["step"]),
+                (int(validated_data["upper_bound"])) + 1,
                 int(validated_data["step"]),
             )
         ]
@@ -227,13 +245,24 @@ class BotSerializer(serializers.ModelSerializer):
 
         base_token_amount = Decimal("0")
         quote_token_amount = Decimal("0")
-        for order in instance.orders.all():
-            if order.is_buyer:
-                quote_token_amount += (
-                    (order.amount - order.filled) * order.price / Decimal("1e18")
-                ).quantize(Decimal("1."))
-            else:
-                base_token_amount += order.amount - order.filled
+        buyer_orders = instance.orders.filter(is_buyer=True)
+        seller_orders = instance.orders.filter(is_buyer=False)
+
+        buyer_aggregation = buyer_orders.annotate(
+            total_buyer_amount=ExpressionWrapper(
+                (F("amount") - F("filled")) * F("price") / Decimal("1e18"),
+                output_field=DecimalField(),
+            )
+        ).aggregate(total_buyer_amount_sum=Sum("total_buyer_amount"))
+
+        quote_token_amount = buyer_aggregation.get(
+            "total_buyer_amount_sum", Decimal("0.0")
+        )
+
+        base_token_amount = seller_orders.aggregate(
+            total_seller_amount=Sum(F("amount") - F("filled"))
+        ).get("total_seller_amount", Decimal("0.0"))
+
         data.update(
             {
                 "base_token": instance.orders.all()[0].base_token,
@@ -241,7 +270,7 @@ class BotSerializer(serializers.ModelSerializer):
                 "base_token_amount": "{0:f}".format(base_token_amount),
                 "quote_token_amount": "{0:f}".format(quote_token_amount),
                 "expiry": int(instance.orders.all()[0].expiry.timestamp()),
-                "amount": "{0:f}".format(instance.orders.all()[0].amount)
+                "amount": "{0:f}".format(instance.orders.all()[0].amount),
             }
         )
         return data

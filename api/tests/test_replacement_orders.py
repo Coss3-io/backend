@@ -175,6 +175,44 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             timestamp, bot_timestamp, delta=3, msg="The two timestamps should be equal"
         )
 
+    def test_create_a_bot_specific_values(self):
+        """Checks the bot computes the right base and quote token amounts"""
+        timestamp = int(time())
+        data = {
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
+            "expiry": 2114380800,
+            "signature": "0x96d0cdda397323b958bb4bf0b990325a499439b51039a188efd4f84c0e7eadd21fe7f58e45e67d9d6710103a7851367c092783b60f74bbad5dcee65105ae91f51c",
+            "is_buyer": False,
+            "step": "{0:f}".format(Decimal("66e18")),
+            "price": "{0:f}".format(Decimal("15000e18")),
+            "maker_fees": "{0:f}".format(Decimal("440")),
+            "upper_bound": "{0:f}".format(Decimal("21450e18")),
+            "lower_bound": "{0:f}".format(Decimal("4050e18")),
+            "amount": "{0:f}".format(Decimal("78e18")),
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
+        }
+
+        response = self.client.post(reverse("api:bot"), data=data)
+        data = response.json()
+        base_token_amount = "{0:f}".format(Decimal("7566e18"))
+        quote_token_amount = "{0:f}".format(Decimal("123718140e18"))
+
+        self.assertEqual(
+            response.status_code, HTTP_200_OK, "The request should succeed"
+        )
+        self.assertEqual(
+            base_token_amount,
+            data["base_token_amount"],
+            "The computed base token amount needed should be identical",
+        )
+        self.assertEqual(
+            quote_token_amount,
+            data["quote_token_amount"],
+            "The computed quote token amount needed should be identical",
+        )
+
     def test_sending_a_date_on_bot_creation_is_ignored(self):
         """Checks that if a user send a date on bot creation the date is not taken in account"""
         timestamp = int(time())

@@ -1,6 +1,7 @@
 from decimal import Decimal
 from asgiref.sync import sync_to_async
 from adrf.views import APIView
+from django.contrib.auth.models import AnonymousUser
 from django.db.utils import IntegrityError
 from rest_framework import status
 from rest_framework.decorators import permission_classes, authentication_classes
@@ -143,7 +144,6 @@ class TakerView(APIView):
     """View used to retrieve the logged in users taker orders"""
 
     authentication_classes = [ApiAuthentication, SessionAuthentication]
-    permission_classes = [IsAuthenticated]
 
     async def get(self, request):
         """Function used to retrieve the user taker orders"""
@@ -151,9 +151,8 @@ class TakerView(APIView):
         if request.auth == "awaitable":
             request.user = (await User.objects.aget_or_create(address=request.user))[0]
         chain_id = validate_chain_id(request.query_params.get("chain_id", None))
-
         if request.query_params.get("all", None):
-            queryset = Taker.objects.filter(user=request.user, maker__chain_id=chain_id)
+            queryset = Taker.objects.filter(maker__chain_id=chain_id)
         else:
             if (base_token := request.query_params.get("base_token", "0")) == "0" or (
                 quote_token := request.query_params.get("quote_token", "0")
@@ -173,11 +172,14 @@ class TakerView(APIView):
                 raise ValidationError({"quote_token": e.detail})
 
             queryset = Taker.objects.filter(
-                user=request.user,
                 maker__chain_id=chain_id,
                 maker__base_token=base_token,
                 maker__quote_token=quote_token,
             )
+
+            if request.user != AnonymousUser:
+                queryset = queryset.filter(user=request.user)
+            queryset = queryset.order_by("-timestamp")
 
         data = await sync_to_async(lambda: TakerSerializer(queryset, many=True).data)()
         return Response(data, status=status.HTTP_200_OK)

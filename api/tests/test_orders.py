@@ -2882,16 +2882,32 @@ class TakerRetrievalTestCase(APITestCase):
             is_buyer=self.taker_details["is_buyer"],
         )
 
-    def test_anon_users_cannot_see_takers_orders(self):
-        """The anonymous users should not be able to see taker orders"""
+    def test_anon_users_can_see_takers_orders(self):
+        """The anonymous users should be able to see taker orders"""
 
         response = self.client.get(
             reverse("api:taker"), data={"all": True, "chain_id": 31337}
         )
         self.assertEqual(
             response.status_code,
-            HTTP_403_FORBIDDEN,
-            "The anon user shouldn't be allowed to use this endpoint",
+            HTTP_200_OK,
+            "The anonymous user should be able to see the takers orders for a given pair",
+        )
+
+        del self.taker_details["user"]
+        del self.taker_details["maker"]
+        self.taker_details["taker_amount"] = "{0:f}".format(
+            self.taker_details["taker_amount"]
+        )
+        self.taker_details["fees"] = "{0:f}".format(self.taker_details["fees"])
+        self.taker_details["timestamp"] = int(
+            self.taker_details["timestamp"].timestamp()
+        )
+
+        self.assertEqual(
+            response.json()[0],
+            self.taker_details,
+            "The taker returned should match the one sent",
         )
 
     def test_logged_in_user_can_see_his_takers(self):

@@ -2864,6 +2864,7 @@ class TakerRetrievalTestCase(APITestCase):
             "timestamp": self.datetime,
             "taker_amount": Decimal("12e17"),
             "maker": self.maker,
+            "price": self.maker.price,
             "user": self.taker_user,
             "block": 18,
             "base_fees": False,
@@ -2946,6 +2947,7 @@ class TakerRetrievalTestCase(APITestCase):
         taker_details = {
             "taker_amount": Decimal("10e23"),
             "maker": self.maker,
+            "price": self.maker.price,
             "user": self.taker_user,
             "block": 21,
             "timestamp": now,
@@ -3019,6 +3021,7 @@ class TakerRetrievalTestCase(APITestCase):
             "maker": self.maker,
             "user": self.taker_user,
             "block": 21,
+            "price": self.maker.price,
             "timestamp": now,
             "base_fees": False,
             "fees": Decimal("145e16"),

@@ -456,11 +456,16 @@ class TakerSerializer(serializers.ModelSerializer):
             "user": {"write_only": True},
         }
 
-        def validate_block(self, data: str) -> str:
-            return validate_decimal_integer(data, "block")
+    def validate_block(self, data: str) -> str:
+        return validate_decimal_integer(data, "block")
 
-        def validate_taker_amount(self, data: str) -> str:
-            return validate_decimal_integer(data, "taker_amount")
+    def validate_taker_amount(self, data: str) -> str:
+        return validate_decimal_integer(data, "taker_amount")
 
-        def validate_base_fees(self, data: str) -> str:
-            return validate_decimal_integer(data, "base_fees")
+    def validate_base_fees(self, data: str) -> str:
+        return validate_decimal_integer(data, "base_fees")
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data["price"] = "{0:f}".format(instance.maker.price)
+        return data

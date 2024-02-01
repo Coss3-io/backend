@@ -1,7 +1,6 @@
 from decimal import Decimal
 from asgiref.sync import sync_to_async
 from adrf.views import APIView
-from django.contrib.auth.models import AnonymousUser
 from django.db.utils import IntegrityError
 from rest_framework import status
 from rest_framework.decorators import permission_classes, authentication_classes
@@ -18,7 +17,6 @@ from api.serializers.orders import MakerSerializer, BotSerializer, TakerSerializ
 from api.utils import validate_chain_id
 from api.views.authentications import ApiAuthentication
 from api.messages import WStypes
-from api.consumers.websocket import WebsocketConsumer
 from channels.layers import get_channel_layer
 
 channel_layer = get_channel_layer()
@@ -177,9 +175,9 @@ class TakerView(APIView):
                 maker__quote_token=quote_token,
             )
 
-            if request.user != AnonymousUser:
+            if request.user.id:
                 queryset = queryset.filter(user=request.user)
-            queryset = queryset.order_by("-timestamp")
+            queryset = queryset.order_by("-timestamp").select_related("maker")
 
         data = await sync_to_async(lambda: TakerSerializer(queryset, many=True).data)()
         return Response(data, status=status.HTTP_200_OK)

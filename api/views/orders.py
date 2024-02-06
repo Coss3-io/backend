@@ -1,3 +1,4 @@
+from asyncio import gather
 from decimal import Decimal
 from asgiref.sync import sync_to_async
 from adrf.views import APIView
@@ -181,6 +182,39 @@ class TakerView(APIView):
 
         data = await sync_to_async(lambda: TakerSerializer(queryset, many=True).data)()
         return Response(data, status=status.HTTP_200_OK)
+
+
+class BatchUserOrdersView(APIView):
+    """View used by the front end to get all of the orders and users orders at once"""
+
+    authentication_classes = [ApiAuthentication, SessionAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    async def get(self, request):
+        """wrapper function to gather all the data from all the orders"""
+
+        if request.auth == "awaitable":
+            request.user = (await User.objects.aget_or_create(address=request.user))[0]
+            request.auth = None
+        user_id = request.user.id
+        request.user.id = None
+
+        takers = TakerView.as_view()(request._request)
+        request.user.id = user_id
+        user_takers = TakerView.as_view()(request._request)
+        makers = OrderView.as_view()(request._request)
+        user_makers = MakerView.as_view()(request._request)
+        takers, user_takers, makers, user_makers = await gather(takers, user_takers, makers, user_makers) #type: ignore
+        data = {
+            "takers": takers.data,
+            "user_takers": user_takers.data,
+            "makers": makers.data,
+            "user_makers": user_makers.data,
+        }
+        return Response(
+            data,
+            status=status.HTTP_200_OK,
+        )
 
 
 class BotView(APIView):

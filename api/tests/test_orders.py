@@ -396,12 +396,12 @@ class MakerOrderTestCase(APITestCase):
 
         data["id"] = 1
         data["expiry"] = "2114380800"
-        data[
-            "signature"
-        ] = "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b"
-        data[
-            "order_hash"
-        ] = "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6"
+        data["signature"] = (
+            "0xd49cd61bc7ee3aa1ee3f885d6d32b0d8bc5557b3435b80930cf78f02f537d2fd2da54b7521f3ae9b9fd0cca59d16bcbfeb8ec3f229419624386e812ae8a15d5e1b"
+        )
+        data["order_hash"] = (
+            "0x2a156142f5aa7c8897012964f808fdf5057259bec4d47874d8d40189087069b6"
+        )
 
         response = self.client.post(reverse("api:order"), data=data)
 
@@ -1563,9 +1563,11 @@ class MakerOrderRetrievingTestCase(APITestCase):
 
         for data in self.orders:
             async_to_sync(Maker.objects.create)(
-                user=self.user_1
-                if data["address"] == self.user_1.address
-                else self.user_2,
+                user=(
+                    self.user_1
+                    if data["address"] == self.user_1.address
+                    else self.user_2
+                ),
                 amount=data["amount"],
                 expiry=datetime.fromtimestamp(data["expiry"]),
                 chain_id=data["chain_id"],
@@ -1576,6 +1578,91 @@ class MakerOrderRetrievingTestCase(APITestCase):
                 order_hash=data["order_hash"],
                 is_buyer=data["is_buyer"],
             )
+
+    def test_batch_user_orders(self):
+        """Checks the batch request for user orders works"""
+
+        self.taker_details = {
+            "timestamp": datetime.now(),
+            "taker_amount": Decimal("12e17"),
+            "maker": Maker.objects.get(order_hash=self.order_1_1["order_hash"]),
+            "price": self.order_1_1["price"],
+            "user": self.user_1,
+            "block": 18,
+            "base_fees": False,
+            "fees": Decimal("145e16"),
+            "is_buyer": True,
+        }
+
+        self.taker = async_to_sync(Taker.objects.create)(
+            taker_amount=self.taker_details["taker_amount"],
+            maker=self.taker_details["maker"],
+            user=self.taker_details["user"],
+            timestamp=self.taker_details["timestamp"],
+            block=self.taker_details["block"],
+            base_fees=self.taker_details["base_fees"],
+            fees=self.taker_details["fees"],
+            is_buyer=self.taker_details["is_buyer"],
+        )
+
+        self.client.force_authenticate(user=self.user_1)  # type: ignore
+        response = self.client.get(
+            reverse("api:batch-orders"),
+            data={
+                "base_token": Address("0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520"),
+                "quote_token": Address("0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"),
+                "chain_id": 31337,
+            },
+        )
+
+        makers = self.client.get(
+            reverse("api:orders"),
+            data={
+                "base_token": Address("0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520"),
+                "quote_token": Address("0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"),
+                "chain_id": 31337,
+            },
+        )
+
+        user_makers = self.client.get(
+            reverse("api:order"),
+            data={
+                "base_token": Address("0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520"),
+                "quote_token": Address("0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"),
+                "chain_id": 31337,
+            },
+        )
+
+        user_takers = self.client.get(
+            reverse("api:taker"),
+            data={
+                "base_token": Address("0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520"),
+                "quote_token": Address("0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"),
+                "chain_id": 31337,
+            },
+        )
+        self.client.logout()
+        takers = self.client.get(
+            reverse("api:taker"),
+            data={
+                "base_token": Address("0x4BBeEB066eD09B7AEd07bF39EEe0460DFa261520"),
+                "quote_token": Address("0xC02AAA39b223FE8D0A0e5C4F27eAD9083C756Cc2"),
+                "chain_id": 31337,
+            },
+        )
+
+        self.assertEqual(
+            response.status_code, HTTP_200_OK, "The request should be succesfull"
+        )
+        self.assertDictEqual(
+            response.json(),
+            {
+                "makers": makers.json(),
+                "takers": takers.json(),
+                "user_makers": user_makers.json(),
+                "user_takers": user_takers.json(),
+            },
+        )
 
     def test_retrieving_auth_no_orders_works(self):
         """Checks the empty order retrieval works"""
@@ -2347,7 +2434,13 @@ class MakerTakersFeesRetrieval(APITestCase):
         )
 
         self.client.force_authenticate(user=self.user)  # type: ignore
-        response = self.client.get(reverse("api:order"), data={"all": True, "chain_id": 31337,})
+        response = self.client.get(
+            reverse("api:order"),
+            data={
+                "all": True,
+                "chain_id": 31337,
+            },
+        )
 
         self.assertEqual(
             response.status_code, HTTP_200_OK, "The request should work fine"
@@ -2406,7 +2499,9 @@ class MakerTakersFeesRetrieval(APITestCase):
         )
 
         self.client.force_authenticate(user=self.user)  # type: ignore
-        response = self.client.get(reverse("api:order"), data={"all": True, "chain_id": 31337})
+        response = self.client.get(
+            reverse("api:order"), data={"all": True, "chain_id": 31337}
+        )
 
         self.assertEqual(
             response.status_code, HTTP_200_OK, "The request should work fine"
@@ -2445,7 +2540,9 @@ class MakerTakersFeesRetrieval(APITestCase):
         )
 
         self.client.force_authenticate(user=self.user)  # type: ignore
-        response = self.client.get(reverse("api:order"), data={"all": True, "chain_id": 31337})
+        response = self.client.get(
+            reverse("api:order"), data={"all": True, "chain_id": 31337}
+        )
 
         self.assertEqual(
             response.status_code, HTTP_200_OK, "The request should work fine"
@@ -2505,7 +2602,9 @@ class MakerTakersFeesRetrieval(APITestCase):
         )
 
         self.client.force_authenticate(user=self.user)  # type: ignore
-        response = self.client.get(reverse("api:order"), data={"all": True, "chain_id": 31337})
+        response = self.client.get(
+            reverse("api:order"), data={"all": True, "chain_id": 31337}
+        )
 
         self.assertEqual(
             response.status_code, HTTP_200_OK, "The request should work fine"
@@ -2564,7 +2663,9 @@ class MakerTakersFeesRetrieval(APITestCase):
         )
 
         self.client.force_authenticate(user=self.user)  # type: ignore
-        response = self.client.get(reverse("api:order"), data={"all": True, 'chain_id': 31337})
+        response = self.client.get(
+            reverse("api:order"), data={"all": True, "chain_id": 31337}
+        )
 
         self.assertEqual(
             response.status_code, HTTP_200_OK, "The request should work fine"
@@ -2634,7 +2735,9 @@ class MakerTakersFeesRetrieval(APITestCase):
             )
 
         self.client.force_authenticate(user=self.user)  # type: ignore
-        response = self.client.get(reverse("api:order"), data={"all": True, "chain_id": 31337})
+        response = self.client.get(
+            reverse("api:order"), data={"all": True, "chain_id": 31337}
+        )
 
         self.assertEqual(
             response.status_code, HTTP_200_OK, "The request should work fine"
@@ -2784,7 +2887,9 @@ class MakerTakersFeesRetrieval(APITestCase):
             )
 
         self.client.force_authenticate(user=self.user)  # type: ignore
-        response = self.client.get(reverse("api:order"), data={"all": True, "chain_id": 31337})
+        response = self.client.get(
+            reverse("api:order"), data={"all": True, "chain_id": 31337}
+        )
 
         self.assertEqual(
             response.status_code, HTTP_200_OK, "The request should work fine"

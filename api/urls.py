@@ -1,5 +1,5 @@
 from django.urls import path
-from api.views.orders import OrderView, MakerView, BotView, TakerView
+from api.views.orders import BatchUserOrdersView, OrderView, MakerView, BotView, TakerView
 from api.views.watch_tower import WatchTowerView
 from api.views.user import UserCreateView, UserLogInView
 from api.views.stacking import (
@@ -14,6 +14,7 @@ urlpatterns = [
     path("account", UserCreateView.as_view(), name="account"),
     path("login", UserLogInView.as_view(), name="login"),
     path("orders", OrderView.as_view(), name="orders"),
+    path("batch_orders", BatchUserOrdersView.as_view(), name="batch-orders"),
     path("order", MakerView.as_view(), name="order"),
     path("taker", TakerView.as_view(), name="taker"),
     path("stacking", StackingView.as_view(), name="stacking"),

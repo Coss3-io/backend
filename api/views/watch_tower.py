@@ -38,7 +38,7 @@ class WatchTowerView(APIView):
             "block": int,
             "trades":{
                 "0xorderHash1...": {
-                    "taker_amount": int
+                    "amount": int
                     "base_fees": bool
                     "fees": int
                     "is_buyer": bool
@@ -97,7 +97,7 @@ class WatchTowerView(APIView):
         maker_ws = []
 
         async for maker in makers:
-            taker_amount = Decimal(trades[maker.order_hash]["taker_amount"])
+            amount = Decimal(trades[maker.order_hash]["amount"])
             try:
                 temp_maker_ws = await sync_to_async(
                     lambda: MakerSerializer(maker, context={"private": True}).data
@@ -106,7 +106,7 @@ class WatchTowerView(APIView):
                     {
                         "maker_id": maker.id,
                         "block": block,
-                        "taker_amount": trades[maker.order_hash]["taker_amount"],
+                        "amount": trades[maker.order_hash]["amount"],
                         "fees": trades[maker.order_hash]["fees"],
                         "is_buyer": trades[maker.order_hash]["is_buyer"],
                         "base_fees": trades[maker.order_hash]["base_fees"],
@@ -119,17 +119,17 @@ class WatchTowerView(APIView):
                 if maker.bot is not None:
                     if maker.is_buyer == trades[maker.order_hash]["is_buyer"]:
                         maker.filled = (
-                            F("filled") - trades[maker.order_hash]["taker_amount"]
+                            F("filled") - trades[maker.order_hash]["amount"]
                         )
                         temp_maker_ws["filled"] = "{0:f}".format(
                             Decimal(temp_maker_ws["filled"])
-                            - Decimal(trades[maker.order_hash]["taker_amount"])
+                            - Decimal(trades[maker.order_hash]["amount"])
                         )
                         if maker.is_buyer:
                             if maker.bot.maker_fees > Decimal("2000"):
                                 fees = (
                                     maker.bot.maker_fees
-                                    * taker_amount
+                                    * amount
                                     / Decimal("1e18")
                                 )
                             else:
@@ -142,14 +142,14 @@ class WatchTowerView(APIView):
                                         / (Decimal("1000"))
                                         - maker.price
                                     )
-                                    * taker_amount
+                                    * amount
                                     / Decimal("1e18")
                                 )
                         else:
                             if maker.bot.maker_fees > Decimal("2000"):
                                 fees = (
                                     maker.bot.maker_fees
-                                    * taker_amount
+                                    * amount
                                     / Decimal("1e18")
                                 )
                             else:
@@ -159,22 +159,22 @@ class WatchTowerView(APIView):
                                         - (maker.price * Decimal("1000"))
                                         / (maker.bot.maker_fees + Decimal("1000"))
                                     )
-                                    * taker_amount
+                                    * amount
                                     / Decimal("1e18")
                                 )
                     else:
                         maker.filled = (
-                            F("filled") + trades[maker.order_hash]["taker_amount"]
+                            F("filled") + trades[maker.order_hash]["amount"]
                         )
                         temp_maker_ws["filled"] = "{0:f}".format(
                             Decimal(temp_maker_ws["filled"])
-                            + Decimal(trades[maker.order_hash]["taker_amount"])
+                            + Decimal(trades[maker.order_hash]["amount"])
                         )
                         if maker.is_buyer:
                             if maker.bot.maker_fees > Decimal("2000"):
                                 fees = (
                                     maker.bot.maker_fees
-                                    * taker_amount
+                                    * amount
                                     / Decimal("1e18")
                                 )
                             else:
@@ -184,14 +184,14 @@ class WatchTowerView(APIView):
                                         - (maker.price * Decimal("1000"))
                                         / (maker.bot.maker_fees + Decimal("1000"))
                                     )
-                                    * taker_amount
+                                    * amount
                                     / Decimal("1e18")
                                 )
                         else:
                             if maker.bot.maker_fees > Decimal("2000"):
                                 fees = (
                                     maker.bot.maker_fees
-                                    * taker_amount
+                                    * amount
                                     / Decimal("1e18")
                                 )
                             else:
@@ -204,7 +204,7 @@ class WatchTowerView(APIView):
                                         / (Decimal("1000"))
                                         - maker.price
                                     )
-                                    * taker_amount
+                                    * amount
                                     / Decimal("1e18")
                                 )
                     temp_maker_ws["bot"]["fees_earned"] = "{0:f}".format(
@@ -216,7 +216,7 @@ class WatchTowerView(APIView):
                     bot_update.append(maker.bot)
                 else:
                     if (
-                        maker.filled + Decimal(trades[maker.order_hash]["taker_amount"])
+                        maker.filled + Decimal(trades[maker.order_hash]["amount"])
                         == maker.amount
                     ):
                         maker.filled = maker.amount
@@ -224,11 +224,11 @@ class WatchTowerView(APIView):
                         temp_maker_ws["filled"] = temp_maker_ws["amount"]
                     else:
                         maker.filled = (
-                            F("filled") + trades[maker.order_hash]["taker_amount"]
+                            F("filled") + trades[maker.order_hash]["amount"]
                         )
                         temp_maker_ws["filled"] = "{0:f}".format(
                             Decimal(temp_maker_ws["filled"])
-                            + Decimal(trades[maker.order_hash]["taker_amount"])
+                            + Decimal(trades[maker.order_hash]["amount"])
                         )
                 maker_ws.append(temp_maker_ws)
             except KeyError as e:

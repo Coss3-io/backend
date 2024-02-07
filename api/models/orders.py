@@ -105,6 +105,7 @@ class Maker(models.Model):
             MinLengthValidator(limit_value=132),
         ],
     )
+    timestamp = models.DateTimeField(auto_now_add=True)
 
 
 class Taker(models.Model):
@@ -114,7 +115,7 @@ class Taker(models.Model):
 
     constraints = [
         models.CheckConstraint(
-            check=models.Q(taker_amount__gte=Decimal("0"))
+            check=models.Q(amount__gte=Decimal("0"))
             & models.Q(fees__gt=Decimal("0")),
             name="positive_numbers_needed",
         ),
@@ -134,7 +135,7 @@ class Taker(models.Model):
         blank=False,
     )
     block = models.BigIntegerField(null=False, blank=False)
-    taker_amount = models.DecimalField(
+    amount = models.DecimalField(
         max_digits=78,
         decimal_places=0,
         null=False,

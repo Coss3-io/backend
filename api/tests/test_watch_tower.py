@@ -59,7 +59,7 @@ class MakerCommitTestCase(APITestCase):
 
         trades = {
             self.data["order_hash"]: {
-                "taker_amount": "{0:f}".format(Decimal("73e16")),
+                "amount": "{0:f}".format(Decimal("73e16")),
                 "base_fees": True,
                 "fees": "{0:f}".format(Decimal("365e15")),
                 "is_buyer": True,
@@ -92,7 +92,7 @@ class MakerCommitTestCase(APITestCase):
 
         self.assertEqual(
             maker.filled,
-            Decimal(trades[self.data["order_hash"]]["taker_amount"]),
+            Decimal(trades[self.data["order_hash"]]["amount"]),
             "The filled amount should be increased by the trade amount",
         )
 
@@ -103,9 +103,9 @@ class MakerCommitTestCase(APITestCase):
         )
 
         self.assertEqual(
-            taker.taker_amount,
-            Decimal(trades[self.data["order_hash"]]["taker_amount"]),
-            "the taker_amount of the taker object should match the one sent",
+            taker.amount,
+            Decimal(trades[self.data["order_hash"]]["amount"]),
+            "the amount of the taker object should match the one sent",
         )
 
         self.assertEqual(
@@ -148,7 +148,7 @@ class MakerCommitTestCase(APITestCase):
 
         trades = {
             self.data["order_hash"]: {
-                "taker_amount": "{0:f}".format(Decimal("73e16")),
+                "amount": "{0:f}".format(Decimal("73e16")),
                 "base_fees": True,
                 "fees": "{0:f}".format(Decimal("365e15")),
                 "is_buyer": True,
@@ -176,7 +176,7 @@ class MakerCommitTestCase(APITestCase):
 
         trades = {
             self.data["order_hash"]: {
-                "taker_amount": "{0:f}".format(Decimal("173e16")),
+                "amount": "{0:f}".format(Decimal("173e16")),
                 "base_fees": True,
                 "fees": "{0:f}".format(Decimal("365e15")),
                 "is_buyer": True,
@@ -248,7 +248,7 @@ class MakerCommitTestCase(APITestCase):
 
         trades = {
             self.data["order_hash"]: {
-                "taker_amount": "{0:f}".format(Decimal("73e16")),
+                "amount": "{0:f}".format(Decimal("73e16")),
                 "base_fees": True,
                 "fees": "{0:f}".format(Decimal("387e15")),
                 "is_buyer": True,
@@ -258,7 +258,7 @@ class MakerCommitTestCase(APITestCase):
         block2 = 14
         trades2 = {
             data["order_hash"]: {
-                "taker_amount": "{0:f}".format(Decimal("173e16")),
+                "amount": "{0:f}".format(Decimal("173e16")),
                 "base_fees": True,
                 "fees": "{0:f}".format(Decimal("365e15")),
                 "is_buyer": True,
@@ -305,7 +305,7 @@ class MakerCommitTestCase(APITestCase):
 
         self.assertEqual(
             maker.filled,
-            Decimal(trades[self.data["order_hash"]]["taker_amount"]),
+            Decimal(trades[self.data["order_hash"]]["amount"]),
             "The filled amount should be increased by the trade amount",
         )
 
@@ -316,9 +316,9 @@ class MakerCommitTestCase(APITestCase):
         )
 
         self.assertEqual(
-            taker.taker_amount,
-            Decimal(trades[self.data["order_hash"]]["taker_amount"]),
-            "the taker_amount of the taker object should match the one sent",
+            taker.amount,
+            Decimal(trades[self.data["order_hash"]]["amount"]),
+            "the amount of the taker object should match the one sent",
         )
 
         self.assertEqual(
@@ -357,7 +357,7 @@ class MakerCommitTestCase(APITestCase):
 
         self.assertEqual(
             maker2.filled,
-            Decimal(trades2[data["order_hash"]]["taker_amount"]),
+            Decimal(trades2[data["order_hash"]]["amount"]),
             "The filled amount should be increased by the trade amount",
         )
 
@@ -368,9 +368,9 @@ class MakerCommitTestCase(APITestCase):
         )
 
         self.assertEqual(
-            taker2.taker_amount,
-            Decimal(trades2[data["order_hash"]]["taker_amount"]),
-            "the taker_amount of the taker object should match the one sent",
+            taker2.amount,
+            Decimal(trades2[data["order_hash"]]["amount"]),
+            "the amount of the taker object should match the one sent",
         )
 
         self.assertEqual(
@@ -437,7 +437,7 @@ class MakerCommitTestCase(APITestCase):
 
         trades = {
             self.data["order_hash"]: {
-                "taker_amount": "{0:f}".format(Decimal("173e16")),
+                "amount": "{0:f}".format(Decimal("173e16")),
                 "base_fees": True,
                 "fees": "{0:f}".format(Decimal("387e15")),
                 "is_buyer": True,
@@ -447,7 +447,7 @@ class MakerCommitTestCase(APITestCase):
         block2 = 14
         trades2 = {
             data["order_hash"]: {
-                "taker_amount": "{0:f}".format(Decimal("273e16")),
+                "amount": "{0:f}".format(Decimal("273e16")),
                 "base_fees": True,
                 "fees": "{0:f}".format(Decimal("365e15")),
                 "is_buyer": True,
@@ -497,7 +497,7 @@ class MakerCommitTestCase(APITestCase):
 
         trades = {
             self.data["order_hash"]: {
-                "taker_amount": "{0:f}".format(Decimal("73e16")),
+                "amount": "{0:f}".format(Decimal("73e16")),
                 "base_fees": True,
                 "fees": "{0:f}".format(Decimal("365e15")),
                 "is_buyer": True,
@@ -535,7 +535,7 @@ class MakerCommitTestCase(APITestCase):
 
         trades = {
             self.data["order_hash"]: {
-                "taker_amount": "{0:f}".format(Decimal("73e16")),
+                "amount": "{0:f}".format(Decimal("73e16")),
                 "base_fees": True,
                 "fees": "{0:f}".format(Decimal("365e15")),
                 "is_buyer": True,
@@ -573,7 +573,7 @@ class MakerCommitTestCase(APITestCase):
 
         trades = {
             self.data["order_hash"]: {
-                "taker_amount": "{0:f}".format(Decimal("73e16")),
+                "amount": "{0:f}".format(Decimal("73e16")),
                 "base_fees": True,
                 "fees": "{0:f}".format(Decimal("365e15")),
                 "is_buyer": True,
@@ -642,7 +642,7 @@ class MakerCommitTestCase(APITestCase):
 
         trades = {
             self.data["order_hash"]: {
-                "taker_amount": "{0:f}".format(Decimal("73e16")),
+                "amount": "{0:f}".format(Decimal("73e16")),
                 "base_fees": True,
                 "fees": "{0:f}".format(Decimal("365e15")),
                 "is_buyer": True,
@@ -878,12 +878,12 @@ class MakerBotCommitTestCase(APITestCase):
 
         taker_address = "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef"
         block = 12
-        taker_amount = "{0:f}".format(Decimal("73e16"))
+        amount = "{0:f}".format(Decimal("73e16"))
         fees = "{0:f}".format(Decimal("365e15"))
         maker = Maker.objects.get(price=Decimal("11e17"))
         trades = {
             maker.order_hash: {
-                "taker_amount": taker_amount,
+                "amount": amount,
                 "base_fees": True,
                 "fees": fees,
                 "is_buyer": True,
@@ -912,13 +912,13 @@ class MakerBotCommitTestCase(APITestCase):
 
         self.assertEqual(
             maker.filled,
-            Decimal(taker_amount),
+            Decimal(amount),
             "The amount filled should be reported into the maker order",
         )
 
         self.assertEqual(
-            taker.taker_amount,
-            Decimal(taker_amount),
+            taker.amount,
+            Decimal(amount),
             "The taker amount should be reported into the taker object",
         )
         self.assertEqual(
@@ -949,15 +949,15 @@ class MakerBotCommitTestCase(APITestCase):
 
         taker_address = "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef"
         block = 12
-        taker_amount = "{0:f}".format(Decimal("73e16"))
+        amount = "{0:f}".format(Decimal("73e16"))
         fees = "{0:f}".format(Decimal("365e15"))
         maker = Maker.objects.get(price=Decimal("11e17"))
-        maker.filled = taker_amount
+        maker.filled = amount
         maker.save(update_fields=["filled"])
 
         trades = {
             maker.order_hash: {
-                "taker_amount": taker_amount,
+                "amount": amount,
                 "base_fees": True,
                 "fees": fees,
                 "is_buyer": True,
@@ -986,13 +986,13 @@ class MakerBotCommitTestCase(APITestCase):
 
         self.assertEqual(
             maker.filled,
-            Decimal(taker_amount) * 2,
+            Decimal(amount) * 2,
             "The amount filled should be twice the first filled amount",
         )
 
         self.assertEqual(
-            taker.taker_amount,
-            Decimal(taker_amount),
+            taker.amount,
+            Decimal(amount),
             "The taker amount should be reported into the taker object",
         )
         self.assertEqual(
@@ -1027,13 +1027,13 @@ class MakerBotCommitTestCase(APITestCase):
 
         trades = {
             maker.order_hash: {
-                "taker_amount": "{0:f}".format(Decimal("73e16")),
+                "amount": "{0:f}".format(Decimal("73e16")),
                 "base_fees": True,
                 "fees": "{0:f}".format(Decimal("365e15")),
                 "is_buyer": True,
             },
             maker2.order_hash: {
-                "taker_amount": "{0:f}".format(Decimal("75e16")),
+                "amount": "{0:f}".format(Decimal("75e16")),
                 "base_fees": True,
                 "fees": "{0:f}".format(Decimal("360e15")),
                 "is_buyer": True,
@@ -1066,19 +1066,19 @@ class MakerBotCommitTestCase(APITestCase):
 
         self.assertEqual(
             maker.filled,
-            Decimal(trades[maker.order_hash]["taker_amount"]),
+            Decimal(trades[maker.order_hash]["amount"]),
             "The maker amoout should be uptades after the trades",
         )
 
         self.assertEqual(
             maker2.filled,
-            Decimal(trades[maker2.order_hash]["taker_amount"]),
+            Decimal(trades[maker2.order_hash]["amount"]),
             "The maker amoout should be uptades after the trades",
         )
 
         self.assertEqual(
-            taker.taker_amount,
-            Decimal(trades[maker.order_hash]["taker_amount"]),
+            taker.amount,
+            Decimal(trades[maker.order_hash]["amount"]),
             "The taker amount should be reported into the taker object",
         )
         self.assertEqual(
@@ -1104,8 +1104,8 @@ class MakerBotCommitTestCase(APITestCase):
         )
 
         self.assertEqual(
-            taker2.taker_amount,
-            Decimal(trades[maker2.order_hash]["taker_amount"]),
+            taker2.amount,
+            Decimal(trades[maker2.order_hash]["amount"]),
             "The taker amount should be reported into the taker object",
         )
         self.assertEqual(
@@ -1139,7 +1139,7 @@ class MakerBotCommitTestCase(APITestCase):
         maker = Maker.objects.get(price=Decimal("9e17"))
         trades = {
             maker.order_hash: {
-                "taker_amount": "{0:f}".format(Decimal("73e16")),
+                "amount": "{0:f}".format(Decimal("73e16")),
                 "base_fees": True,
                 "fees": "{0:f}".format(Decimal("365e15")),
                 "is_buyer": False,
@@ -1168,13 +1168,13 @@ class MakerBotCommitTestCase(APITestCase):
 
         self.assertEqual(
             maker.filled,
-            Decimal(trades[maker.order_hash]["taker_amount"]),
+            Decimal(trades[maker.order_hash]["amount"]),
             "The amount filled should be reported into the maker order",
         )
 
         self.assertEqual(
-            taker.taker_amount,
-            Decimal(trades[maker.order_hash]["taker_amount"]),
+            taker.amount,
+            Decimal(trades[maker.order_hash]["amount"]),
             "The taker amount should be reported into the taker object",
         )
         self.assertEqual(
@@ -1208,7 +1208,7 @@ class MakerBotCommitTestCase(APITestCase):
         maker = Maker.objects.get(price=Decimal("9e17"))
         trades = {
             maker.order_hash: {
-                "taker_amount": "{0:f}".format(Decimal("73e16")),
+                "amount": "{0:f}".format(Decimal("73e16")),
                 "base_fees": True,
                 "fees": "{0:f}".format(Decimal("365e15")),
                 "is_buyer": True,
@@ -1270,12 +1270,12 @@ class MakerBotFeesTestCase(APITestCase):
 
         taker_address = "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef"
         block = 12
-        taker_amount = "{0:f}".format(Decimal("73e16"))
+        amount = "{0:f}".format(Decimal("73e16"))
         fees = "{0:f}".format(Decimal("365e15"))
         maker = Maker.objects.get(price=Decimal("11e17"))
         trades = {
             maker.order_hash: {
-                "taker_amount": taker_amount,
+                "amount": amount,
                 "base_fees": True,
                 "fees": fees,
                 "is_buyer": True,
@@ -1299,7 +1299,7 @@ class MakerBotFeesTestCase(APITestCase):
                 maker.price * (maker.bot.maker_fees + Decimal("1000")) / Decimal("1000")
                 - maker.price
             )
-            * Decimal(taker_amount)
+            * Decimal(amount)
             / Decimal("1e18")
         ).quantize(Decimal("1."))
 
@@ -1316,7 +1316,7 @@ class MakerBotFeesTestCase(APITestCase):
 
         taker_address = "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef"
         block = 12
-        taker_amount = "{0:f}".format(Decimal("73e16"))
+        amount = "{0:f}".format(Decimal("73e16"))
         fees = "{0:f}".format(Decimal("365e15"))
 
         maker = Maker.objects.get(price=Decimal("11e17"))
@@ -1325,7 +1325,7 @@ class MakerBotFeesTestCase(APITestCase):
 
         trades = {
             maker.order_hash: {
-                "taker_amount": taker_amount,
+                "amount": amount,
                 "base_fees": True,
                 "fees": fees,
                 "is_buyer": True,
@@ -1345,7 +1345,7 @@ class MakerBotFeesTestCase(APITestCase):
         maker.refresh_from_db()
 
         fees = (
-            maker.bot.maker_fees * Decimal(taker_amount) / Decimal("1e18")
+            maker.bot.maker_fees * Decimal(amount) / Decimal("1e18")
         ).quantize(Decimal("1."))
 
         self.assertEqual(response.status_code, HTTP_200_OK, "The request should work")
@@ -1361,16 +1361,16 @@ class MakerBotFeesTestCase(APITestCase):
 
         taker_address = "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef"
         block = 12
-        taker_amount = "{0:f}".format(Decimal("73e16"))
+        amount = "{0:f}".format(Decimal("73e16"))
         fees = "{0:f}".format(Decimal("365e15"))
 
         maker = Maker.objects.get(price=Decimal("11e17"))
-        maker.filled = Decimal(taker_amount)
+        maker.filled = Decimal(amount)
         maker.save(update_fields=["filled"])
 
         trades = {
             maker.order_hash: {
-                "taker_amount": taker_amount,
+                "amount": amount,
                 "base_fees": True,
                 "fees": fees,
                 "is_buyer": False,
@@ -1396,7 +1396,7 @@ class MakerBotFeesTestCase(APITestCase):
                 * Decimal("1000")
                 / (maker.bot.maker_fees + Decimal("1000"))
             )
-            * Decimal(taker_amount)
+            * Decimal(amount)
             / Decimal("1e18")
         ).quantize(Decimal("1."))
 
@@ -1413,18 +1413,18 @@ class MakerBotFeesTestCase(APITestCase):
 
         taker_address = "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef"
         block = 12
-        taker_amount = "{0:f}".format(Decimal("73e16"))
+        amount = "{0:f}".format(Decimal("73e16"))
         fees = "{0:f}".format(Decimal("365e15"))
 
         maker = Maker.objects.get(price=Decimal("11e17"))
-        maker.filled = Decimal(taker_amount)
+        maker.filled = Decimal(amount)
         maker.bot.maker_fees = Decimal("5e14")
         maker.bot.save(update_fields=["maker_fees"])
         maker.save(update_fields=["filled"])
 
         trades = {
             maker.order_hash: {
-                "taker_amount": taker_amount,
+                "amount": amount,
                 "base_fees": True,
                 "fees": fees,
                 "is_buyer": False,
@@ -1444,7 +1444,7 @@ class MakerBotFeesTestCase(APITestCase):
         maker.refresh_from_db()
 
         fees = (
-            maker.bot.maker_fees * Decimal(taker_amount) / Decimal("1e18")
+            maker.bot.maker_fees * Decimal(amount) / Decimal("1e18")
         ).quantize(Decimal("1."))
 
         self.assertEqual(response.status_code, HTTP_200_OK, "The request should work")
@@ -1461,12 +1461,12 @@ class MakerBotFeesTestCase(APITestCase):
 
         taker_address = "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef"
         block = 12
-        taker_amount = "{0:f}".format(Decimal("73e16"))
+        amount = "{0:f}".format(Decimal("73e16"))
         fees = "{0:f}".format(Decimal("365e15"))
         maker = Maker.objects.get(price=Decimal("9e17"))
         trades = {
             maker.order_hash: {
-                "taker_amount": taker_amount,
+                "amount": amount,
                 "base_fees": True,
                 "fees": fees,
                 "is_buyer": False,
@@ -1491,7 +1491,7 @@ class MakerBotFeesTestCase(APITestCase):
                 * Decimal("1000")
                 / (maker.bot.maker_fees + Decimal("1000"))
             )
-            * Decimal(taker_amount)
+            * Decimal(amount)
             / Decimal("1e18")
         ).quantize(Decimal("1."))
 
@@ -1509,7 +1509,7 @@ class MakerBotFeesTestCase(APITestCase):
 
         taker_address = "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef"
         block = 12
-        taker_amount = "{0:f}".format(Decimal("73e16"))
+        amount = "{0:f}".format(Decimal("73e16"))
         fees = "{0:f}".format(Decimal("365e15"))
 
         maker = Maker.objects.get(price=Decimal("9e17"))
@@ -1518,7 +1518,7 @@ class MakerBotFeesTestCase(APITestCase):
 
         trades = {
             maker.order_hash: {
-                "taker_amount": taker_amount,
+                "amount": amount,
                 "base_fees": True,
                 "fees": fees,
                 "is_buyer": False,
@@ -1537,7 +1537,7 @@ class MakerBotFeesTestCase(APITestCase):
             )
         maker.refresh_from_db()
         fees = (
-            maker.bot.maker_fees * Decimal(taker_amount) / Decimal("1e18")
+            maker.bot.maker_fees * Decimal(amount) / Decimal("1e18")
         ).quantize(Decimal("1."))
 
         self.assertEqual(response.status_code, HTTP_200_OK, "The request should work")
@@ -1554,16 +1554,16 @@ class MakerBotFeesTestCase(APITestCase):
 
         taker_address = "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef"
         block = 12
-        taker_amount = "{0:f}".format(Decimal("73e16"))
+        amount = "{0:f}".format(Decimal("73e16"))
         fees = "{0:f}".format(Decimal("365e15"))
 
         maker = Maker.objects.get(price=Decimal("9e17"))
-        maker.filled = Decimal(taker_amount)
+        maker.filled = Decimal(amount)
         maker.save(update_fields=["filled"])
 
         trades = {
             maker.order_hash: {
-                "taker_amount": taker_amount,
+                "amount": amount,
                 "base_fees": True,
                 "fees": fees,
                 "is_buyer": False,
@@ -1588,7 +1588,7 @@ class MakerBotFeesTestCase(APITestCase):
                 * Decimal("1000")
                 / (maker.bot.maker_fees + Decimal("1000"))
             )
-            * Decimal(taker_amount)
+            * Decimal(amount)
             / Decimal("1e18")
         ).quantize(Decimal("1."))
 
@@ -1606,18 +1606,18 @@ class MakerBotFeesTestCase(APITestCase):
 
         taker_address = "0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef"
         block = 12
-        taker_amount = "{0:f}".format(Decimal("73e16"))
+        amount = "{0:f}".format(Decimal("73e16"))
         fees = "{0:f}".format(Decimal("365e15"))
 
         maker = Maker.objects.get(price=Decimal("9e17"))
-        maker.filled = Decimal(taker_amount)
+        maker.filled = Decimal(amount)
         maker.bot.maker_fees = Decimal("71e14")
         maker.bot.save(update_fields=["maker_fees"])
         maker.save(update_fields=["filled"])
 
         trades = {
             maker.order_hash: {
-                "taker_amount": taker_amount,
+                "amount": amount,
                 "base_fees": True,
                 "fees": fees,
                 "is_buyer": False,
@@ -1636,7 +1636,7 @@ class MakerBotFeesTestCase(APITestCase):
             )
         maker.refresh_from_db()
         fees = (
-            (maker.bot.maker_fees) * Decimal(taker_amount) / Decimal("1e18")
+            (maker.bot.maker_fees) * Decimal(amount) / Decimal("1e18")
         ).quantize(Decimal("1."))
 
         self.assertEqual(response.status_code, HTTP_200_OK, "The request should work")

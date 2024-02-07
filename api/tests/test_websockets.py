@@ -38,6 +38,7 @@ class WebsocketFramesTestCase(APITestCase):
             "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
             "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
+            "timestamp": int(time()),
         }
 
         async_to_sync(Maker.objects.create)(
@@ -388,13 +389,13 @@ class WebsocketFramesTestCase(APITestCase):
 
         trades = {
             self.data["order_hash"]: {
-                "taker_amount": "{0:f}".format(Decimal("73e16")),
+                "amount": "{0:f}".format(Decimal("73e16")),
                 "base_fees": True,
                 "fees": "{0:f}".format(Decimal("365e15")),
                 "is_buyer": True,
             },
             maker.order_hash: {
-                "taker_amount": "{0:f}".format(Decimal("73e16")),
+                "amount": "{0:f}".format(Decimal("73e16")),
                 "base_fees": True,
                 "fees": "{0:f}".format(Decimal("360e15")),
                 "is_buyer": False,
@@ -420,7 +421,7 @@ class WebsocketFramesTestCase(APITestCase):
                 * Decimal("1000")
                 / (maker.bot.maker_fees + Decimal("1000"))
             )
-            * Decimal(trades[maker.order_hash]["taker_amount"])
+            * Decimal(trades[maker.order_hash]["amount"])
             / Decimal("1e18")
         ).quantize(Decimal("1."))
 
@@ -445,6 +446,7 @@ class WebsocketFramesTestCase(APITestCase):
                     "order_hash": maker.order_hash,
                     "is_buyer": maker.is_buyer,
                     "filled": "{0:f}".format(maker.filled),
+                    "timestamp": int(maker.bot.timestamp.timestamp()),
                     "status": maker.get_status_display(),
                     "bot": {
                         "address": self.user.address,
@@ -462,7 +464,7 @@ class WebsocketFramesTestCase(APITestCase):
             WStypes.NEW_TAKERS: [
                 {
                     "block": block,
-                    "taker_amount": trades[maker.order_hash]["taker_amount"],
+                    "amount": trades[maker.order_hash]["amount"],
                     "fees": trades[maker.order_hash]["fees"],
                     "is_buyer": trades[maker.order_hash]["is_buyer"],
                     "base_fees": trades[maker.order_hash]["base_fees"],
@@ -472,7 +474,7 @@ class WebsocketFramesTestCase(APITestCase):
                 },
                 {
                     "block": block,
-                    "taker_amount": trades[self.data["order_hash"]]["taker_amount"],
+                    "amount": trades[self.data["order_hash"]]["amount"],
                     "fees": trades[self.data["order_hash"]]["fees"],
                     "is_buyer": trades[self.data["order_hash"]]["is_buyer"],
                     "base_fees": trades[self.data["order_hash"]]["base_fees"],
@@ -527,7 +529,6 @@ class WebsocketFramesTestCase(APITestCase):
                 data[WStypes.NEW_TAKERS][1],
                 message[WStypes.NEW_TAKERS][0],
             )
-
         self.assertDictEqual(
             ws_1,
             maker_1,

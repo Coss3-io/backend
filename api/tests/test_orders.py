@@ -1,6 +1,7 @@
 from decimal import Decimal
 from datetime import datetime
 from functools import partial
+import time
 from unittest.mock import patch
 from datetime import datetime
 from asgiref.sync import async_to_sync
@@ -42,6 +43,7 @@ class MakerOrderTestCase(APITestCase):
             "base_fees": "0",
             "quote_fees": "0",
             "status": "OPEN",
+            "timestamp": int(time.time()),
         }
         response = self.client.post(reverse("api:order"), data=data)
         order = Maker.objects.select_related("user").get(order_hash=data["order_hash"])
@@ -276,6 +278,7 @@ class MakerOrderTestCase(APITestCase):
             "base_fees": "0",
             "quote_fees": "0",
             "status": "OPEN",
+            "timestamp": int(time.time())
         }
 
         async_to_sync(Maker.objects.create)(
@@ -328,6 +331,7 @@ class MakerOrderTestCase(APITestCase):
             "base_fees": "0",
             "quote_fees": "0",
             "status": "OPEN",
+            "timestamp": int(time.time()),
         }
 
         async_to_sync(Maker.objects.create)(
@@ -379,6 +383,7 @@ class MakerOrderTestCase(APITestCase):
             "signature": "0x68343d2c50955f78107a1c17d3607ef839738d5a6d627f77f869c3f2cff1ec2b5ff6507cb20ec34434c5f1eebd9e4f21ef492deff30c0e916f61c352e6b24c031c",
             "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
+            "timestamp": int(time.time()),
         }
 
         async_to_sync(Maker.objects.create)(
@@ -1372,6 +1377,7 @@ class MakerOrderTestCase(APITestCase):
             "base_fees": "0",
             "quote_fees": "0",
             "status": "OPEN",
+            "timestamp": int(time.time())
         }
         response = self.client.post(reverse("api:order"), data=data)
         User.objects.get(address=Address(data["address"]))
@@ -1394,6 +1400,7 @@ class MakerOrderRetrievingTestCase(APITestCase):
     """Used to checks that the order retrieval works as expected"""
 
     def setUp(self) -> None:
+        self.timestamp = int(time.time())
         self.user_1: User = async_to_sync(User.objects.create_user)(
             address=Address(Address("0x70997970C51812dc3A010C7d01b50e0d17dc79C8"))
         )
@@ -1422,6 +1429,7 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "quote_fees": "0",
             "status": "OPEN",
             "bot": None,
+            "timestamp": self.timestamp,
         }
 
         self.order_1_2 = {
@@ -1440,6 +1448,7 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "quote_fees": "0",
             "status": "OPEN",
             "bot": None,
+            "timestamp": self.timestamp,
         }
 
         self.order_1_3 = {
@@ -1458,6 +1467,7 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "quote_fees": "0",
             "status": "OPEN",
             "bot": None,
+            "timestamp": self.timestamp,
         }
 
         self.order_2_1 = {
@@ -1476,6 +1486,7 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "quote_fees": "0",
             "status": "OPEN",
             "bot": None,
+            "timestamp": self.timestamp,
         }
 
         self.order_2_2 = {
@@ -1494,6 +1505,7 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "quote_fees": "0",
             "status": "OPEN",
             "bot": None,
+            "timestamp": self.timestamp,
         }
 
         self.order_2_3 = {
@@ -1512,6 +1524,7 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "quote_fees": "0",
             "status": "OPEN",
             "bot": None,
+            "timestamp": self.timestamp,
         }
 
         self.order_2_4 = {
@@ -1530,6 +1543,7 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "quote_fees": "0",
             "status": "OPEN",
             "bot": None,
+            "timestamp": self.timestamp,
         }
 
         self.pair_1 = {
@@ -1584,7 +1598,7 @@ class MakerOrderRetrievingTestCase(APITestCase):
 
         self.taker_details = {
             "timestamp": datetime.now(),
-            "taker_amount": Decimal("12e17"),
+            "amount": Decimal("12e17"),
             "maker": Maker.objects.get(order_hash=self.order_1_1["order_hash"]),
             "price": self.order_1_1["price"],
             "user": self.user_1,
@@ -1595,7 +1609,7 @@ class MakerOrderRetrievingTestCase(APITestCase):
         }
 
         self.taker = async_to_sync(Taker.objects.create)(
-            taker_amount=self.taker_details["taker_amount"],
+            amount=self.taker_details["amount"],
             maker=self.taker_details["maker"],
             user=self.taker_details["user"],
             timestamp=self.taker_details["timestamp"],
@@ -2414,7 +2428,7 @@ class MakerTakersFeesRetrieval(APITestCase):
         """
 
         taker_details = {
-            "taker_amount": Decimal("12e17"),
+            "amount": Decimal("12e17"),
             "maker": self.maker,
             "user": self.taker_user,
             "block": 18,
@@ -2424,7 +2438,7 @@ class MakerTakersFeesRetrieval(APITestCase):
         }
 
         async_to_sync(Taker.objects.create)(
-            taker_amount=taker_details["taker_amount"],
+            amount=taker_details["amount"],
             maker=taker_details["maker"],
             user=taker_details["user"],
             block=taker_details["block"],
@@ -2459,7 +2473,7 @@ class MakerTakersFeesRetrieval(APITestCase):
     def test_maker_w_two_base_takers(self):
         """Checks a maker with two taker orders is well returned"""
         taker_details = {
-            "taker_amount": Decimal("12e17"),
+            "amount": Decimal("12e17"),
             "maker": self.maker,
             "user": self.taker_user,
             "block": 18,
@@ -2469,7 +2483,7 @@ class MakerTakersFeesRetrieval(APITestCase):
         }
 
         taker2_details = {
-            "taker_amount": Decimal("12e17"),
+            "amount": Decimal("12e17"),
             "maker": self.maker,
             "user": self.taker_user,
             "block": 18,
@@ -2479,7 +2493,7 @@ class MakerTakersFeesRetrieval(APITestCase):
         }
 
         async_to_sync(Taker.objects.create)(
-            taker_amount=taker_details["taker_amount"],
+            amount=taker_details["amount"],
             maker=taker_details["maker"],
             user=taker_details["user"],
             block=taker_details["block"],
@@ -2489,7 +2503,7 @@ class MakerTakersFeesRetrieval(APITestCase):
         )
 
         async_to_sync(Taker.objects.create)(
-            taker_amount=taker2_details["taker_amount"],
+            amount=taker2_details["amount"],
             maker=taker2_details["maker"],
             user=taker2_details["user"],
             block=taker2_details["block"],
@@ -2520,7 +2534,7 @@ class MakerTakersFeesRetrieval(APITestCase):
     def test_maker_w_one_quote_taker(self):
         """Checks a maker with one quote taker is well returned"""
         taker_details = {
-            "taker_amount": Decimal("12e17"),
+            "amount": Decimal("12e17"),
             "maker": self.maker,
             "user": self.taker_user,
             "block": 18,
@@ -2530,7 +2544,7 @@ class MakerTakersFeesRetrieval(APITestCase):
         }
 
         async_to_sync(Taker.objects.create)(
-            taker_amount=taker_details["taker_amount"],
+            amount=taker_details["amount"],
             maker=taker_details["maker"],
             user=taker_details["user"],
             block=taker_details["block"],
@@ -2562,7 +2576,7 @@ class MakerTakersFeesRetrieval(APITestCase):
         """Checks a make with two quote takers is well handled"""
 
         taker_details = {
-            "taker_amount": Decimal("12e17"),
+            "amount": Decimal("12e17"),
             "maker": self.maker,
             "user": self.taker_user,
             "block": 18,
@@ -2572,7 +2586,7 @@ class MakerTakersFeesRetrieval(APITestCase):
         }
 
         taker2_details = {
-            "taker_amount": Decimal("12e17"),
+            "amount": Decimal("12e17"),
             "maker": self.maker,
             "user": self.taker_user,
             "block": 18,
@@ -2582,7 +2596,7 @@ class MakerTakersFeesRetrieval(APITestCase):
         }
 
         async_to_sync(Taker.objects.create)(
-            taker_amount=taker_details["taker_amount"],
+            amount=taker_details["amount"],
             maker=taker_details["maker"],
             user=taker_details["user"],
             block=taker_details["block"],
@@ -2592,7 +2606,7 @@ class MakerTakersFeesRetrieval(APITestCase):
         )
 
         async_to_sync(Taker.objects.create)(
-            taker_amount=taker2_details["taker_amount"],
+            amount=taker2_details["amount"],
             maker=taker2_details["maker"],
             user=taker2_details["user"],
             block=taker2_details["block"],
@@ -2623,7 +2637,7 @@ class MakerTakersFeesRetrieval(APITestCase):
     def test_maker_w_one_quote_and_base_taker(self):
         """Checks a maker with base and quote takers is well returned"""
         taker_details = {
-            "taker_amount": Decimal("12e17"),
+            "amount": Decimal("12e17"),
             "maker": self.maker,
             "user": self.taker_user,
             "block": 18,
@@ -2633,7 +2647,7 @@ class MakerTakersFeesRetrieval(APITestCase):
         }
 
         taker2_details = {
-            "taker_amount": Decimal("12e17"),
+            "amount": Decimal("12e17"),
             "maker": self.maker,
             "user": self.taker_user,
             "block": 18,
@@ -2643,7 +2657,7 @@ class MakerTakersFeesRetrieval(APITestCase):
         }
 
         async_to_sync(Taker.objects.create)(
-            taker_amount=taker_details["taker_amount"],
+            amount=taker_details["amount"],
             maker=taker_details["maker"],
             user=taker_details["user"],
             block=taker_details["block"],
@@ -2653,7 +2667,7 @@ class MakerTakersFeesRetrieval(APITestCase):
         )
 
         async_to_sync(Taker.objects.create)(
-            taker_amount=taker2_details["taker_amount"],
+            amount=taker2_details["amount"],
             maker=taker2_details["maker"],
             user=taker2_details["user"],
             block=taker2_details["block"],
@@ -2684,7 +2698,7 @@ class MakerTakersFeesRetrieval(APITestCase):
     def test_maker_w_two_quote_and_base_takers(self):
         """Checks a maker with base and quote takers is well returned"""
         taker_details = {
-            "taker_amount": Decimal("12e17"),
+            "amount": Decimal("12e17"),
             "maker": self.maker,
             "user": self.taker_user,
             "block": 18,
@@ -2694,7 +2708,7 @@ class MakerTakersFeesRetrieval(APITestCase):
         }
 
         taker2_details = {
-            "taker_amount": Decimal("12e17"),
+            "amount": Decimal("12e17"),
             "maker": self.maker,
             "user": self.taker_user,
             "block": 18,
@@ -2704,7 +2718,7 @@ class MakerTakersFeesRetrieval(APITestCase):
         }
 
         taker3_details = {
-            "taker_amount": Decimal("12e17"),
+            "amount": Decimal("12e17"),
             "maker": self.maker,
             "user": self.taker_user,
             "block": 18,
@@ -2714,7 +2728,7 @@ class MakerTakersFeesRetrieval(APITestCase):
         }
 
         taker4_details = {
-            "taker_amount": Decimal("12e17"),
+            "amount": Decimal("12e17"),
             "maker": self.maker,
             "user": self.taker_user,
             "block": 18,
@@ -2725,7 +2739,7 @@ class MakerTakersFeesRetrieval(APITestCase):
 
         for taker in [taker_details, taker2_details, taker3_details, taker4_details]:
             async_to_sync(Taker.objects.create)(
-                taker_amount=taker["taker_amount"],
+                amount=taker["amount"],
                 maker=taker["maker"],
                 user=taker["user"],
                 block=taker["block"],
@@ -2787,7 +2801,7 @@ class MakerTakersFeesRetrieval(APITestCase):
         )
 
         taker_details = {
-            "taker_amount": Decimal("12e17"),
+            "amount": Decimal("12e17"),
             "maker": self.maker,
             "user": self.taker_user,
             "block": 18,
@@ -2797,7 +2811,7 @@ class MakerTakersFeesRetrieval(APITestCase):
         }
 
         taker2_details = {
-            "taker_amount": Decimal("12e17"),
+            "amount": Decimal("12e17"),
             "maker": self.maker,
             "user": self.taker_user,
             "block": 18,
@@ -2807,7 +2821,7 @@ class MakerTakersFeesRetrieval(APITestCase):
         }
 
         taker3_details = {
-            "taker_amount": Decimal("12e17"),
+            "amount": Decimal("12e17"),
             "maker": self.maker,
             "user": self.taker_user,
             "block": 18,
@@ -2817,7 +2831,7 @@ class MakerTakersFeesRetrieval(APITestCase):
         }
 
         taker4_details = {
-            "taker_amount": Decimal("12e17"),
+            "amount": Decimal("12e17"),
             "maker": self.maker,
             "user": self.taker_user,
             "block": 18,
@@ -2827,7 +2841,7 @@ class MakerTakersFeesRetrieval(APITestCase):
         }
 
         taker2_1_details = {
-            "taker_amount": Decimal("12e17"),
+            "amount": Decimal("12e17"),
             "maker": maker2,
             "user": self.taker_user,
             "block": 18,
@@ -2837,7 +2851,7 @@ class MakerTakersFeesRetrieval(APITestCase):
         }
 
         taker2_2_details = {
-            "taker_amount": Decimal("12e17"),
+            "amount": Decimal("12e17"),
             "maker": maker2,
             "user": self.taker_user,
             "block": 18,
@@ -2847,7 +2861,7 @@ class MakerTakersFeesRetrieval(APITestCase):
         }
 
         taker2_3_details = {
-            "taker_amount": Decimal("12e17"),
+            "amount": Decimal("12e17"),
             "maker": maker2,
             "user": self.taker_user,
             "block": 18,
@@ -2857,7 +2871,7 @@ class MakerTakersFeesRetrieval(APITestCase):
         }
 
         taker2_4_details = {
-            "taker_amount": Decimal("12e17"),
+            "amount": Decimal("12e17"),
             "maker": maker2,
             "user": self.taker_user,
             "block": 18,
@@ -2877,7 +2891,7 @@ class MakerTakersFeesRetrieval(APITestCase):
             taker2_4_details,
         ]:
             async_to_sync(Taker.objects.create)(
-                taker_amount=taker["taker_amount"],
+                amount=taker["amount"],
                 maker=taker["maker"],
                 user=taker["user"],
                 block=taker["block"],
@@ -2967,7 +2981,7 @@ class TakerRetrievalTestCase(APITestCase):
 
         self.taker_details = {
             "timestamp": self.datetime,
-            "taker_amount": Decimal("12e17"),
+            "amount": Decimal("12e17"),
             "maker": self.maker,
             "price": self.maker.price,
             "user": self.taker_user,
@@ -2978,7 +2992,7 @@ class TakerRetrievalTestCase(APITestCase):
         }
 
         self.taker = async_to_sync(Taker.objects.create)(
-            taker_amount=self.taker_details["taker_amount"],
+            amount=self.taker_details["amount"],
             maker=self.taker_details["maker"],
             user=self.taker_details["user"],
             timestamp=self.taker_details["timestamp"],
@@ -3002,9 +3016,7 @@ class TakerRetrievalTestCase(APITestCase):
 
         del self.taker_details["user"]
         del self.taker_details["maker"]
-        self.taker_details["taker_amount"] = "{0:f}".format(
-            self.taker_details["taker_amount"]
-        )
+        self.taker_details["amount"] = "{0:f}".format(self.taker_details["amount"])
         self.taker_details["fees"] = "{0:f}".format(self.taker_details["fees"])
         self.taker_details["timestamp"] = int(
             self.taker_details["timestamp"].timestamp()
@@ -3032,9 +3044,7 @@ class TakerRetrievalTestCase(APITestCase):
 
         del self.taker_details["user"]
         del self.taker_details["maker"]
-        self.taker_details["taker_amount"] = "{0:f}".format(
-            self.taker_details["taker_amount"]
-        )
+        self.taker_details["amount"] = "{0:f}".format(self.taker_details["amount"])
         self.taker_details["fees"] = "{0:f}".format(self.taker_details["fees"])
         self.taker_details["timestamp"] = int(
             self.taker_details["timestamp"].timestamp()
@@ -3050,7 +3060,7 @@ class TakerRetrievalTestCase(APITestCase):
         """Checks retrieving all the takers orders at once work"""
         now = datetime.now()
         taker_details = {
-            "taker_amount": Decimal("10e23"),
+            "amount": Decimal("10e23"),
             "maker": self.maker,
             "price": self.maker.price,
             "user": self.taker_user,
@@ -3062,7 +3072,7 @@ class TakerRetrievalTestCase(APITestCase):
         }
         async_to_sync(Taker.objects.create)(
             timestamp=taker_details["timestamp"],
-            taker_amount=taker_details["taker_amount"],
+            amount=taker_details["amount"],
             maker=taker_details["maker"],
             user=taker_details["user"],
             block=taker_details["block"],
@@ -3092,9 +3102,7 @@ class TakerRetrievalTestCase(APITestCase):
 
         del self.taker_details["user"]
         del self.taker_details["maker"]
-        self.taker_details["taker_amount"] = "{0:f}".format(
-            self.taker_details["taker_amount"]
-        )
+        self.taker_details["amount"] = "{0:f}".format(self.taker_details["amount"])
         self.taker_details["fees"] = "{0:f}".format(self.taker_details["fees"])
         self.taker_details["timestamp"] = int(
             self.taker_details["timestamp"].timestamp()
@@ -3108,7 +3116,7 @@ class TakerRetrievalTestCase(APITestCase):
 
         del taker_details["user"]
         del taker_details["maker"]
-        taker_details["taker_amount"] = "{0:f}".format(taker_details["taker_amount"])
+        taker_details["amount"] = "{0:f}".format(taker_details["amount"])
         taker_details["fees"] = "{0:f}".format(taker_details["fees"])
         taker_details["timestamp"] = int(taker_details["timestamp"].timestamp())
 
@@ -3122,7 +3130,7 @@ class TakerRetrievalTestCase(APITestCase):
         """Checks a user can retrieve multiple orders from the same pair"""
         now = datetime.now()
         taker_details = {
-            "taker_amount": Decimal("10e23"),
+            "amount": Decimal("10e23"),
             "maker": self.maker,
             "user": self.taker_user,
             "block": 21,
@@ -3134,7 +3142,7 @@ class TakerRetrievalTestCase(APITestCase):
         }
         async_to_sync(Taker.objects.create)(
             timestamp=taker_details["timestamp"],
-            taker_amount=taker_details["taker_amount"],
+            amount=taker_details["amount"],
             maker=taker_details["maker"],
             user=taker_details["user"],
             block=taker_details["block"],
@@ -3169,9 +3177,7 @@ class TakerRetrievalTestCase(APITestCase):
 
         del self.taker_details["user"]
         del self.taker_details["maker"]
-        self.taker_details["taker_amount"] = "{0:f}".format(
-            self.taker_details["taker_amount"]
-        )
+        self.taker_details["amount"] = "{0:f}".format(self.taker_details["amount"])
         self.taker_details["fees"] = "{0:f}".format(self.taker_details["fees"])
         self.taker_details["timestamp"] = int(
             self.taker_details["timestamp"].timestamp()
@@ -3185,7 +3191,7 @@ class TakerRetrievalTestCase(APITestCase):
 
         del taker_details["user"]
         del taker_details["maker"]
-        taker_details["taker_amount"] = "{0:f}".format(taker_details["taker_amount"])
+        taker_details["amount"] = "{0:f}".format(taker_details["amount"])
         taker_details["fees"] = "{0:f}".format(taker_details["fees"])
         taker_details["timestamp"] = int(taker_details["timestamp"].timestamp())
         self.assertEqual(

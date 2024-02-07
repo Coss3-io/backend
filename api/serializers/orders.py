@@ -298,7 +298,7 @@ class MakerSerializer(serializers.ModelSerializer):
     bot = BotSerializer(read_only=True, context={"private": True})
     status = serializers.CharField(source="get_status_display", read_only=True)
     is_buyer = serializers.BooleanField(allow_null=True, default=None)  # type: ignore
-
+    timestamp = TimestampField(required=False, read_only=True)
     class Meta:
         model = Maker
         fields = [
@@ -316,6 +316,7 @@ class MakerSerializer(serializers.ModelSerializer):
             "status",
             "filled",
             "signature",
+            "timestamp",
         ]
         extra_kwargs = {
             "user": {"write_only": True},
@@ -446,7 +447,7 @@ class TakerSerializer(serializers.ModelSerializer):
             "maker",
             "maker_id",
             "block",
-            "taker_amount",
+            "amount",
             "base_fees",
             "fees",
             "is_buyer",
@@ -459,8 +460,8 @@ class TakerSerializer(serializers.ModelSerializer):
     def validate_block(self, data: str) -> str:
         return validate_decimal_integer(data, "block")
 
-    def validate_taker_amount(self, data: str) -> str:
-        return validate_decimal_integer(data, "taker_amount")
+    def validate_amount(self, data: str) -> str:
+        return validate_decimal_integer(data, "amount")
 
     def validate_base_fees(self, data: str) -> str:
         return validate_decimal_integer(data, "base_fees")

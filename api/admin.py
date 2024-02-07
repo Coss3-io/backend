@@ -159,7 +159,7 @@ class TakerAdmin(admin.ModelAdmin):
             {
                 "fields": [
                     ("maker", "user", "timestamp"),
-                    "taker_amount",
+                    "amount",
                     "fees",
                     ("base_fees", "is_buyer"),
                     "block",
@@ -181,7 +181,7 @@ class TakerAdmin(admin.ModelAdmin):
 
     @admin.display(description="Amount")
     def amount_formatted(self, obj: Taker):
-        return trim_zero(obj.taker_amount)
+        return trim_zero(obj.amount)
 
     @admin.display(description="Fees")
     def fees_formatted(self, obj: Taker):

@@ -2,6 +2,7 @@ from asyncio import gather
 from decimal import Decimal
 from asgiref.sync import sync_to_async
 from adrf.views import APIView
+from django.db.models import Q
 from django.db.utils import IntegrityError
 from rest_framework import status
 from rest_framework.decorators import permission_classes, authentication_classes
@@ -108,7 +109,7 @@ class MakerView(APIView):
                 raise ValidationError({"quote_token": e.detail})
 
             queryset = Maker.objects.filter(
-                user=request.user,
+                Q(user=request.user) | Q(bot__user=request.user),
                 base_token=base_token,
                 quote_token=quote_token,
                 chain_id=chain_id,

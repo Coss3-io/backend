@@ -278,7 +278,7 @@ class MakerOrderTestCase(APITestCase):
             "base_fees": "0",
             "quote_fees": "0",
             "status": "OPEN",
-            "timestamp": int(time.time())
+            "timestamp": int(time.time()),
         }
 
         async_to_sync(Maker.objects.create)(
@@ -1377,7 +1377,7 @@ class MakerOrderTestCase(APITestCase):
             "base_fees": "0",
             "quote_fees": "0",
             "status": "OPEN",
-            "timestamp": int(time.time())
+            "timestamp": int(time.time()),
         }
         response = self.client.post(reverse("api:order"), data=data)
         User.objects.get(address=Address(data["address"]))
@@ -1676,6 +1676,44 @@ class MakerOrderRetrievingTestCase(APITestCase):
                 "user_makers": user_makers.json(),
                 "user_takers": user_takers.json(),
             },
+        )
+
+    def test_user_bots_orders_are_retrieved_on_user_maker_retrieval(self):
+        """Checks the user can retrieve the maker orders related to a bot he created"""
+
+        data = {
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
+            "expiry": 2114380800,
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
+            "is_buyer": False,
+            "step": "{0:f}".format(Decimal("1e17")),
+            "price": "{0:f}".format(Decimal("1e18")),
+            "maker_fees": "{0:f}".format(Decimal("50")),
+            "upper_bound": "{0:f}".format(Decimal("15e17")),
+            "lower_bound": "{0:f}".format(Decimal("5e17")),
+            "amount": "{0:f}".format(Decimal("2e18")),
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
+        }
+        response = self.client.post(reverse("api:bot"), data=data)
+        self.assertEqual(
+            response.status_code, HTTP_200_OK, "The bot creation should work"
+        )
+
+        self.client.force_authenticate(user=self.user_1)  # type: ignore
+        orders = self.client.get(
+            reverse("api:order"),
+            data={
+                "chain_id": 31337,
+                "base_token": data["base_token"],
+                "quote_token": data["quote_token"],
+            },
+        )
+        self.assertNotEqual(
+            len(orders.json()),
+            0,
+            "The orders of the bot should be returned on the maker request",
         )
 
     def test_retrieving_auth_no_orders_works(self):
@@ -3002,6 +3040,24 @@ class TakerRetrievalTestCase(APITestCase):
             is_buyer=self.taker_details["is_buyer"],
         )
 
+        self.bot_data = {
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
+            "expiry": 2114380800,
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
+            "is_buyer": False,
+            "step": "{0:f}".format(Decimal("1e17")),
+            "price": "{0:f}".format(Decimal("1e18")),
+            "maker_fees": "{0:f}".format(Decimal("50")),
+            "upper_bound": "{0:f}".format(Decimal("15e17")),
+            "lower_bound": "{0:f}".format(Decimal("5e17")),
+            "amount": "{0:f}".format(Decimal("2e18")),
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
+        }
+        self.client.post(reverse("api:bot"), data=self.bot_data)
+        self.bot_maker = Maker.objects.filter(user__isnull=True).first()
+
     def test_anon_users_can_see_takers_orders(self):
         """The anonymous users should be able to see taker orders"""
 
@@ -3280,4 +3336,74 @@ class TakerRetrievalTestCase(APITestCase):
         self.assertDictEqual(
             response.json(),
             {"chain_id": serializers.IntegerField.default_error_messages["invalid"]},
+        )
+
+    def test_retrieve_taker_on_bot_maker_works(self):
+        """Checks retrieving a taker order on a bot maker order works for a specific user"""
+
+        Taker.objects.all().delete()
+        self.bot_taker = async_to_sync(Taker.objects.create)(
+            amount=self.taker_details["amount"],
+            maker=self.bot_maker,
+            user=self.taker_details["user"],
+            timestamp=self.taker_details["timestamp"],
+            block=self.taker_details["block"],
+            base_fees=self.taker_details["base_fees"],
+            fees=self.taker_details["fees"],
+            is_buyer=self.taker_details["is_buyer"],
+        )
+
+        self.client.force_authenticate(user=self.taker_user)  # type: ignore
+        response = self.client.get(
+            reverse("api:taker"),
+            data={
+                "base_token": self.bot_data["base_token"],
+                "quote_token": self.bot_data["quote_token"],
+                "chain_id": self.bot_data["chain_id"],
+            },
+        )
+
+        orders = response.json()
+        self.assertEqual(len(orders), 1, "Only one taker order should be returnned")
+
+        self.assertEqual(
+            orders[0]["amount"],
+            "{0:f}".format(self.taker_details["amount"]),
+            "The returned and created taker order amount should be the same ",
+        )
+
+        self.assertEqual(
+            orders[0]["price"],
+            "{0:f}".format(self.bot_taker.maker.price),
+            "The returned and created taker order price should be the same ",
+        )
+
+        self.assertEqual(
+            orders[0]["block"],
+            self.taker_details["block"],
+            "The returned and created taker order block should be the same ",
+        )
+
+        self.assertEqual(
+            orders[0]["timestamp"],
+            int(self.taker_details["timestamp"].timestamp()),
+            "The returned and created taker order timestamp should be the same ",
+        )
+
+        self.assertEqual(
+            orders[0]["base_fees"],
+            self.taker_details["base_fees"],
+            "The returned and created taker order base_fees should be the same ",
+        )
+
+        self.assertEqual(
+            orders[0]["fees"],
+            "{0:f}".format(self.taker_details["fees"]),
+            "The returned and created taker order fees should be the same ",
+        )
+
+        self.assertEqual( 
+            orders[0]["is_buyer"],
+            self.taker_details["is_buyer"],
+            "The returned and created taker order is_buyer should be the same ",
         )

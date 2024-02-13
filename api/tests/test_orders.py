@@ -1391,6 +1391,20 @@ class MakerOrderTestCase(APITestCase):
         data["base_token"] = Address(data["base_token"])
         data["quote_token"] = Address(data["quote_token"])
 
+        order = response.json()
+        response_timestamp = order["timestamp"]
+        data_timestamp = data["timestamp"]
+
+        del order["timestamp"]
+        del data["timestamp"]
+
+        self.assertAlmostEqual(
+            response_timestamp,
+            data_timestamp,
+            5,
+            "the timestamp of the order and the created order should not differ more than 3 seconds",
+        )
+
         self.assertDictEqual(
             response.json(), data, "The returned data should match the data sent"
         )
@@ -3402,7 +3416,7 @@ class TakerRetrievalTestCase(APITestCase):
             "The returned and created taker order fees should be the same ",
         )
 
-        self.assertEqual( 
+        self.assertEqual(
             orders[0]["is_buyer"],
             self.taker_details["is_buyer"],
             "The returned and created taker order is_buyer should be the same ",

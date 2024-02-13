@@ -86,7 +86,7 @@ class MakerView(APIView):
 
         if request.query_params.get("all", None):
             queryset = (
-                Maker.objects.filter(user=request.user, chain_id=chain_id)
+                Maker.objects.filter(chain_id=chain_id)
                 .select_related("user")
                 .prefetch_related("takers")
             )
@@ -109,12 +109,14 @@ class MakerView(APIView):
                 raise ValidationError({"quote_token": e.detail})
 
             queryset = Maker.objects.filter(
-                Q(user=request.user) | Q(bot__user=request.user),
                 base_token=base_token,
                 quote_token=quote_token,
                 chain_id=chain_id,
-            )
+            ).prefetch_related("takers")
 
+        queryset = queryset.filter(
+            Q(user=request.user) | Q(bot__user=request.user),
+        )
         length = await sync_to_async(len)(queryset)
         if length:
             await sync_to_async(queryset[0].takers.all)()
@@ -205,7 +207,7 @@ class BatchUserOrdersView(APIView):
         user_takers = TakerView.as_view()(request._request)
         makers = OrderView.as_view()(request._request)
         user_makers = MakerView.as_view()(request._request)
-        takers, user_takers, makers, user_makers = await gather(takers, user_takers, makers, user_makers) #type: ignore
+        takers, user_takers, makers, user_makers = await gather(takers, user_takers, makers, user_makers)  # type: ignore
         data = {
             "takers": takers.data,
             "user_takers": user_takers.data,

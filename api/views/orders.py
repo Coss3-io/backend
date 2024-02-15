@@ -2,7 +2,7 @@ from asyncio import gather
 from decimal import Decimal
 from asgiref.sync import sync_to_async
 from adrf.views import APIView
-from django.db.models import Q
+from django.db.models import F, Q, Case, CharField, When
 from django.db.utils import IntegrityError
 from rest_framework import status
 from rest_framework.decorators import permission_classes, authentication_classes
@@ -20,6 +20,7 @@ from api.utils import validate_chain_id
 from api.views.authentications import ApiAuthentication
 from api.messages import WStypes
 from channels.layers import get_channel_layer
+from time import time
 
 channel_layer = get_channel_layer()
 
@@ -56,10 +57,19 @@ class OrderView(APIView):
             )
             .select_related("user", "bot", "bot__user")
             .prefetch_related("takers")
+            .annotate(
+                address=Case(
+                    When(user__isnull=False, then=F("user__address")),
+                    When(bot__isnull=False, then=F("bot__user__address")),
+                    output_field=CharField(),
+                )
+            )
         )
-        length = await sync_to_async(len)(queryset)
-        if length:
-            await sync_to_async(queryset[0].takers.all)()
+        # t = time()
+        # length = await sync_to_async(len)(queryset)
+        # if length:
+        #    await sync_to_async(queryset[0].takers.all)()
+        # print(f"length function took {time() - t} seconds")
         data = await sync_to_async(lambda: MakerSerializer(queryset, many=True).data)()
         return Response(data, status=status.HTTP_200_OK)
 
@@ -85,11 +95,7 @@ class MakerView(APIView):
         chain_id = validate_chain_id(request.query_params.get("chain_id", None))
 
         if request.query_params.get("all", None):
-            queryset = (
-                Maker.objects.filter(chain_id=chain_id)
-                .select_related("user")
-                .prefetch_related("takers")
-            )
+            queryset = Maker.objects.filter(chain_id=chain_id)
         else:
             if (base_token := request.query_params.get("base_token", "0")) == "0" or (
                 quote_token := request.query_params.get("quote_token", "0")
@@ -112,10 +118,21 @@ class MakerView(APIView):
                 base_token=base_token,
                 quote_token=quote_token,
                 chain_id=chain_id,
-            ).prefetch_related("takers")
+            )
 
-        queryset = queryset.filter(
-            Q(user=request.user) | Q(bot__user=request.user),
+        queryset = (
+            queryset.filter(
+                Q(user=request.user) | Q(bot__user=request.user),
+            )
+            .select_related("user", "bot", "bot__user")
+            .prefetch_related("takers")
+            .annotate(
+                address=Case(
+                    When(user__isnull=False, then=F("user__address")),
+                    When(bot__isnull=False, then=F("bot__user__address")),
+                    output_field=CharField(),
+                )
+            )
         )
         length = await sync_to_async(len)(queryset)
         if length:
@@ -132,6 +149,8 @@ class MakerView(APIView):
 
         if maker.instance is not None:
             maker.instance = await maker.instance
+            
+        maker.instance.address = request.data["address"] #type: ignore
         data = await sync_to_async(lambda: maker.data)()
 
         await channel_layer.group_send(  # type: ignore
@@ -208,6 +227,7 @@ class BatchUserOrdersView(APIView):
         makers = OrderView.as_view()(request._request)
         user_makers = MakerView.as_view()(request._request)
         takers, user_takers, makers, user_makers = await gather(takers, user_takers, makers, user_makers)  # type: ignore
+
         data = {
             "takers": takers.data,
             "user_takers": user_takers.data,

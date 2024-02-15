@@ -293,7 +293,7 @@ class MakerSerializer(serializers.ModelSerializer):
     """The maker order class serializer"""
 
     id = serializers.IntegerField(required=False, write_only=True)
-    address = serializers.CharField(write_only=True)
+    address = serializers.CharField()
     expiry = TimestampField(required=True)
     bot = BotSerializer(read_only=True, context={"private": True})
     status = serializers.CharField(source="get_status_display", read_only=True)
@@ -336,11 +336,9 @@ class MakerSerializer(serializers.ModelSerializer):
         return await super().create(validated_data=validated_data)
 
     def to_representation(self, instance):
+        from time import time 
+        t = time()
         data = super().to_representation(instance)
-        if not instance.user:
-            data["address"] = instance.bot.user.address
-        else:
-            data["address"] = instance.user.address
 
         if self.context.get("private", None):
             return data
@@ -355,6 +353,7 @@ class MakerSerializer(serializers.ModelSerializer):
                 quote_fees += taker.fees
         data["quote_fees"] = str(quote_fees)
         data["base_fees"] = str(base_fees)
+        #print(f"to representation function took {time() - t} seconds")
 
         return data
 

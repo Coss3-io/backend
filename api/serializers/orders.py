@@ -299,11 +299,24 @@ class MakerSerializer(serializers.ModelSerializer):
     status = serializers.CharField(source="get_status_display", read_only=True)
     is_buyer = serializers.BooleanField(allow_null=True, default=None)  # type: ignore
     timestamp = TimestampField(required=False, read_only=True)
+    base_fees = serializers.DecimalField(
+        read_only=True,
+        max_digits=78,
+        decimal_places=0,
+    )
+    quote_fees = serializers.DecimalField(
+        read_only=True,
+        max_digits=78,
+        decimal_places=0,
+    )
+
     class Meta:
         model = Maker
         fields = [
             "id",
             "bot",
+            "base_fees",
+            "quote_fees",
             "address",
             "base_token",
             "quote_token",
@@ -336,25 +349,12 @@ class MakerSerializer(serializers.ModelSerializer):
         return await super().create(validated_data=validated_data)
 
     def to_representation(self, instance):
-        from time import time 
-        t = time()
+
         data = super().to_representation(instance)
-
         if self.context.get("private", None):
+            del data["base_fees"]
+            del data["quote_fees"]
             return data
-
-        base_fees = Decimal("0")
-        quote_fees = Decimal("0")
-
-        for taker in instance.takers.all():
-            if taker.base_fees:
-                base_fees += taker.fees
-            else:
-                quote_fees += taker.fees
-        data["quote_fees"] = str(quote_fees)
-        data["base_fees"] = str(base_fees)
-        #print(f"to representation function took {time() - t} seconds")
-
         return data
 
     def validate_id(self, value):

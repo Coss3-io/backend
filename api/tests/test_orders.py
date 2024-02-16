@@ -366,6 +366,16 @@ class MakerOrderTestCase(APITestCase):
         data["address"] = Address(data["address"])
         data["base_token"] = Address(data["base_token"])
         data["quote_token"] = Address(data["quote_token"])
+
+        response = response.json()
+        self.assertAlmostEqual(
+            data["timestamp"],
+            int(response["timestamp"]),
+            delta=5,
+            msg="The returned and created order timestamp should be the same ",
+        )   
+        del data["timestamp"]
+        del response["timestamp"]
         self.assertListEqual([data], response.json())
 
     def test_sending_id_field_is_not_taken_in_account(self):
@@ -1401,8 +1411,8 @@ class MakerOrderTestCase(APITestCase):
         self.assertAlmostEqual(
             response_timestamp,
             data_timestamp,
-            5,
-            "the timestamp of the order and the created order should not differ more than 3 seconds",
+            delta=5,
+            msg="the timestamp of the order and the created order should not differ more than 3 seconds",
         )
 
         self.assertDictEqual(
@@ -3253,6 +3263,15 @@ class TakerRetrievalTestCase(APITestCase):
             self.taker_details["timestamp"].timestamp()
         )
 
+        self.assertAlmostEqual(
+            taker1["timestamp"],
+            self.taker_details["timestamp"],
+            delta=5,
+            msg="The two timestamp should be almost equal",
+        )
+        del taker1["timestamp"]
+        del self.taker_details["timestamp"]
+
         self.assertEqual(
             taker1,
             self.taker_details,
@@ -3264,6 +3283,16 @@ class TakerRetrievalTestCase(APITestCase):
         taker_details["amount"] = "{0:f}".format(taker_details["amount"])
         taker_details["fees"] = "{0:f}".format(taker_details["fees"])
         taker_details["timestamp"] = int(taker_details["timestamp"].timestamp())
+
+        self.assertAlmostEqual(
+            taker2["timestamp"],
+            taker_details["timestamp"],
+            delta=5,
+            msg="The two timestamp should be almost equal",
+        )
+        del taker2["timestamp"]
+        del taker_details["timestamp"]
+
         self.assertEqual(
             taker2,
             taker_details,
@@ -3380,6 +3409,13 @@ class TakerRetrievalTestCase(APITestCase):
         orders = response.json()
         self.assertEqual(len(orders), 1, "Only one taker order should be returnned")
 
+        self.assertAlmostEqual(
+            orders[0]["timestamp"],
+            int(self.taker_details["timestamp"].timestamp()),
+            delta=5,
+            msg="The returned and created taker order timestamp should be the same ",
+        )
+
         self.assertEqual(
             orders[0]["amount"],
             "{0:f}".format(self.taker_details["amount"]),
@@ -3396,12 +3432,6 @@ class TakerRetrievalTestCase(APITestCase):
             orders[0]["block"],
             self.taker_details["block"],
             "The returned and created taker order block should be the same ",
-        )
-
-        self.assertEqual(
-            orders[0]["timestamp"],
-            int(self.taker_details["timestamp"].timestamp()),
-            "The returned and created taker order timestamp should be the same ",
         )
 
         self.assertEqual(

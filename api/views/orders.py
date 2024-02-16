@@ -2,7 +2,7 @@ from asyncio import gather
 from decimal import Decimal
 from asgiref.sync import sync_to_async
 from adrf.views import APIView
-from django.db.models import F, Q, Case, CharField, When
+from django.db.models import F, Q, Case, CharField, DecimalField, Sum, When
 from django.db.utils import IntegrityError
 from rest_framework import status
 from rest_framework.decorators import permission_classes, authentication_classes
@@ -62,7 +62,21 @@ class OrderView(APIView):
                     When(user__isnull=False, then=F("user__address")),
                     When(bot__isnull=False, then=F("bot__user__address")),
                     output_field=CharField(),
-                )
+                ),
+                base_fees=Sum(
+                    Case(
+                        When(takers__base_fees=True, then=F("takers__fees")),
+                        default=0,
+                        output_field=DecimalField(),
+                    )
+                ),
+                quote_fees=Sum(
+                    Case(
+                        When(takers__base_fees=False, then=F("takers__fees")),
+                        default=0,
+                        output_field=DecimalField(),
+                    )
+                ),
             )
         )
         # t = time()
@@ -131,7 +145,21 @@ class MakerView(APIView):
                     When(user__isnull=False, then=F("user__address")),
                     When(bot__isnull=False, then=F("bot__user__address")),
                     output_field=CharField(),
-                )
+                ),
+                base_fees=Sum(
+                    Case(
+                        When(takers__base_fees=True, then=F("takers__fees")),
+                        default=0,
+                        output_field=DecimalField(),
+                    )
+                ),
+                quote_fees=Sum(
+                    Case(
+                        When(takers__base_fees=False, then=F("takers__fees")),
+                        default=0,
+                        output_field=DecimalField(),
+                    )
+                ),
             )
         )
         length = await sync_to_async(len)(queryset)
@@ -149,8 +177,11 @@ class MakerView(APIView):
 
         if maker.instance is not None:
             maker.instance = await maker.instance
-            
-        maker.instance.address = request.data["address"] #type: ignore
+
+        maker.instance.address = request.data["address"]  # type: ignore
+        maker.instance.base_fees = Decimal("0") # type: ignore
+        maker.instance.quote_fees = Decimal("0") # type: ignore
+
         data = await sync_to_async(lambda: maker.data)()
 
         await channel_layer.group_send(  # type: ignore
@@ -220,12 +251,11 @@ class BatchUserOrdersView(APIView):
             request.auth = None
         user_id = request.user.id
         request.user.id = None
-
-        takers = TakerView.as_view()(request._request)
+        takers =  TakerView.as_view()(request._request)
         request.user.id = user_id
-        user_takers = TakerView.as_view()(request._request)
-        makers = OrderView.as_view()(request._request)
-        user_makers = MakerView.as_view()(request._request)
+        user_takers =  TakerView.as_view()(request._request) 
+        makers =  OrderView.as_view()(request._request)
+        user_makers =  MakerView.as_view()(request._request)
         takers, user_takers, makers, user_makers = await gather(takers, user_takers, makers, user_makers)  # type: ignore
 
         data = {

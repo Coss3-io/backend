@@ -3,7 +3,7 @@ from typing import Any
 from django.db.models.expressions import CombinedExpression
 from asgiref.sync import sync_to_async
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import F, Case, CharField, When
+from django.db.models import F, Case, CharField, DecimalField, Sum, When
 from django.db.utils import IntegrityError
 from rest_framework import status
 from rest_framework.response import Response
@@ -88,29 +88,50 @@ class WatchTowerView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        takers: Any = []
+        takers: Any = {}
         user = (await User.objects.aget_or_create(address=checksum_address))[0]
         makers = (
             Maker.objects.filter(order_hash__in=makers_hash_list)
             .select_related("bot", "user", "bot__user")
+            .prefetch_related("takers")
             .annotate(
                 address=Case(
                     When(user__isnull=False, then=F("user__address")),
                     When(bot__isnull=False, then=F("bot__user__address")),
                     output_field=CharField(),
-                )
+                ),
+                base_fees=Sum(
+                    Case(
+                        When(takers__base_fees=True, then=F("takers__fees")),
+                        default=0,
+                        output_field=DecimalField(),
+                    )
+                ),
+                quote_fees=Sum(
+                    Case(
+                        When(takers__base_fees=False, then=F("takers__fees")),
+                        default=0,
+                        output_field=DecimalField(),
+                    )
+                ),
             )
         )
         bot_update = []
-        maker_ws = []
+        maker_ws = {}
 
         async for maker in makers:
+            channel = f"{str(maker.chain_id).lower()}{str(maker.base_token).lower()}{str(maker.quote_token.lower())}"
             amount = Decimal(trades[maker.order_hash]["amount"])
             try:
                 temp_maker_ws = await sync_to_async(
                     lambda: MakerSerializer(maker, context={"private": True}).data
                 )()
-                takers.append(
+                if channel not in takers:
+                    takers[channel] = []
+                if channel not in maker_ws:
+                    maker_ws[channel] = []
+
+                takers[channel].append(
                     {
                         "maker_id": maker.id,
                         "block": block,
@@ -196,7 +217,7 @@ class WatchTowerView(APIView):
                                     / Decimal("1e18")
                                 )
                     temp_maker_ws["bot"]["fees_earned"] = "{0:f}".format(
-                        (fees).quantize(Decimal("1."))
+                        (Decimal(maker.bot.fees_earned) + Decimal(fees)).quantize(Decimal("1."))
                     )
                     maker.bot.fees_earned = F("fees_earned") + fees.quantize(
                         Decimal("1.")
@@ -216,9 +237,8 @@ class WatchTowerView(APIView):
                             Decimal(temp_maker_ws["filled"])
                             + Decimal(trades[maker.order_hash]["amount"])
                         )
-                maker_ws.append(temp_maker_ws)
+                maker_ws[channel].append(temp_maker_ws)
             except KeyError as e:
-                await user
                 return Response(
                     {"error": [errors.Order.TRADE_DATA_ERROR]},
                     status=status.HTTP_400_BAD_REQUEST,
@@ -230,7 +250,7 @@ class WatchTowerView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        takers_serializer = TakerSerializer(data=takers, many=True)
+        takers_serializer = TakerSerializer(data=[taker for taker_array in takers.values() for taker in taker_array], many=True)  # type: ignore
         await sync_to_async(takers_serializer.is_valid)(raise_exception=True)
         takers_serializer.save(user=user)
         if takers_serializer.instance:
@@ -247,19 +267,19 @@ class WatchTowerView(APIView):
         if bot_update:
             await Bot.objects.abulk_update(bot_update, ["fees_earned"])  # type: ignore
 
-        for data in takers:
-            del data["maker_id"]
-
-        await channel_layer.group_send(  # type: ignore
-            f"{str(makers[0].chain_id).lower()}{str(makers[0].base_token).lower()}{str(makers[0].quote_token.lower())}",
-            {
-                "type": "send.json",
-                "data": {
-                    WStypes.MAKERS_UPDATE: maker_ws,
-                    WStypes.NEW_TAKERS: takers,
+        for channel_name in maker_ws:
+            for data in takers[channel_name]:
+                del data["maker_id"]
+            await channel_layer.group_send(  # type: ignore
+                channel_name,
+                {
+                    "type": "send.json",
+                    "data": {
+                        WStypes.MAKERS_UPDATE: maker_ws[channel_name],
+                        WStypes.NEW_TAKERS: takers[channel_name],
+                    },
                 },
-            },
-        )
+            )
 
         return Response({}, status=status.HTTP_200_OK)
 

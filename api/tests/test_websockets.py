@@ -378,12 +378,18 @@ class WebsocketFramesTestCase(APITestCase):
         block = 19
         prev_fees = Decimal("100e18")
         chain_id = 31337
-
         communicator = WebsocketCommunicator(
             ws_asgi_app, f"/ws/trade/{chain_id}/{maker.base_token}/{maker.quote_token}"
         )
         connected, _ = await communicator.connect()
         self.assertTrue(connected, "The websocket should be connected on test startup")
+        communicator_2 = WebsocketCommunicator(
+            ws_asgi_app,
+            f"/ws/trade/{self.data['chain_id']}/{self.data['base_token']}/{self.data['quote_token']}",
+        )
+        connected, _ = await communicator_2.connect()
+        self.assertTrue(connected, "The websocket should be connected on test startup")
+
         maker.bot.fees_earned = prev_fees
         await maker.bot.asave()
 
@@ -402,8 +408,9 @@ class WebsocketFramesTestCase(APITestCase):
             },
         }
 
+        maker = await Maker.objects.select_related("bot").aget(price=Decimal("5e17"))
         with patch("api.views.watch_tower.WatchTowerView.permission_classes", []):
-            await self.async_client.post(  # type: ignore
+            response = await self.async_client.post(  # type: ignore
                 reverse("api:wt"),
                 content_type="application/json",
                 data={
@@ -413,6 +420,10 @@ class WebsocketFramesTestCase(APITestCase):
                     "chain_id": chain_id,
                 },
             )
+            self.assertEqual(
+                response.status_code, HTTP_200_OK, "The request should work"
+            )
+        await maker.arefresh_from_db(fields=["filled"])
 
         fees = (
             (
@@ -425,15 +436,31 @@ class WebsocketFramesTestCase(APITestCase):
             / Decimal("1e18")
         ).quantize(Decimal("1."))
 
-        message = await communicator.receive_from()
+        bot_message = await communicator.receive_from()
+        message = await communicator_2.receive_from()
+
         self.data["filled"] = "{0:f}".format(Decimal("73e16"))
-        maker = await Maker.objects.select_related("bot").aget(price=Decimal("5e17"))
+        
 
         self.data["bot"] = None
         self.data["status"] = "OPEN"
         data = {
+            WStypes.MAKERS_UPDATE: [self.data],
+            WStypes.NEW_TAKERS: [
+                {
+                    "block": block,
+                    "amount": trades[self.data["order_hash"]]["amount"],
+                    "fees": trades[self.data["order_hash"]]["fees"],
+                    "is_buyer": trades[self.data["order_hash"]]["is_buyer"],
+                    "base_fees": trades[self.data["order_hash"]]["base_fees"],
+                    "address": taker_address,
+                    "chain_id": chain_id,
+                    "maker_hash": self.data["order_hash"],
+                },
+            ],
+        }
+        bot_data = {
             WStypes.MAKERS_UPDATE: [
-                self.data,
                 {
                     "address": self.user.address,
                     "amount": "{0:f}".format(Decimal("2e18")),
@@ -456,7 +483,9 @@ class WebsocketFramesTestCase(APITestCase):
                         "upper_bound": "{0:f}".format(maker.bot.upper_bound),
                         "lower_bound": "{0:f}".format(maker.bot.lower_bound),
                         "chain_id": chain_id,
-                        "fees_earned": "{0:f}".format(fees),
+                        "fees_earned": "{0:f}".format(
+                            Decimal(fees) + Decimal(maker.bot.fees_earned)
+                        ),
                         "timestamp": int(maker.bot.timestamp.timestamp()),
                     },
                 },
@@ -472,81 +501,19 @@ class WebsocketFramesTestCase(APITestCase):
                     "chain_id": chain_id,
                     "maker_hash": maker.order_hash,
                 },
-                {
-                    "block": block,
-                    "amount": trades[self.data["order_hash"]]["amount"],
-                    "fees": trades[self.data["order_hash"]]["fees"],
-                    "is_buyer": trades[self.data["order_hash"]]["is_buyer"],
-                    "base_fees": trades[self.data["order_hash"]]["base_fees"],
-                    "address": taker_address,
-                    "chain_id": chain_id,
-                    "maker_hash": self.data["order_hash"],
-                },
             ],
         }
 
         message = loads(message)
-        if (
-            data[WStypes.MAKERS_UPDATE][0]["order_hash"]
-            == message[WStypes.MAKERS_UPDATE][0]["order_hash"]
-        ):
-            ws_1, maker_1 = (
-                data[WStypes.MAKERS_UPDATE][0],
-                message[WStypes.MAKERS_UPDATE][0],
-            )
-            ws_2, maker_2 = (
-                data[WStypes.MAKERS_UPDATE][1],
-                message[WStypes.MAKERS_UPDATE][1],
-            )
-        else:
-            ws_1, maker_1 = (
-                data[WStypes.MAKERS_UPDATE][0],
-                message[WStypes.MAKERS_UPDATE][1],
-            )
-            ws_2, maker_2 = (
-                data[WStypes.MAKERS_UPDATE][1],
-                message[WStypes.MAKERS_UPDATE][0],
-            )
-
-        if (
-            data[WStypes.NEW_TAKERS][0]["maker_hash"]
-            == message[WStypes.NEW_TAKERS][0]["maker_hash"]
-        ):
-            taker_ws_1, taker_1 = (
-                data[WStypes.NEW_TAKERS][0],
-                message[WStypes.NEW_TAKERS][0],
-            )
-            taker_ws_2, taker_2 = (
-                data[WStypes.NEW_TAKERS][1],
-                message[WStypes.NEW_TAKERS][1],
-            )
-        else:
-            taker_ws_1, taker_1 = (
-                data[WStypes.NEW_TAKERS][0],
-                message[WStypes.NEW_TAKERS][1],
-            )
-            taker_ws_2, taker_2 = (
-                data[WStypes.NEW_TAKERS][1],
-                message[WStypes.NEW_TAKERS][0],
-            )
+        bot_message = loads(bot_message)
         self.assertDictEqual(
-            ws_1,
-            maker_1,
-            "The websocket message should contain the first maker update data",
+            data,
+            message,
+            "The websocket of the regular order should contain all the infos needed",
         )
+        self.maxDiff = None
         self.assertDictEqual(
-            ws_2,
-            maker_2,
-            "The websocket message should contain the second maker update data",
-        )
-
-        self.assertDictEqual(
-            taker_ws_1,
-            taker_1,
-            "The websocket message should contain the first taker update data",
-        )
-        self.assertDictEqual(
-            taker_ws_2,
-            taker_2,
-            "The websocket message should contain the second taker update data",
+            bot_data,
+            bot_message,
+            "The websocket of the bot order should contain all the infos needed",
         )

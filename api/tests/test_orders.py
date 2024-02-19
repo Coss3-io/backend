@@ -370,13 +370,13 @@ class MakerOrderTestCase(APITestCase):
         response = response.json()
         self.assertAlmostEqual(
             data["timestamp"],
-            int(response["timestamp"]),
+            int(response[0]["timestamp"]),
             delta=5,
             msg="The returned and created order timestamp should be the same ",
         )   
         del data["timestamp"]
-        del response["timestamp"]
-        self.assertListEqual([data], response.json())
+        del response[0]["timestamp"]
+        self.assertListEqual([data], response)
 
     def test_sending_id_field_is_not_taken_in_account(self):
         """Checks that a user sending an id along order's field is

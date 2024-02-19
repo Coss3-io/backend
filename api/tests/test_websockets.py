@@ -7,6 +7,7 @@ from unittest.mock import patch
 from json import loads, dumps
 from time import time
 from django.urls import reverse
+from regex import P
 from web3 import Web3
 from rest_framework.test import APITestCase
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
@@ -39,6 +40,8 @@ class WebsocketFramesTestCase(APITestCase):
             "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
             "timestamp": int(time()),
+            'base_fees': "0",
+            'quote_fees': "0",
         }
 
         async_to_sync(Maker.objects.create)(
@@ -475,6 +478,8 @@ class WebsocketFramesTestCase(APITestCase):
                     "filled": "{0:f}".format(maker.filled),
                     "timestamp": int(maker.bot.timestamp.timestamp()),
                     "status": maker.get_status_display(),
+                    "base_fees": "0",
+                    "quote_fees": "0",
                     "bot": {
                         "address": self.user.address,
                         "step": "{0:f}".format(maker.bot.step),

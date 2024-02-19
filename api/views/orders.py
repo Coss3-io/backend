@@ -2,7 +2,17 @@ from asyncio import gather
 from decimal import Decimal
 from asgiref.sync import sync_to_async
 from adrf.views import APIView
-from django.db.models import F, Q, Case, CharField, DecimalField, Sum, When
+from django.db.models import (
+    F,
+    Q,
+    Case,
+    CharField,
+    DecimalField,
+    Sum,
+    When,
+    Value,
+    ExpressionWrapper,
+)
 from django.db.utils import IntegrityError
 from rest_framework import status
 from rest_framework.decorators import permission_classes, authentication_classes
@@ -20,7 +30,6 @@ from api.utils import validate_chain_id
 from api.views.authentications import ApiAuthentication
 from api.messages import WStypes
 from channels.layers import get_channel_layer
-from time import time
 
 channel_layer = get_channel_layer()
 
@@ -63,28 +72,13 @@ class OrderView(APIView):
                     When(bot__isnull=False, then=F("bot__user__address")),
                     output_field=CharField(),
                 ),
-                base_fees=Sum(
-                    Case(
-                        When(takers__base_fees=True, then=F("takers__fees")),
-                        default=0,
-                        output_field=DecimalField(),
-                    )
-                ),
-                quote_fees=Sum(
-                    Case(
-                        When(takers__base_fees=False, then=F("takers__fees")),
-                        default=0,
-                        output_field=DecimalField(),
-                    )
-                ),
+                base_fees=Value("0"),
+                quote_fees=Value("0"),
             )
         )
-        # t = time()
-        # length = await sync_to_async(len)(queryset)
-        # if length:
-        #    await sync_to_async(queryset[0].takers.all)()
-        # print(f"length function took {time() - t} seconds")
-        data = await sync_to_async(lambda: MakerSerializer(queryset, many=True).data)()
+        data = await sync_to_async(
+            lambda: MakerSerializer(queryset, many=True).data
+        )()
         return Response(data, status=status.HTTP_200_OK)
 
 
@@ -162,9 +156,6 @@ class MakerView(APIView):
                 ),
             )
         )
-        length = await sync_to_async(len)(queryset)
-        if length:
-            await sync_to_async(queryset[0].takers.all)()
         data = await sync_to_async(lambda: MakerSerializer(queryset, many=True).data)()
         return Response(data, status=status.HTTP_200_OK)
 
@@ -179,8 +170,8 @@ class MakerView(APIView):
             maker.instance = await maker.instance
 
         maker.instance.address = request.data["address"]  # type: ignore
-        maker.instance.base_fees = Decimal("0") # type: ignore
-        maker.instance.quote_fees = Decimal("0") # type: ignore
+        maker.instance.base_fees = Decimal("0")  # type: ignore
+        maker.instance.quote_fees = Decimal("0")  # type: ignore
 
         data = await sync_to_async(lambda: maker.data)()
 
@@ -251,11 +242,12 @@ class BatchUserOrdersView(APIView):
             request.auth = None
         user_id = request.user.id
         request.user.id = None
-        takers =  TakerView.as_view()(request._request)
+
+        takers = TakerView.as_view()(request._request)
         request.user.id = user_id
-        user_takers =  TakerView.as_view()(request._request) 
-        makers =  OrderView.as_view()(request._request)
-        user_makers =  MakerView.as_view()(request._request)
+        user_takers = TakerView.as_view()(request._request)
+        makers = OrderView.as_view()(request._request)
+        user_makers = MakerView.as_view()(request._request)
         takers, user_takers, makers, user_makers = await gather(takers, user_takers, makers, user_makers)  # type: ignore
 
         data = {
@@ -293,14 +285,44 @@ class BotView(APIView):
             Bot.objects.filter(user=request.user, chain_id=chain_id)
             .select_related("user")
             .prefetch_related("orders")
+            .annotate(
+                quote_token_amount=Sum(
+                    Case(
+                        When(
+                            orders__is_buyer=True,
+                            then=ExpressionWrapper(
+                                (F("orders__amount") - F("orders__filled"))
+                                * F("orders__price")
+                                / Decimal("1e18"),
+                                output_field=DecimalField(),
+                            ),
+                        ),
+                        default=0,
+                        output_field=DecimalField(),
+                    )
+                ),
+                base_token_amount=Sum(
+                    Case(
+                        When(
+                            orders__is_buyer=False,
+                            then=F("orders__amount") - F("orders__filled"),
+                        ),
+                    ),
+                    default=0,
+                    output_field=DecimalField(),
+                ),
+            )
         )
-        data = await sync_to_async(lambda: BotSerializer(bots, many=True).data)()
+
+        data = await sync_to_async(
+            lambda: BotSerializer(bots, many=True, context={"bot": True}).data
+        )()
         return Response(data, status=status.HTTP_200_OK)
 
     async def post(self, request):
         """View used to create a new bot"""
 
-        bot = BotSerializer(data=request.data)
+        bot = BotSerializer(data=request.data, context={"bot": True})
         await sync_to_async(bot.is_valid)(raise_exception=True)
         bot.save()
 
@@ -315,8 +337,40 @@ class BotView(APIView):
 
         data = await sync_to_async(lambda: bot.data)()
 
+        data.update(
+            {
+                "quote_token_amount": str(
+                    sum(
+                        [
+                            (
+                                Decimal(int(request.data["amount"]) * price)
+                                / Decimal("1e18")
+                            ).quantize(Decimal("1."))
+                            for price in range(
+                                int(request.data["price"]),
+                                (int(request.data["lower_bound"])) - 1,
+                                -int(request.data["step"]),
+                            )
+                        ]
+                    )
+                ),
+                "base_token_amount": str(
+                    sum(
+                        [
+                            int(request.data["amount"])
+                            for _ in range(
+                                int(request.data["price"]) + int(request.data["step"]),
+                                (int(request.data["upper_bound"])) + 1,
+                                int(request.data["step"]),
+                            )
+                        ]
+                    )
+                ),
+            }
+        )
+
         await channel_layer.group_send(  # type: ignore
-            f"{str(data['chain_id']).lower()}{str(data['base_token']).lower()}{data['quote_token'].lower()}",
+            f"{str(data['chain_id']).lower()}{request.data['base_token'].lower()}{request.data['quote_token'].lower()}",
             {"type": "send.json", "data": {WStypes.NEW_BOT: data}},
         )
 

@@ -55,12 +55,24 @@ class BotSerializer(serializers.ModelSerializer):
     )
     is_buyer = serializers.BooleanField(allow_null=True, default=None, write_only=True)  # type: ignore
     timestamp = TimestampField(required=False, read_only=True)
+    base_token_amount = serializers.DecimalField(
+        read_only=True,
+        max_digits=78,
+        decimal_places=0,
+    )
+    quote_token_amount = serializers.DecimalField(
+        read_only=True,
+        max_digits=78,
+        decimal_places=0,
+    )
 
     class Meta:
         model = Bot
         fields = [
             "address",
             "expiry",
+            "base_token_amount",
+            "quote_token_amount",
             "signature",
             "is_buyer",
             "step",
@@ -240,35 +252,13 @@ class BotSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         data = super().to_representation(instance)
         data["address"] = instance.user.address
-        if self.context.get("private", None):
+        if not self.context.get("bot", None):
             return data
-
-        base_token_amount = Decimal("0")
-        quote_token_amount = Decimal("0")
-        buyer_orders = instance.orders.filter(is_buyer=True)
-        seller_orders = instance.orders.filter(is_buyer=False)
-
-        buyer_aggregation = buyer_orders.annotate(
-            total_buyer_amount=ExpressionWrapper(
-                (F("amount") - F("filled")) * F("price") / Decimal("1e18"),
-                output_field=DecimalField(),
-            )
-        ).aggregate(total_buyer_amount_sum=Sum("total_buyer_amount"))
-
-        quote_token_amount = buyer_aggregation.get(
-            "total_buyer_amount_sum", Decimal("0.0")
-        )
-
-        base_token_amount = seller_orders.aggregate(
-            total_seller_amount=Sum(F("amount") - F("filled"))
-        ).get("total_seller_amount", Decimal("0.0"))
 
         data.update(
             {
                 "base_token": instance.orders.all()[0].base_token,
                 "quote_token": instance.orders.all()[0].quote_token,
-                "base_token_amount": "{0:f}".format(base_token_amount),
-                "quote_token_amount": "{0:f}".format(quote_token_amount),
                 "expiry": int(instance.orders.all()[0].expiry.timestamp()),
                 "amount": "{0:f}".format(instance.orders.all()[0].amount),
             }
@@ -295,7 +285,7 @@ class MakerSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False, write_only=True)
     address = serializers.CharField()
     expiry = TimestampField(required=True)
-    bot = BotSerializer(read_only=True, context={"private": True})
+    bot = BotSerializer(read_only=True)
     status = serializers.CharField(source="get_status_display", read_only=True)
     is_buyer = serializers.BooleanField(allow_null=True, default=None)  # type: ignore
     timestamp = TimestampField(required=False, read_only=True)
@@ -351,7 +341,7 @@ class MakerSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
 
         data = super().to_representation(instance)
-        if self.context.get("private", None):
+        if self.context.get("public", None):
             del data["base_fees"]
             del data["quote_fees"]
             return data

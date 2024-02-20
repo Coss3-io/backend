@@ -11,9 +11,5 @@ class WebsocketConsumer(AsyncJsonWebsocketConsumer):
         await self.channel_layer.group_add(f"{chain_id}{base}{quote}", self.channel_name)  # type: ignore
         return await super().websocket_connect(message)
 
-    async def websocket_disconnect(self, message):
-        await self.channel_layer.group_discard(group, self.channel_name)  # type: ignore
-        return await super().websocket_disconnect(message)
-
     async def send_json(self, content, close=False):
         return await super().send_json(content["data"], close)

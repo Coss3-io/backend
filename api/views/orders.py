@@ -76,9 +76,7 @@ class OrderView(APIView):
                 quote_fees=Value("0"),
             )
         )
-        data = await sync_to_async(
-            lambda: MakerSerializer(queryset, many=True).data
-        )()
+        data = await sync_to_async(lambda: MakerSerializer(queryset, many=True).data)()
         return Response(data, status=status.HTTP_200_OK)
 
 
@@ -339,6 +337,7 @@ class BotView(APIView):
 
         data.update(
             {
+                "signature": request.data["signature"],
                 "quote_token_amount": str(
                     sum(
                         [

@@ -149,7 +149,6 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             prices, [], "All the prices of the range should be into the orders"
         )
 
-        del data["signature"]
         del data["is_buyer"]
         data["address"] = Address(data.get("address", ""))
         data["base_token"] = Address(data.get("base_token", ""))

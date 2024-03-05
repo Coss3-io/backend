@@ -40,8 +40,11 @@ class WebsocketFramesTestCase(APITestCase):
             "order_hash": "0x91f4f7ac26bc9ddeafe32ec4b83dd8e0eeea87285ee818d1427c7145bf3e7c56",
             "is_buyer": False,
             "timestamp": int(time()),
-            'base_fees': "0",
-            'quote_fees': "0",
+            "base_fees": "0",
+            "quote_fees": "0",
+            #"filled": 
+            #"bot": 
+            #"status": 
         }
 
         async_to_sync(Maker.objects.create)(
@@ -443,10 +446,18 @@ class WebsocketFramesTestCase(APITestCase):
         message = await communicator_2.receive_from()
 
         self.data["filled"] = "{0:f}".format(Decimal("73e16"))
-        
-
         self.data["bot"] = None
         self.data["status"] = "OPEN"
+        self.data["base_fees"] = (
+            "0"
+            if not trades[self.data["order_hash"]]["base_fees"]
+            else "{0:f}".format(Decimal(trades[self.data["order_hash"]]["fees"]))
+        )
+        self.data["quote_fees"] = (
+            "0"
+            if trades[self.data["order_hash"]]["base_fees"]
+            else "{0:f}".format(Decimal(trades[self.data["order_hash"]]["fees"]))
+        )
         data = {
             WStypes.MAKERS_UPDATE: [self.data],
             WStypes.NEW_TAKERS: [
@@ -478,8 +489,16 @@ class WebsocketFramesTestCase(APITestCase):
                     "filled": "{0:f}".format(maker.filled),
                     "timestamp": int(maker.bot.timestamp.timestamp()),
                     "status": maker.get_status_display(),
-                    "base_fees": "0",
-                    "quote_fees": "0",
+                    "base_fees": (
+                        "0"
+                        if not trades[maker.order_hash]["base_fees"]
+                        else "{0:f}".format(Decimal(trades[maker.order_hash]["fees"]))
+                    ),
+                    "quote_fees": (
+                        "0"
+                        if trades[maker.order_hash]["base_fees"]
+                        else "{0:f}".format(Decimal(trades[maker.order_hash]["fees"]))
+                    ),
                     "bot": {
                         "address": self.user.address,
                         "step": "{0:f}".format(maker.bot.step),

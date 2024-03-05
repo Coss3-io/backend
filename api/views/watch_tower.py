@@ -3,7 +3,7 @@ from typing import Any
 from django.db.models.expressions import CombinedExpression
 from asgiref.sync import sync_to_async
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import F, Case, CharField, DecimalField, Sum, When
+from django.db.models import F, Case, CharField, DecimalField, Sum, Value, When
 from django.db.utils import IntegrityError
 from rest_framework import status
 from rest_framework.response import Response
@@ -100,20 +100,8 @@ class WatchTowerView(APIView):
                     When(bot__isnull=False, then=F("bot__user__address")),
                     output_field=CharField(),
                 ),
-                base_fees=Sum(
-                    Case(
-                        When(takers__base_fees=True, then=F("takers__fees")),
-                        default=0,
-                        output_field=DecimalField(),
-                    )
-                ),
-                quote_fees=Sum(
-                    Case(
-                        When(takers__base_fees=False, then=F("takers__fees")),
-                        default=0,
-                        output_field=DecimalField(),
-                    )
-                ),
+                base_fees=Value("0"),
+                quote_fees=Value("0"),
             )
         )
         bot_update = []
@@ -217,7 +205,9 @@ class WatchTowerView(APIView):
                                     / Decimal("1e18")
                                 )
                     temp_maker_ws["bot"]["fees_earned"] = "{0:f}".format(
-                        (Decimal(maker.bot.fees_earned) + Decimal(fees)).quantize(Decimal("1."))
+                        (Decimal(maker.bot.fees_earned) + Decimal(fees)).quantize(
+                            Decimal("1.")
+                        )
                     )
                     maker.bot.fees_earned = F("fees_earned") + fees.quantize(
                         Decimal("1.")
@@ -237,6 +227,18 @@ class WatchTowerView(APIView):
                             Decimal(temp_maker_ws["filled"])
                             + Decimal(trades[maker.order_hash]["amount"])
                         )
+
+                # The base fees and the quote fees field represents the fees increment
+                # Computing the exact fees amount gathered so far would be uselessly costly
+                if trades[maker.order_hash]["base_fees"]:
+                    temp_maker_ws["base_fees"] = "{0:f}".format(
+                        Decimal(trades[maker.order_hash]["fees"])
+                    )
+                else:
+                    temp_maker_ws["quote_fees"] = "{0:f}".format(
+                        Decimal(trades[maker.order_hash]["fees"])
+                    )
+
                 maker_ws[channel].append(temp_maker_ws)
             except KeyError as e:
                 return Response(

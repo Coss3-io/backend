@@ -1,4 +1,5 @@
 from decimal import Decimal
+from time import time
 from typing import Any
 from django.db.models.expressions import CombinedExpression
 from asgiref.sync import sync_to_async
@@ -124,6 +125,7 @@ class WatchTowerView(APIView):
                         "maker_id": maker.id,
                         "block": block,
                         "amount": trades[maker.order_hash]["amount"],
+                        "price": "{0:f}".format(maker.price),
                         "fees": trades[maker.order_hash]["fees"],
                         "is_buyer": trades[maker.order_hash]["is_buyer"],
                         "base_fees": trades[maker.order_hash]["base_fees"],
@@ -272,6 +274,7 @@ class WatchTowerView(APIView):
         for channel_name in maker_ws:
             for data in takers[channel_name]:
                 del data["maker_id"]
+                data["timestamp"] = int(time())
             await channel_layer.group_send(  # type: ignore
                 channel_name,
                 {

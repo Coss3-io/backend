@@ -373,7 +373,7 @@ class MakerOrderTestCase(APITestCase):
             int(response[0]["timestamp"]),
             delta=5,
             msg="The returned and created order timestamp should be the same ",
-        )   
+        )
         del data["timestamp"]
         del response[0]["timestamp"]
         self.assertListEqual([data], response)
@@ -1786,8 +1786,14 @@ class MakerOrderRetrievingTestCase(APITestCase):
             response.status_code, HTTP_200_OK, "The retrieval of the orders shoul work"
         )
 
+        response = response.json()
+        for order in self.pair_1_orders:
+            del order["timestamp"]
+        for order in response:
+            del order["timestamp"]
+
         self.assertListEqual(
-            sorted([hash(frozenset(item.items())) for item in response.json()]),
+            sorted([hash(frozenset(item.items())) for item in response]),
             sorted(
                 [hash(frozenset(item.items())) for item in reversed(self.pair_1_orders)]
             ),
@@ -3121,6 +3127,7 @@ class TakerRetrievalTestCase(APITestCase):
             HTTP_200_OK,
             "The response should work for logged in users",
         )
+        response = response.json()
 
         del self.taker_details["user"]
         del self.taker_details["maker"]
@@ -3130,8 +3137,18 @@ class TakerRetrievalTestCase(APITestCase):
             self.taker_details["timestamp"].timestamp()
         )
 
+        self.assertAlmostEqual(
+            self.taker_details["timestamp"],
+            int(response[0]["timestamp"]),
+            delta=5,
+            msg="The returned and created order timestamp should be the same ",
+        )
+
+        del self.taker_details["timestamp"]
+        del response[0]["timestamp"]
+
         self.assertEqual(
-            response.json()[0],
+            response[0],
             self.taker_details,
             "The taker returned should match the one sent",
         )

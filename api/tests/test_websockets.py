@@ -42,9 +42,6 @@ class WebsocketFramesTestCase(APITestCase):
             "timestamp": int(time()),
             "base_fees": "0",
             "quote_fees": "0",
-            #"filled": 
-            #"bot": 
-            #"status": 
         }
 
         async_to_sync(Maker.objects.create)(
@@ -464,12 +461,14 @@ class WebsocketFramesTestCase(APITestCase):
                 {
                     "block": block,
                     "amount": trades[self.data["order_hash"]]["amount"],
+                    "price": self.data["price"],
                     "fees": trades[self.data["order_hash"]]["fees"],
                     "is_buyer": trades[self.data["order_hash"]]["is_buyer"],
                     "base_fees": trades[self.data["order_hash"]]["base_fees"],
                     "address": taker_address,
                     "chain_id": chain_id,
                     "maker_hash": self.data["order_hash"],
+                    "timestamp": int(time()),
                 },
             ],
         }
@@ -518,24 +517,47 @@ class WebsocketFramesTestCase(APITestCase):
                 {
                     "block": block,
                     "amount": trades[maker.order_hash]["amount"],
+                    "price": "{0:f}".format(maker.price),
                     "fees": trades[maker.order_hash]["fees"],
                     "is_buyer": trades[maker.order_hash]["is_buyer"],
                     "base_fees": trades[maker.order_hash]["base_fees"],
                     "address": taker_address,
                     "chain_id": chain_id,
                     "maker_hash": maker.order_hash,
+                    "timestamp": int(time()),
                 },
             ],
         }
 
         message = loads(message)
         bot_message = loads(bot_message)
+
+        self.assertAlmostEqual(
+            int(data[WStypes.NEW_TAKERS][0]["timestamp"]),
+            int(message[WStypes.NEW_TAKERS][0]["timestamp"]),
+            delta=5,
+            msg="The returned and created taker timestamp should be the same ",
+        )
+
+        del data[WStypes.NEW_TAKERS][0]["timestamp"]
+        del message[WStypes.NEW_TAKERS][0]["timestamp"]
+
+        self.assertAlmostEqual(
+            int(bot_data[WStypes.NEW_TAKERS][0]["timestamp"]),
+            int(bot_message[WStypes.NEW_TAKERS][0]["timestamp"]),
+            delta=5,
+            msg="The returned and created bot taker timestamp should be the same ",
+        )
+
+        del bot_data[WStypes.NEW_TAKERS][0]["timestamp"]
+        del bot_message[WStypes.NEW_TAKERS][0]["timestamp"]
+    
         self.assertDictEqual(
             data,
             message,
             "The websocket of the regular order should contain all the infos needed",
         )
-        self.maxDiff = None
+    
         self.assertDictEqual(
             bot_data,
             bot_message,

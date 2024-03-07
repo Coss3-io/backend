@@ -157,9 +157,14 @@ class StackingFeesView(APIView):
 
         if stacking_fees.instance:
             stacking_fees.instance = await stacking_fees.instance
-            stacking_fees.instance.amount = stacking_fees.validated_data["amount"]
+            amount = "{0:f}".format(
+                stacking_fees.validated_data["amount"] + stacking_fees.instance.amount
+            )
+            stacking_fees.instance.amount = (
+                F("amount") + stacking_fees.validated_data["amount"]
+            )
             await stacking_fees.instance.asave(update_fields=["amount"])
-            stacking_fees.validated_data["amount"] = stacking_fees.data["amount"]
+            stacking_fees.validated_data["amount"] = amount
 
             await channel_layer.group_send(  # type: ignore
                 f"{request.data['chain_id']}",

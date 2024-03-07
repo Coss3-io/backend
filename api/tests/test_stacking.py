@@ -758,7 +758,7 @@ class StackingFeesTestCase(APITestCase):
             "chain_id": "31337",
         }
 
-        StackingFees.objects.create(
+        fees = StackingFees.objects.create(
             amount=Decimal("23e18"),
             slot=23,
             token=Address(data["token"]),
@@ -787,7 +787,7 @@ class StackingFeesTestCase(APITestCase):
         )
         self.assertEqual(
             stack_fees_entry.amount,
-            Decimal(data["amount"]),
+            Decimal(data["amount"]) + fees.amount,
             "The amount of the stacking fees entry update should match the amount sent",
         )
 

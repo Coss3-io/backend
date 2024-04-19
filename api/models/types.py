@@ -64,6 +64,7 @@ class UserTypedDict(TypedDict):
 
 
 class BotTypedDict(TypedDict):
+    bot_hash: str
     step: Decimal
     price: Decimal
     maker_fees: Decimal

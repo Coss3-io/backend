@@ -158,7 +158,7 @@ class Taker(models.Model):
 class Bot(models.Model):
     """The model used to store replace orders data, and group them to a"""
 
-    uuid = models.UUIDField(default=uuid4, editable=False)
+    bot_hash = models.CharField(null=False, blank=False)
     user = models.ForeignKey("User", on_delete=models.CASCADE, null=False, blank=False)
     timestamp = models.DateTimeField(auto_now_add=True)
     chain_id = models.IntegerField(null=False, blank=False)

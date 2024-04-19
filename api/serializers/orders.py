@@ -32,7 +32,7 @@ class TimestampField(serializers.Field):
 class BotSerializer(serializers.ModelSerializer):
     """The model used to serialize bots"""
 
-    uuid = serializers.CharField(read_only=True)
+    bot_hash = serializers.CharField(required=True, allow_blank=False, alow_null=False)
     address = serializers.CharField(required=True, allow_blank=False, write_only=True)
     base_token = serializers.CharField(
         required=True, allow_blank=False, write_only=True
@@ -71,7 +71,7 @@ class BotSerializer(serializers.ModelSerializer):
         model = Bot
         fields = [
             "address",
-            "uuid",
+            "bot_hash",
             "expiry",
             "base_token_amount",
             "quote_token_amount",
@@ -238,6 +238,7 @@ class BotSerializer(serializers.ModelSerializer):
                 "replace_order": True,
             }
         )
+        data["bot_hash"] = str(Web3.to_hex(Web3.keccak(encoded_order)))
 
         if (
             validate_eth_signed_message(

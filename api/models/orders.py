@@ -1,4 +1,5 @@
 from decimal import Decimal
+from uuid import uuid4
 from django.db import models
 from django.core.validators import MinLengthValidator
 
@@ -115,8 +116,7 @@ class Taker(models.Model):
 
     constraints = [
         models.CheckConstraint(
-            check=models.Q(amount__gte=Decimal("0"))
-            & models.Q(fees__gt=Decimal("0")),
+            check=models.Q(amount__gte=Decimal("0")) & models.Q(fees__gt=Decimal("0")),
             name="positive_numbers_needed",
         ),
     ]
@@ -158,6 +158,7 @@ class Taker(models.Model):
 class Bot(models.Model):
     """The model used to store replace orders data, and group them to a"""
 
+    uuid = models.UUIDField(default=uuid4, editable=False)
     user = models.ForeignKey("User", on_delete=models.CASCADE, null=False, blank=False)
     timestamp = models.DateTimeField(auto_now_add=True)
     chain_id = models.IntegerField(null=False, blank=False)

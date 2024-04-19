@@ -32,6 +32,7 @@ class TimestampField(serializers.Field):
 class BotSerializer(serializers.ModelSerializer):
     """The model used to serialize bots"""
 
+    uuid = serializers.CharField(read_only=True)
     address = serializers.CharField(required=True, allow_blank=False, write_only=True)
     base_token = serializers.CharField(
         required=True, allow_blank=False, write_only=True
@@ -70,6 +71,7 @@ class BotSerializer(serializers.ModelSerializer):
         model = Bot
         fields = [
             "address",
+            "uuid",
             "expiry",
             "base_token_amount",
             "quote_token_amount",

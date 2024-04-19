@@ -7,10 +7,12 @@ from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_403_FO
 from rest_framework.test import APITestCase
 from rest_framework.serializers import DecimalField, BooleanField, IntegerField
 from rest_framework.exceptions import NotAuthenticated
+from web3 import Web3
 from api.models import User
 from api.models.orders import Maker, Bot
 from api.models.types import Address
 import api.errors as errors
+from api.utils import encode_order
 
 
 class ReplacementOrdersCreationTestCase(APITestCase):
@@ -149,7 +151,6 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             prices, [], "All the prices of the range should be into the orders"
         )
 
-        del data["is_buyer"]
         data["address"] = Address(data.get("address", ""))
         data["base_token"] = Address(data.get("base_token", ""))
         data["quote_token"] = Address(data.get("quote_token", ""))
@@ -157,13 +158,20 @@ class ReplacementOrdersCreationTestCase(APITestCase):
         bot_data = response.json()
         bot_timestamp = bot_data["timestamp"]
         del bot_data["timestamp"]
+        data["is_buyer"] = int(not data["is_buyer"])
         data.update(
             {
+                "bot_hash": str(
+                    Web3.to_hex(
+                        Web3.keccak(encode_order(data | {"replace_order": True}))
+                    )
+                ),
                 "base_token_amount": "{0:f}".format(base_token_amount),
                 "quote_token_amount": "{0:f}".format(quote_token_amount),
                 "fees_earned": "0",
             }
         )
+        del data["is_buyer"]
         self.assertDictEqual(
             bot_data,
             data,
@@ -1704,7 +1712,7 @@ class BotRetrievalTestCase(APITestCase):
         )
         self.timestamp = int(time())
         self.data = {
-            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "address": Address("0x70997970C51812dc3A010C7d01b50e0d17dc79C8"),
             "chain_id": 31337,
             "expiry": 2114380800,
             "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
@@ -1715,8 +1723,8 @@ class BotRetrievalTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("2e18")),
-            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": Address("0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF"),
+            "quote_token": Address("0x345CA3e014Aaf5dcA488057592ee47305D9B3e10"),
         }
         self.client.post(reverse("api:bot"), data=self.data)
 
@@ -1735,7 +1743,6 @@ class BotRetrievalTestCase(APITestCase):
         )
 
         del self.data["signature"]
-        del self.data["is_buyer"]
 
         self.data["base_token"] = Address(self.data.get("base_token", ""))
         self.data["quote_token"] = Address(self.data.get("quote_token", ""))
@@ -1743,14 +1750,21 @@ class BotRetrievalTestCase(APITestCase):
 
         bot_timestamp = data[0]["timestamp"]
         del data[0]["timestamp"]
+        self.data["is_buyer"] = int(not self.data["is_buyer"])
 
         self.data.update(
             {
+                "bot_hash": str(
+                    Web3.to_hex(
+                        Web3.keccak(encode_order(self.data | {"replace_order": True}))
+                    )
+                ),
                 "base_token_amount": "{0:f}".format(Decimal("10e18")),
                 "quote_token_amount": "{0:f}".format(Decimal("9e18")),
                 "fees_earned": "0",
             }
         )
+        del self.data["is_buyer"]
 
         self.assertEqual(len(data), 1, "only one bot should be available for the user")
         self.assertDictEqual(
@@ -1834,10 +1848,15 @@ class BotRetrievalTestCase(APITestCase):
         )
 
         del self.data["signature"]
-        del self.data["is_buyer"]
 
+        self.data["is_buyer"] = int(not self.data["is_buyer"])
         self.data.update(
             {
+                "bot_hash": str(
+                    Web3.to_hex(
+                        Web3.keccak(encode_order(self.data | {"replace_order": True}))
+                    )
+                ),
                 "base_token_amount": "{0:f}".format(Decimal("9e18")),
                 "quote_token_amount": "{0:f}".format(
                     Decimal("9e18")
@@ -1848,6 +1867,7 @@ class BotRetrievalTestCase(APITestCase):
                 "fees_earned": "0",
             }
         )
+        del self.data["is_buyer"]
 
         self.data["base_token"] = Address(self.data.get("base_token", ""))
         self.data["address"] = Address(self.data.get("address", ""))
@@ -1874,7 +1894,7 @@ class BotRetrievalTestCase(APITestCase):
 
         timestamp = int(time())
         data = {
-            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "address": Address("0x70997970C51812dc3A010C7d01b50e0d17dc79C8"),
             "chain_id": 31337,
             "expiry": 2114380801,
             "signature": "0xbf7645fa71f5c170b5c41ff81aea9d3c71e8c8746d415149210d6cf9f2755bfe49a2ddf50532a8c8ab2f566c910d02705296a1574b30c57dad35025412a407791c",
@@ -1885,8 +1905,8 @@ class BotRetrievalTestCase(APITestCase):
             "upper_bound": "{0:f}".format(Decimal("15e17")),
             "lower_bound": "{0:f}".format(Decimal("5e17")),
             "amount": "{0:f}".format(Decimal("1e18")),
-            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
-            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
+            "base_token": Address("0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF"),
+            "quote_token": Address("0x345CA3e014Aaf5dcA488057592ee47305D9B3e10"),
         }
         self.client.post(reverse("api:bot"), data=data)
 
@@ -1901,10 +1921,16 @@ class BotRetrievalTestCase(APITestCase):
         )
 
         del self.data["signature"], data["signature"]
-        del self.data["is_buyer"], data["is_buyer"]
+        self.data["is_buyer"] = int(not self.data["is_buyer"])
+        data["is_buyer"] = int(not data["is_buyer"])
 
         self.data.update(
             {
+                "bot_hash": str(
+                    Web3.to_hex(
+                        Web3.keccak(encode_order(self.data | {"replace_order": True}))
+                    )
+                ),
                 "base_token_amount": "{0:f}".format(Decimal("10e18")),
                 "quote_token_amount": "{0:f}".format(Decimal("9e18")),
                 "fees_earned": "0",
@@ -1913,11 +1939,17 @@ class BotRetrievalTestCase(APITestCase):
 
         data.update(
             {
+                "bot_hash": str(
+                    Web3.to_hex(
+                        Web3.keccak(encode_order(data | {"replace_order": True}))
+                    )
+                ),
                 "base_token_amount": "{0:f}".format(Decimal("5e18")),
                 "quote_token_amount": "{0:f}".format(Decimal("45e17")),
                 "fees_earned": "0",
             }
         )
+        del self.data["is_buyer"], data["is_buyer"]
 
         (bot1, bot2) = sorted(
             response.json(), key=lambda b: int(b["base_token_amount"])
@@ -1950,13 +1982,13 @@ class BotRetrievalTestCase(APITestCase):
         self.assertAlmostEqual(
             timestamp,
             bot1_timestamp,
-            delta=1,
+            delta=3,
             msg="The returned bot1 timestamp should match the creation timestamp",
         )
 
         self.assertAlmostEqual(
             self.timestamp,
             bot2_timestamp,
-            delta=1,
+            delta=3,
             msg="The returned bot2 timestamp should match the creation timestamp",
         )

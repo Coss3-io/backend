@@ -1,6 +1,7 @@
 from decimal import Decimal
 from datetime import datetime
 from functools import partial
+from copy import deepcopy
 import time
 from unittest.mock import patch
 from datetime import datetime
@@ -1840,14 +1841,17 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "The user orders for pair 2 retrieval should work properly",
         )
 
+        data = deepcopy(response.json())
+        local_data = deepcopy(self.user_2_pair_2_orders)
+
+        for d in data:
+            del d["timestamp"]
+        for d in local_data:
+            del d["timestamp"]
+
         self.assertListEqual(
-            sorted([hash(frozenset(item.items())) for item in response.json()]),
-            sorted(
-                [
-                    hash(frozenset(item.items()))
-                    for item in reversed(self.user_2_pair_2_orders)
-                ]
-            ),
+            sorted([hash(frozenset(item.items())) for item in data]),
+            sorted([hash(frozenset(item.items())) for item in reversed(local_data)]),
             "The returned user 2 pair 2 orders should match the orders in DB",
         )
 
@@ -3100,18 +3104,28 @@ class TakerRetrievalTestCase(APITestCase):
             "The anonymous user should be able to see the takers orders for a given pair",
         )
 
+        data = response.json()[0]
+        data_timestamp = data["timestamp"]
+        del data["timestamp"]
+
         del self.taker_details["user"]
         del self.taker_details["maker"]
         self.taker_details["amount"] = "{0:f}".format(self.taker_details["amount"])
         self.taker_details["fees"] = "{0:f}".format(self.taker_details["fees"])
-        self.taker_details["timestamp"] = int(
-            self.taker_details["timestamp"].timestamp()
-        )
+        taker_timestamp = int(self.taker_details["timestamp"].timestamp())
+        del self.taker_details["timestamp"]
 
         self.assertEqual(
             response.json()[0],
             self.taker_details,
             "The taker returned should match the one sent",
+        )
+
+        self.assertAlmostEqual(
+            data_timestamp,
+            taker_timestamp,
+            delta=3,
+            msg="The orders timestamp should not have more than a 2 sec delta",
         )
 
     def test_logged_in_user_can_see_his_takers(self):

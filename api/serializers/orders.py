@@ -32,7 +32,7 @@ class TimestampField(serializers.Field):
 class BotSerializer(serializers.ModelSerializer):
     """The model used to serialize bots"""
 
-    bot_hash = serializers.CharField(required=True, allow_blank=False, alow_null=False)
+    bot_hash = serializers.CharField(required=False, read_only=True)
     address = serializers.CharField(required=True, allow_blank=False, write_only=True)
     base_token = serializers.CharField(
         required=True, allow_blank=False, write_only=True

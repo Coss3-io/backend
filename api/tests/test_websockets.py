@@ -510,6 +510,7 @@ class WebsocketFramesTestCase(APITestCase):
                             Decimal(fees) + Decimal(maker.bot.fees_earned)
                         ),
                         "timestamp": int(maker.bot.timestamp.timestamp()),
+                        "bot_hash": maker.bot.bot_hash,
                     },
                 },
             ],

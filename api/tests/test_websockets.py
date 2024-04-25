@@ -363,15 +363,48 @@ class WebsocketFramesTestCase(APITestCase):
                 content_type="application/json",
                 format="json",
                 data={
-                    "order_hash": self.data.get("order_hash"),
+                    "baseToken": self.data.get("base_token"),
+                    "quoteToken": self.data.get("quote_token"),
+                    "orderHash": self.data.get("order_hash"),
                 },
             )
         message = await communicator.receive_from()
         self.assertDictEqual(
             loads(message),
-            {WStypes.DEL_MAKER: self.data.get("order_hash")},
+            {WStypes.DEL_MAKERS: [self.data.get("order_hash")]},
             "The websocket message should contain the deleted order hash",
         )
+
+    async def test_websocket_frame_bot_deletion(self):
+        """Checks the websocket frame is sent well on bot deletion"""
+
+        chain_id = 31337
+        bot = await Bot.objects.aget(user__address=self.bot["address"])
+        communicator = WebsocketCommunicator(
+            ws_asgi_app,
+            f"ws/trade/{chain_id}/{self.data['base_token']}/{self.data['quote_token']}",
+        )
+        connected, _ = await communicator.connect()
+        self.assertTrue(connected, "The websocket should be connected on test startup")
+
+        with patch("api.views.watch_tower.WatchTowerView.permission_classes", []):
+            await self.async_client.delete(  # type: ignore
+                reverse("api:wt"),
+                content_type="application/json",
+                format="json",
+                data={
+                    "baseToken": self.data.get("base_token"),
+                    "quoteToken": self.data.get("quote_token"),
+                    "orderHash": bot.bot_hash,
+                },
+            )
+        message = await communicator.receive_from()
+        self.assertDictEqual(
+            loads(message),
+            {WStypes.DEL_BOTS: [bot.bot_hash]},
+            "The websocket message should contain the deleted order hash",
+        )
+
 
     async def test_websocket_frame_maker_update(self):
         """Checks the websocket frame is sent well on order update"""

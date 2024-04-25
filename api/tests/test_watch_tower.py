@@ -744,6 +744,9 @@ class MakerCancellationTestCase(APITestCase):
         self.user = async_to_sync(User.objects.create_user)(
             address=Address("0xf17f52151EbEF6C7334FAD080c5704D77216b732")
         )
+        self.bot_hash = (
+            "0x34eba4e68fb71ce7c24129b2c31165df0a59f0802c90fa44040e7858e94c12e5"
+        )
 
         self.data = {
             "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
@@ -758,7 +761,7 @@ class MakerCancellationTestCase(APITestCase):
             "is_buyer": False,
         }
 
-        async_to_sync(Maker.objects.create)(
+        self.maker = async_to_sync(Maker.objects.create)(
             user=self.user,
             chain_id=self.data["chain_id"],
             amount=self.data["amount"],
@@ -771,6 +774,17 @@ class MakerCancellationTestCase(APITestCase):
             is_buyer=self.data["is_buyer"],
         )
 
+        self.bot = Bot.objects.create(
+            bot_hash=self.bot_hash,
+            user=self.user,
+            chain_id=self.data.get("chain_id"),
+            step=Decimal("1"),
+            price=Decimal("10"),
+            maker_fees=Decimal("1"),
+            upper_bound=Decimal("15"),
+            lower_bound=Decimal("1"),
+        )
+
     def test_maker_cancellation_works(self):
         """Checks maker order cancellation works"""
 
@@ -779,7 +793,9 @@ class MakerCancellationTestCase(APITestCase):
                 reverse("api:wt"),
                 format="json",
                 data={
-                    "order_hash": self.data.get("order_hash"),
+                    "baseToken": self.data.get("base_token"),
+                    "quoteToken": self.data.get("quote_token"),
+                    "orderHash": self.data.get("order_hash"),
                 },
             )
 
@@ -791,6 +807,119 @@ class MakerCancellationTestCase(APITestCase):
             response.json(), {}, "the response should be empty on order cancellation"
         )
 
+    def test_bot_cancellation_works(self):
+        """Checks bot order cancellation works"""
+
+        with patch("api.views.watch_tower.WatchTowerView.permission_classes", []):
+            response = self.client.delete(
+                reverse("api:wt"),
+                format="json",
+                data={
+                    "baseToken": self.data.get("base_token"),
+                    "quoteToken": self.data.get("quote_token"),
+                    "orderHash": self.bot_hash,
+                },
+            )
+
+        self.assertEqual(
+            response.status_code, HTTP_200_OK, "The cancellation request should work"
+        )
+
+        self.assertDictEqual(
+            response.json(), {}, "the response should be empty on order cancellation"
+        )
+
+        with self.assertRaises(Bot.DoesNotExist):
+            Bot.objects.get(bot_hash=self.bot_hash)
+
+    def test_bot_twice_cancellation_fails(self):
+        """Checks bot order cancellation twice fails"""
+
+        with patch("api.views.watch_tower.WatchTowerView.permission_classes", []):
+            response = self.client.delete(
+                reverse("api:wt"),
+                format="json",
+                data={
+                    "baseToken": self.data.get("base_token"),
+                    "quoteToken": self.data.get("quote_token"),
+                    "orderHash": self.bot_hash,
+                },
+            )
+
+            response2 = self.client.delete(
+                reverse("api:wt"),
+                format="json",
+                data={
+                    "baseToken": self.data.get("base_token"),
+                    "quoteToken": self.data.get("quote_token"),
+                    "orderHash": self.bot_hash,
+                },
+            )
+
+        self.assertEqual(
+            response2.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The bot cancellation twice should fail",
+        )
+
+        self.assertDictEqual(
+            response2.json(),
+            {"order_hash": [errors.Order.NO_MAKER_FOUND]},
+            "The response should contain the no bot found error",
+        )
+
+    def test_maker_cancellation_no_base_token_fails(self):
+        """Checks the attempt to delete a maker order without base token send fails"""
+
+        with patch("api.views.watch_tower.WatchTowerView.permission_classes", []):
+            response = self.client.delete(
+                reverse("api:wt"),
+                format="json",
+                data={
+                    # "baseToken": self.data.get("base_token", None),
+                    "quoteToken": self.data.get("quote_token", None),
+                    "orderHash": self.data.get("order_hash", None),
+                },
+            )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The cancellation request should fail",
+        )
+
+        self.assertDictEqual(
+            response.json(),
+            {"base_token": [errors.General.MISSING_FIELD]},
+            "with no base token send the request should fail",
+        )
+
+    def test_maker_cancellation_no_quote_token_fails(self):
+        """Checks the attempt to delete a maker order without quote token send fails"""
+
+        with patch("api.views.watch_tower.WatchTowerView.permission_classes", []):
+            response = self.client.delete(
+                reverse("api:wt"),
+                format="json",
+                data={
+                    "baseToken": self.data.get("base_token", None),
+                    # "quoteToken": self.data.get("quote_token", None),
+                    "orderHash": self.data.get("order_hash", None),
+                },
+            )
+
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The cancellation request should fail",
+        )
+
+        self.assertDictEqual(
+            response.json(),
+            {"quote_token": [errors.General.MISSING_FIELD]},
+            "with no base token send the request should fail",
+        )
+
     def test_maker_cancellation_no_maker_fails(self):
         """Checks maker order cancellation without maker found fails"""
 
@@ -799,6 +928,8 @@ class MakerCancellationTestCase(APITestCase):
                 reverse("api:wt"),
                 format="json",
                 data={
+                    "baseToken": self.data.get("base_token", None),
+                    "quoteToken": self.data.get("quote_token", None),
                     "order_hash": "0x43eba4e68fb71ce7c24129b2c31165df0a59f0802c90fa44040e7858e94c12e5",
                 },
             )
@@ -823,14 +954,18 @@ class MakerCancellationTestCase(APITestCase):
                 reverse("api:wt"),
                 format="json",
                 data={
-                    "order_hash": self.data.get("order_hash"),
+                    "baseToken": self.data.get("base_token"),
+                    "quoteToken": self.data.get("quote_token"),
+                    "orderHash": self.data.get("order_hash"),
                 },
             )
             response = self.client.delete(
                 reverse("api:wt"),
                 format="json",
                 data={
-                    "order_hash": self.data.get("order_hash"),
+                    "baseToken": self.data.get("base_token"),
+                    "quoteToken": self.data.get("quote_token"),
+                    "orderHash": self.data.get("order_hash"),
                 },
             )
 
@@ -1344,9 +1479,9 @@ class MakerBotFeesTestCase(APITestCase):
             )
         maker.refresh_from_db()
 
-        fees = (
-            maker.bot.maker_fees * Decimal(amount) / Decimal("1e18")
-        ).quantize(Decimal("1."))
+        fees = (maker.bot.maker_fees * Decimal(amount) / Decimal("1e18")).quantize(
+            Decimal("1.")
+        )
 
         self.assertEqual(response.status_code, HTTP_200_OK, "The request should work")
         self.assertEqual(response.json(), {}, "On success the response should be empty")
@@ -1443,9 +1578,9 @@ class MakerBotFeesTestCase(APITestCase):
             )
         maker.refresh_from_db()
 
-        fees = (
-            maker.bot.maker_fees * Decimal(amount) / Decimal("1e18")
-        ).quantize(Decimal("1."))
+        fees = (maker.bot.maker_fees * Decimal(amount) / Decimal("1e18")).quantize(
+            Decimal("1.")
+        )
 
         self.assertEqual(response.status_code, HTTP_200_OK, "The request should work")
         self.assertEqual(response.json(), {}, "On success the response should be empty")
@@ -1536,9 +1671,9 @@ class MakerBotFeesTestCase(APITestCase):
                 },
             )
         maker.refresh_from_db()
-        fees = (
-            maker.bot.maker_fees * Decimal(amount) / Decimal("1e18")
-        ).quantize(Decimal("1."))
+        fees = (maker.bot.maker_fees * Decimal(amount) / Decimal("1e18")).quantize(
+            Decimal("1.")
+        )
 
         self.assertEqual(response.status_code, HTTP_200_OK, "The request should work")
         self.assertEqual(response.json(), {}, "On success the response should be empty")
@@ -1635,9 +1770,9 @@ class MakerBotFeesTestCase(APITestCase):
                 },
             )
         maker.refresh_from_db()
-        fees = (
-            (maker.bot.maker_fees) * Decimal(amount) / Decimal("1e18")
-        ).quantize(Decimal("1."))
+        fees = ((maker.bot.maker_fees) * Decimal(amount) / Decimal("1e18")).quantize(
+            Decimal("1.")
+        )
 
         self.assertEqual(response.status_code, HTTP_200_OK, "The request should work")
         self.assertEqual(response.json(), {}, "On success the response should be empty")

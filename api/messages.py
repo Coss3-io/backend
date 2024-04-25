@@ -1,7 +1,8 @@
 class WStypes:
     NEW_MAKER = "new_maker"
     NEW_BOT = "new_bot"
-    DEL_MAKER = "delete_maker"
+    DEL_MAKERS = "delete_makers"
+    DEL_BOTS = "delete_bots"
     NEW_TAKERS = "new_taker"
     MAKERS_UPDATE = "makers_update"
     NEW_STACKING = "new_stacking"

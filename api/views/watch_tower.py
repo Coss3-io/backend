@@ -4,7 +4,7 @@ from typing import Any
 from django.db.models.expressions import CombinedExpression
 from asgiref.sync import sync_to_async
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import F, Case, CharField, DecimalField, Sum, Value, When
+from django.db.models import F, Q, Case, CharField, DecimalField, Sum, Value, When
 from django.db.utils import IntegrityError
 from rest_framework import status
 from rest_framework.response import Response
@@ -289,28 +289,150 @@ class WatchTowerView(APIView):
         return Response({}, status=status.HTTP_200_OK)
 
     async def delete(self, request):
-        """Function used for maker order cancellation"""
+        """Function used for maker order or bot cancellation"""
+
+        chain_id = ""
+        if not (base_token := request.data.get("baseToken", None)):
+            return Response(
+                {"base_token": [errors.General.MISSING_FIELD]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        else:
+            base_token = Address(base_token)
+
+        if not (quote_token := request.data.get("quoteToken", None)):
+            return Response(
+                {"quote_token": [errors.General.MISSING_FIELD]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        else:
+            quote_token = Address(quote_token)
+
         try:
             maker = await Maker.objects.aget(
-                order_hash=request.data.get("order_hash", "")
+                order_hash=request.data.get("orderHash", "")
             )
-        except ObjectDoesNotExist:
-            return Response(
+            chain_id = maker.chain_id
+        except Maker.DoesNotExist:
+            maker = None
+            error = Response(
                 {"order_hash": [errors.Order.NO_MAKER_FOUND]},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if maker.status == Maker.CANCELLED:
-            return Response(
-                {"error": [errors.Order.MAKER_ALREADY_CANCELLED]},
+        try:
+            bot = await Bot.objects.aget(bot_hash=request.data.get("orderHash", ""))
+            chain_id = bot.chain_id
+        except Bot.DoesNotExist:
+            bot = None
+            error = Response(
+                {"order_hash": [errors.Order.NO_MAKER_FOUND]},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        maker.status = Maker.CANCELLED
-        await maker.asave()
+        if not bot and not maker:
+            return error  # type: ignore
 
-        await channel_layer.group_send(  # type: ignore
-            f"{str(maker.chain_id).lower()}{str(maker.base_token).lower()}{str(maker.quote_token.lower())}",
-            {"type": "send.json", "data": {WStypes.DEL_MAKER: maker.order_hash}},
-        )
+        if maker:
+            if maker.status == Maker.CANCELLED:
+                return Response(
+                    {"error": [errors.Order.MAKER_ALREADY_CANCELLED]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            maker.status = Maker.CANCELLED
+            await maker.asave()
+            await channel_layer.group_send(  # type: ignore
+                f"{str(chain_id).lower()}{str(base_token).lower()}{str(quote_token.lower())}",
+                {"type": "send.json", "data": {WStypes.DEL_MAKERS: [maker.order_hash]}},
+            )
+        elif bot:
+            await bot.adelete()  # type: ignore
+            await channel_layer.group_send(  # type: ignore
+                f"{str(chain_id).lower()}{str(base_token).lower()}{str(quote_token.lower())}",
+                {"type": "send.json", "data": {WStypes.DEL_BOTS: [bot.bot_hash]}},
+            )
+
         return Response({}, status=status.HTTP_200_OK)
+
+
+class WatchTowerVerificationView(APIView):
+    """The view for the watch tower to send order that can possibly be deleted"""
+
+    permission_classes = [WatchTowerPermission]
+
+    async def post(self, request):
+        """function used to check the orders that exceed the user balances and thus have to be deleted"""
+
+        checksum_token = Address(request.data.get("token"))
+        chain_id = request.data.get("chainId")
+        faulty_orders = request.data.get("orders")
+
+        addresses = faulty_orders.keys()
+        delete_makers = []
+        delete_bots = []
+
+        makers = Maker.objects.select_related("user", "bot").filter(
+            Q(base_token=checksum_token) | Q(quote_token=checksum_token),
+            chain_id=chain_id,
+            user__address__in=addresses,
+        )
+
+        async for maker in makers:
+            if maker.base_token == checksum_token:
+                if maker.amount - maker.filled > Decimal(
+                    faulty_orders[maker.user.address]
+                ):
+                    delete_makers.append(maker)
+                    if maker.bot:
+                        delete_bots.append(maker.bot)
+            else:
+                if (maker.amount - maker.filled) * maker.price / Decimal(
+                    "10e18"
+                ) > Decimal(faulty_orders[maker.user.address]):
+                    delete_makers.append(maker)
+                    if maker.bot:
+                        delete_bots.append(
+                            {
+                                "bot": maker.bot,
+                                "base_token": maker.base_token,
+                                "quote_token": maker.quote_token,
+                            }
+                        )
+
+        await Maker.objects.filter(id__in=[i.id for i in delete_makers]).aupdate(
+            status=Maker.CANCELLED
+        )
+        await Bot.objects.filter(id__in=[i.id for i in delete_bots]).adelete()
+
+        makers_ordered = dict()
+        for maker in delete_makers:
+            key = f"{str(maker.chain_id).lower()}{str(maker.base_token).lower()}{str(maker.quote_token.lower())}"
+            if not makers_ordered.get(key, None):
+                makers_ordered[key] = []
+            makers_ordered[key].push(maker)
+
+        for channel in makers_ordered:
+            await channel_layer.group_send(  # type: ignore
+                channel,
+                {
+                    "type": "send.json",
+                    "data": {WStypes.DEL_MAKERS: [makers_ordered[channel]]},
+                },
+            )
+
+        bots_ordered = dict()
+        for entry in delete_bots:
+            key = f"{str(entry['bot'].chain_id).lower()}{str(entry['base_token']).lower()}{str(entry['quote_token']())}"
+            if not bots_ordered.get(key, None):
+                bots_ordered[key] = []
+            bots_ordered[key].push(entry["bot"])
+
+        for channel in bots_ordered:
+            await channel_layer.group_send(  # type: ignore
+                channel,
+                {
+                    "type": "send.json",
+                    "data": {WStypes.DEL_BOTS: [bots_ordered[channel]]},
+                },
+            )

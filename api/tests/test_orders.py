@@ -50,11 +50,26 @@ class MakerOrderTestCase(APITestCase):
         order = Maker.objects.select_related("user").get(order_hash=data["order_hash"])
         data["address"] = Address(data["address"])
         data["bot"] = None
-        self.assertDictEqual(
-            data, response.json(), "The returned order should match the order sent"
-        )
+
         self.assertEqual(
             response.status_code, HTTP_200_OK, "The request should work properly"
+        )
+
+        response = response.json()
+        data_timestamp = data["timestamp"]
+        response_timestamp = response["timestamp"]
+        del data["timestamp"]
+        del response["timestamp"]
+
+        self.assertAlmostEqual(
+            data_timestamp,
+            response_timestamp,
+            delta=3,
+            msg="The order timestamp should be almost equal to the time now",
+        )
+
+        self.assertDictEqual(
+            data, response, "The returned order should match the order sent"
         )
 
         self.assertEqual(

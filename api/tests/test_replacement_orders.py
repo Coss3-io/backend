@@ -151,6 +151,12 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             prices, [], "All the prices of the range should be into the orders"
         )
 
+        self.assertEqual(
+            response.json()["bot_hash"],
+            "0x53fa53d0d1ca0e7263da21ed4379578ed0964b6de73f73b5a155ad013b66194c",
+            "The bot hash should match the one computed on chain",
+        )
+
         data["address"] = Address(data.get("address", ""))
         data["base_token"] = Address(data.get("base_token", ""))
         data["quote_token"] = Address(data.get("quote_token", ""))

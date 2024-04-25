@@ -405,7 +405,6 @@ class WebsocketFramesTestCase(APITestCase):
             "The websocket message should contain the deleted order hash",
         )
 
-
     async def test_websocket_frame_maker_update(self):
         """Checks the websocket frame is sent well on order update"""
 

@@ -440,30 +440,24 @@ class WatchTowerVerificationView(APIView):
             key = f"{str(maker.chain_id).lower()}{str(maker.base_token).lower()}{str(maker.quote_token.lower())}"
             if not makers_ordered.get(key, None):
                 makers_ordered[key] = []
-            makers_ordered[key].append(maker)
-
-        for channel in makers_ordered:
-            await channel_layer.group_send(  # type: ignore
-                channel,
-                {
-                    "type": "send.json",
-                    "data": {WStypes.DEL_MAKERS: [makers_ordered[channel]]},
-                },
-            )
+            makers_ordered[key].append(maker.order_hash)
 
         bots_ordered = dict()
         for entry in delete_bots.values():
             key = f"{str(entry['bot'].chain_id).lower()}{str(entry['base_token']).lower()}{str(entry['quote_token']).lower()}"
             if not bots_ordered.get(key, None):
                 bots_ordered[key] = []
-            bots_ordered[key].append(entry["bot"])
+            bots_ordered[key].append(entry["bot"].bot_hash)
 
-        for channel in bots_ordered:
+        for channel in makers_ordered:
+            data = {WStypes.DEL_MAKERS: makers_ordered[channel]}
+            if channel in bots_ordered:
+                data.update({WStypes.DEL_BOTS: bots_ordered[channel]})
             await channel_layer.group_send(  # type: ignore
                 channel,
                 {
                     "type": "send.json",
-                    "data": {WStypes.DEL_BOTS: [bots_ordered[channel]]},
+                    "data": data,
                 },
             )
 

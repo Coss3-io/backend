@@ -44,7 +44,7 @@ class WebsocketFramesTestCase(APITestCase):
             "quote_fees": "0",
         }
 
-        async_to_sync(Maker.objects.create)(
+        self.maker = async_to_sync(Maker.objects.create)(
             user=self.user,
             amount=self.data["amount"],
             expiry=datetime.fromtimestamp(self.data["expiry"]),
@@ -74,6 +74,8 @@ class WebsocketFramesTestCase(APITestCase):
         }
 
         self.client.post(reverse("api:bot"), data=self.bot)
+
+        self.bot_instance = Bot.objects.all()[0]
 
     async def test_websocket_frame_order_creation(self):
         """Checks a websocket frame is sent on order creation"""
@@ -584,15 +586,111 @@ class WebsocketFramesTestCase(APITestCase):
 
         del bot_data[WStypes.NEW_TAKERS][0]["timestamp"]
         del bot_message[WStypes.NEW_TAKERS][0]["timestamp"]
-    
+
         self.assertDictEqual(
             data,
             message,
             "The websocket of the regular order should contain all the infos needed",
         )
-    
+
         self.assertDictEqual(
             bot_data,
             bot_message,
             "The websocket of the bot order should contain all the infos needed",
+        )
+
+    async def test_websocket_frame_maker_verification_deletion(self):
+        """checks the websocket frames are sent well when a maker order gets deleted during verification"""
+
+        chain_id = 31337
+        base_token = Address(self.data.get("base_token"))
+        quote_token = Address(self.data.get("quote_token"))
+
+        communicator = WebsocketCommunicator(
+            ws_asgi_app, f"/ws/trade/{chain_id}/{base_token}/{quote_token}"
+        )
+        connected, _ = await communicator.connect()
+        self.assertTrue(connected, "The websocket should be connected on test startup")
+        with patch(
+            "api.views.watch_tower.WatchTowerVerificationView.permission_classes", []
+        ):
+            response = await self.async_client.post(  # type: ignore
+                reverse("api:wt-verification"),
+                content_type="application/json",
+                data={
+                    "token": self.data.get("base_token"),
+                    "chainId": self.data.get("chain_id"),
+                    "orders": {
+                        self.maker.user.address: "{0:f}".format(
+                            Decimal(self.data.get("amount", 0)) - Decimal("24")
+                        )
+                    },
+                },
+            )
+
+        self.assertEqual(
+            response.status_code, HTTP_200_OK, "The order creation request should work"
+        )
+
+        message = await communicator.receive_from()
+        self.assertDictEqual(
+            loads(message),
+            {WStypes.DEL_MAKERS: [self.maker.order_hash]},
+            "The websocket should sent the order as deleted",
+        )
+
+        self.assertNotIn(
+            WStypes.DEL_BOTS,
+            loads(message),
+            "No bot frame should be sent on order deletion",
+        )
+
+    async def test_websocket_frame_maker_verification_bot_deletion(self):
+        """checks the websocket frames are sent well when a bot gets deleted during verification"""
+
+        chain_id = 31337
+        base_token = Address(self.bot.get("base_token"))
+        quote_token = Address(self.bot.get("quote_token"))
+        
+        makers = [] 
+        async for maker in Maker.objects.filter(bot=self.bot_instance):
+            makers.append(maker)
+
+        communicator = WebsocketCommunicator(
+            ws_asgi_app, f"/ws/trade/{chain_id}/{base_token}/{quote_token}"
+        )
+        connected, _ = await communicator.connect()
+        self.assertTrue(connected, "The websocket should be connected on test startup")
+        with patch(
+            "api.views.watch_tower.WatchTowerVerificationView.permission_classes", []
+        ):
+            response = await self.async_client.post(  # type: ignore
+                reverse("api:wt-verification"),
+                content_type="application/json",
+                data={
+                    "token": self.bot.get("base_token"),
+                    "chainId": self.bot.get("chain_id"),
+                    "orders": {
+                        self.bot.get("address"): "{0:f}".format(
+                            Decimal(self.bot.get("amount", 0)) - Decimal("24")
+                        )
+                    },
+                },
+            )
+
+        self.assertEqual(
+            response.status_code, HTTP_200_OK, "The order creation request should work"
+        )
+        message = await communicator.receive_from()
+
+        self.assertListEqual(
+            loads(message)[WStypes.DEL_BOTS],
+            [self.bot_instance.bot_hash],
+            "The websocket should sent the bot as deleted",
+        )
+        
+        self.assertListEqual(
+            loads(message)[WStypes.DEL_MAKERS],
+            [maker.order_hash for maker in makers],
+            "The bot maker orders should be sent as deleted",
         )

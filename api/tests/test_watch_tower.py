@@ -1781,3 +1781,317 @@ class MakerBotFeesTestCase(APITestCase):
             fees,
             "The negative fees generated should be updated to the bot ",
         )
+
+
+class OrderVerificationTestCase(APITestCase):
+    """Class used to check the order verification works properly"""
+
+    def setUp(self) -> None:
+        self.user = async_to_sync(User.objects.create_user)(
+            address=Address("0x70997970C51812dc3A010C7d01b50e0d17dc79C8")
+        )
+
+        self.bot_data = {
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
+            "expiry": 2114380800,
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
+            "is_buyer": False,
+            "step": "{0:f}".format(Decimal("1e17")),
+            "price": "{0:f}".format(Decimal("1e18")),
+            "maker_fees": "{0:f}".format(Decimal("50")),
+            "upper_bound": "{0:f}".format(Decimal("15e17")),
+            "lower_bound": "{0:f}".format(Decimal("5e17")),
+            "amount": "{0:f}".format(Decimal("2e18")),
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
+        }
+
+        self.data = {
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "amount": "{0:f}".format(Decimal("173e16")),
+            "expiry": 2114380800,
+            "chain_id": 31337,
+            "price": "{0:f}".format(Decimal("2e20")),
+            "base_token": self.bot_data["base_token"],
+            "quote_token": self.bot_data["quote_token"],
+            "signature": "0xe4609ca8bec52beb499af0ac6e1934798c786b53e6f545f5af28f6117bb675a4500ebbfaa427533d8902e163767d14874ec1d67fcba8c42045ba96f482efc47d1b",
+            "order_hash": "0x44eba4e68fb71ce7c24129b2c31165df0a59f0802c90fa44040e7858e94c12e5",
+            "is_buyer": False,
+        }
+
+        self.maker_seller = async_to_sync(Maker.objects.create)(
+            user=self.user,
+            chain_id=self.data["chain_id"],
+            amount=self.data["amount"],
+            expiry=datetime.fromtimestamp(self.data["expiry"]),
+            price=self.data["price"],
+            base_token=Address(self.data["base_token"]),
+            quote_token=Address(self.data["quote_token"]),
+            signature=self.data["signature"],
+            order_hash=self.data["order_hash"],
+            is_buyer=self.data["is_buyer"],
+        )
+
+        self.maker_buyer = async_to_sync(Maker.objects.create)(
+            user=self.user,
+            chain_id=self.data["chain_id"],
+            amount=self.data["amount"],
+            expiry=datetime.fromtimestamp(self.data["expiry"]),
+            price=self.data["price"],
+            base_token=Address(self.data["base_token"]),
+            quote_token=Address(self.data["quote_token"]),
+            signature=self.data["signature"],
+            order_hash="0x43eba4e68fb71ce7c24129b2c31165df0a59f0802c90fa44040e7858e94c12e5",
+            is_buyer=not self.data["is_buyer"],
+        )
+
+        self.client.post(reverse("api:bot"), data=self.bot_data)
+
+    def test_makers_verification_maker_seller_deletion_works(self):
+        """Checks the maker deletion mecanism works well when the user do not have enough balances"""
+
+        with patch(
+            "api.views.watch_tower.WatchTowerVerificationView.permission_classes", []
+        ):
+            response = self.client.post(
+                reverse("api:wt-verification"),
+                format="json",
+                data={
+                    "token": self.data.get("base_token"),
+                    "chainId": self.data.get("chain_id"),
+                    "orders": {
+                        self.maker_seller.user.address: "{0:f}".format(
+                            Decimal(self.data.get("amount", 0)) - Decimal("24")
+                        )
+                    },
+                },
+            )
+        self.assertEqual(
+            response.status_code,
+            HTTP_200_OK,
+            "The request should work properly when orders have to be deleted",
+        )
+
+        self.maker_seller.refresh_from_db()
+        self.assertEqual(
+            self.maker_seller.status,
+            Maker.CANCELLED,
+            "The maker without enough funds should have been cancelled",
+        )
+
+    def test_makers_verification_maker_buyer_deletion_works(self):
+        """Checks the maker deletion mecanism works well when the user do not have enough balances"""
+
+        with patch(
+            "api.views.watch_tower.WatchTowerVerificationView.permission_classes", []
+        ):
+            response = self.client.post(
+                reverse("api:wt-verification"),
+                format="json",
+                data={
+                    "token": self.data.get("quote_token"),
+                    "chainId": self.data.get("chain_id"),
+                    "orders": {
+                        self.maker_seller.user.address: "{0:f}".format(
+                            Decimal(self.data.get("amount", 0)) - Decimal("24")
+                        )
+                    },
+                },
+            )
+        self.assertEqual(
+            response.status_code,
+            HTTP_200_OK,
+            "The request should work properly when orders have to be deleted",
+        )
+
+        self.maker_buyer.refresh_from_db()
+        self.assertEqual(
+            self.maker_buyer.status,
+            Maker.CANCELLED,
+            "The maker without enough funds should have been cancelled",
+        )
+
+    def test_makers_verification_bot_deletion_from_base_token_works(self):
+        """Checks the bot deletion mecanism works properly when there is not enough base token"""
+
+        with patch(
+            "api.views.watch_tower.WatchTowerVerificationView.permission_classes", []
+        ):
+            response = self.client.post(
+                reverse("api:wt-verification"),
+                format="json",
+                data={
+                    "token": self.bot_data.get("base_token"),
+                    "chainId": self.data.get("chain_id"),
+                    "orders": {
+                        self.bot_data["address"]: "{0:f}".format(
+                            Decimal(self.bot_data.get("amount", 0)) - Decimal("24")
+                        )
+                    },
+                },
+            )
+        self.assertEqual(
+            response.status_code,
+            HTTP_200_OK,
+            "The request should work properly when orders have to be deleted",
+        )
+        with self.assertRaises(Bot.DoesNotExist):
+            Bot.objects.get(user__address=self.bot_data["address"])
+
+    def test_makers_verification_bot_deletion_from_quote_token_works(self):
+        """Checks the bot deletion mecanism works properly when there is not enough base token"""
+
+        with patch(
+            "api.views.watch_tower.WatchTowerVerificationView.permission_classes", []
+        ):
+            response = self.client.post(
+                reverse("api:wt-verification"),
+                format="json",
+                data={
+                    "token": self.bot_data.get("quote_token"),
+                    "chainId": self.data.get("chain_id"),
+                    "orders": {
+                        self.bot_data["address"]: "{0:f}".format(
+                        Decimal("1e16")
+                        )
+                    },
+                },
+            )
+        self.assertEqual(
+            response.status_code,
+            HTTP_200_OK,
+            "The request should work properly when orders have to be deleted",
+        )
+        with self.assertRaises(Bot.DoesNotExist):
+            Bot.objects.get(user__address=self.bot_data["address"])
+
+    def test_makers_verification_bot_deletion_and_maker_deletion(self):
+        """Checks it is possible to delete a bot and a maker order on the same request"""
+
+        with patch(
+            "api.views.watch_tower.WatchTowerVerificationView.permission_classes", []
+        ):
+            response = self.client.post(
+                reverse("api:wt-verification"),
+                format="json",
+                data={
+                    "token": self.bot_data.get("quote_token"),
+                    "chainId": self.data.get("chain_id"),
+                    "orders": {
+                        self.bot_data["address"]: "{0:f}".format(
+                        Decimal("1e16")
+                        )
+                    },
+                },
+            )
+        self.assertEqual(
+            response.status_code,
+            HTTP_200_OK,
+            "The request should work properly when orders have to be deleted",
+        )
+        with self.assertRaises(Bot.DoesNotExist):
+            Bot.objects.get(user__address=self.bot_data["address"])
+
+        self.maker_buyer.refresh_from_db()
+        self.assertEqual(
+            self.maker_buyer.status,
+            Maker.CANCELLED,
+            "The maker without enough funds should have been cancelled",
+        )
+
+    def test_makers_verification_missing_token(self):
+        """Checks the watch tower verification endpoint requires the token parameter to work"""
+
+        with patch(
+            "api.views.watch_tower.WatchTowerVerificationView.permission_classes", []
+        ):
+            response = self.client.post(
+                reverse("api:wt-verification"),
+                format="json",
+                data={
+                    #"token": self.data.get("quote_token"),
+                    "chainId": self.data.get("chain_id"),
+                    "orders": {
+                        self.maker_seller.user.address: "{0:f}".format(
+                            Decimal(self.data.get("amount", 0)) - Decimal("24")
+                        )
+                    },
+                },
+            )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request should fail without all the required parameters",
+        )
+
+        self.maker_buyer.refresh_from_db()
+        self.assertEqual(
+            self.maker_buyer.status,
+            Maker.OPEN,
+            "The maker should still be open if the request fails",
+        )
+
+    def test_makers_verification_missing_orders(self):
+        """Checks the watch tower verification endpoint requires the orders parameter to work"""
+
+        with patch(
+            "api.views.watch_tower.WatchTowerVerificationView.permission_classes", []
+        ):
+            response = self.client.post(
+                reverse("api:wt-verification"),
+                format="json",
+                data={
+                    "token": self.data.get("quote_token"),
+                    "chainId": self.data.get("chain_id"),
+                    # "orders": {
+                    #     self.maker_seller.user.address: "{0:f}".format(
+                    #         Decimal(self.data.get("amount", 0)) - Decimal("24")
+                    #     )
+                    # },
+                },
+            )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request should fail without all the required parameters",
+        )
+
+        self.maker_buyer.refresh_from_db()
+        self.assertEqual(
+            self.maker_buyer.status,
+            Maker.OPEN,
+            "The maker should still be open if the request fails",
+        )
+
+    def test_makers_verification_missing_chain_id(self):
+        """Checks the watch tower verification endpoint requires the chainId parameter to work"""
+
+        with patch(
+            "api.views.watch_tower.WatchTowerVerificationView.permission_classes", []
+        ):
+            response = self.client.post(
+                reverse("api:wt-verification"),
+                format="json",
+                data={
+                    "token": self.data.get("quote_token"),
+                    #"chainId": self.data.get("chain_id"),
+                    "orders": {
+                        self.maker_seller.user.address: "{0:f}".format(
+                            Decimal(self.data.get("amount", 0)) - Decimal("24")
+                        )
+                    },
+                },
+            )
+        self.assertEqual(
+            response.status_code,
+            HTTP_400_BAD_REQUEST,
+            "The request should fail without all the required parameters",
+        )
+
+        self.maker_buyer.refresh_from_db()
+        self.assertEqual(
+            self.maker_buyer.status,
+            Maker.OPEN,
+            "The maker should still be open if the request fails",
+        )

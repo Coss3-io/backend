@@ -364,53 +364,83 @@ class WatchTowerVerificationView(APIView):
     async def post(self, request):
         """function used to check the orders that exceed the user balances and thus have to be deleted"""
 
-        checksum_token = Address(request.data.get("token"))
-        chain_id = request.data.get("chainId")
-        faulty_orders = request.data.get("orders")
+        if not (checksum_token := request.data.get("token")):
+            return Response(
+                {"token": [errors.General.MISSING_FIELD]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        else:
+            checksum_token = Address(checksum_token)
+        if not (chain_id := request.data.get("chainId")):
+            return Response(
+                {"chainId": [errors.General.MISSING_FIELD]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not (faulty_orders := request.data.get("orders")):
+            return Response(
+                {"orders": [errors.General.MISSING_FIELD]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         addresses = faulty_orders.keys()
         delete_makers = []
-        delete_bots = []
+        delete_makers_ws = []
+        delete_bots = {}
 
-        makers = Maker.objects.select_related("user", "bot").filter(
+        makers = Maker.objects.select_related("user", "bot", "bot__user").filter(
             Q(base_token=checksum_token) | Q(quote_token=checksum_token),
+            Q(user__address__in=addresses) | Q(bot__user__address__in=addresses),
             chain_id=chain_id,
-            user__address__in=addresses,
         )
 
         async for maker in makers:
             if maker.base_token == checksum_token:
                 if maker.amount - maker.filled > Decimal(
-                    faulty_orders[maker.user.address]
+                    faulty_orders[
+                        maker.user.address if maker.user else maker.bot.user.address
+                    ]
                 ):
-                    delete_makers.append(maker)
+                    delete_makers_ws.append(maker)
                     if maker.bot:
-                        delete_bots.append(maker.bot)
+                        delete_bots[maker.bot.bot_hash] = {
+                            "bot": maker.bot,
+                            "base_token": maker.base_token,
+                            "quote_token": maker.quote_token,
+                        }
+                    else:
+                        delete_makers.append(maker)
+
             else:
                 if (maker.amount - maker.filled) * maker.price / Decimal(
                     "10e18"
-                ) > Decimal(faulty_orders[maker.user.address]):
-                    delete_makers.append(maker)
-                    if maker.bot:
-                        delete_bots.append(
-                            {
-                                "bot": maker.bot,
-                                "base_token": maker.base_token,
-                                "quote_token": maker.quote_token,
-                            }
-                        )
+                ) > Decimal(
+                    faulty_orders[
+                        maker.user.address if maker.user else maker.bot.user.address
+                    ]
+                ):
 
+                    delete_makers_ws.append(maker)
+                    if maker.bot:
+                        delete_bots[maker.bot.bot_hash] = {
+                            "bot": maker.bot,
+                            "base_token": maker.base_token,
+                            "quote_token": maker.quote_token,
+                        }
+                    else:
+                        delete_makers.append(maker)
         await Maker.objects.filter(id__in=[i.id for i in delete_makers]).aupdate(
             status=Maker.CANCELLED
         )
-        await Bot.objects.filter(id__in=[i.id for i in delete_bots]).adelete()
+        await Bot.objects.filter(
+            id__in=[i["bot"].id for i in delete_bots.values()]
+        ).adelete()
 
         makers_ordered = dict()
-        for maker in delete_makers:
+        for maker in delete_makers_ws:
             key = f"{str(maker.chain_id).lower()}{str(maker.base_token).lower()}{str(maker.quote_token.lower())}"
             if not makers_ordered.get(key, None):
                 makers_ordered[key] = []
-            makers_ordered[key].push(maker)
+            makers_ordered[key].append(maker)
 
         for channel in makers_ordered:
             await channel_layer.group_send(  # type: ignore
@@ -422,11 +452,11 @@ class WatchTowerVerificationView(APIView):
             )
 
         bots_ordered = dict()
-        for entry in delete_bots:
-            key = f"{str(entry['bot'].chain_id).lower()}{str(entry['base_token']).lower()}{str(entry['quote_token']())}"
+        for entry in delete_bots.values():
+            key = f"{str(entry['bot'].chain_id).lower()}{str(entry['base_token']).lower()}{str(entry['quote_token']).lower()}"
             if not bots_ordered.get(key, None):
                 bots_ordered[key] = []
-            bots_ordered[key].push(entry["bot"])
+            bots_ordered[key].append(entry["bot"])
 
         for channel in bots_ordered:
             await channel_layer.group_send(  # type: ignore
@@ -436,3 +466,5 @@ class WatchTowerVerificationView(APIView):
                     "data": {WStypes.DEL_BOTS: [bots_ordered[channel]]},
                 },
             )
+
+        return Response({}, status=status.HTTP_200_OK)

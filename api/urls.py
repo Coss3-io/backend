@@ -1,6 +1,12 @@
 from django.urls import path
-from api.views.orders import BatchUserOrdersView, OrderView, MakerView, BotView, TakerView
-from api.views.watch_tower import WatchTowerView
+from api.views.orders import (
+    BatchUserOrdersView,
+    OrderView,
+    MakerView,
+    BotView,
+    TakerView,
+)
+from api.views.watch_tower import WatchTowerVerificationView, WatchTowerView
 from api.views.user import UserCreateView, UserLogInView
 from api.views.stacking import (
     StackingView,
@@ -25,4 +31,5 @@ urlpatterns = [
     ),
     path("global-stacking", GlobalStackingView.as_view(), name="global-stacking"),
     path("wt", WatchTowerView.as_view(), name="wt"),
+    path("wt-verification", WatchTowerVerificationView.as_view(), name="wt-verification"),
 ]

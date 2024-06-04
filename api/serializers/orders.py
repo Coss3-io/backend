@@ -148,7 +148,7 @@ class BotSerializer(serializers.ModelSerializer):
                 {
                     "address": user.address,
                     "amount": int(order.amount),
-                    "price": int(order.price),
+                    "price": int(validated_data.get("price")),
                     "step": int(validated_data["step"]),
                     "maker_fees": int(validated_data["maker_fees"]),
                     "upper_bound": int(validated_data["upper_bound"]),
@@ -159,6 +159,7 @@ class BotSerializer(serializers.ModelSerializer):
                     "chain_id": int(order.chain_id),
                     "is_buyer": 0 if is_buyer else 1,
                     "replace_order": True,
+                    "maker_price": int(order.price)
                 }
             )
         await Maker.objects.abulk_create(orders)

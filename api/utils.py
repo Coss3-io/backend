@@ -164,7 +164,7 @@ def compute_order_hash(order: dict):
         Web3.to_hex(
             Web3.solidity_keccak(
                 ["bytes", "uint256"],
-                [Web3.keccak(encoded_order), int(order.get("price", ""))],
+                [Web3.keccak(encoded_order), int(order.get("maker_price", ""))],
             )
         )
         if order.get("replace_order")

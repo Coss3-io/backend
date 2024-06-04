@@ -159,7 +159,7 @@ class BotSerializer(serializers.ModelSerializer):
                     "chain_id": int(order.chain_id),
                     "is_buyer": 0 if is_buyer else 1,
                     "replace_order": True,
-                    "maker_price": int(order.price)
+                    "maker_price": int(order.price),
                 }
             )
         await Maker.objects.abulk_create(orders)

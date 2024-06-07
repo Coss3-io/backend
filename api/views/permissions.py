@@ -25,11 +25,11 @@ class WatchTowerPermission(BasePermission):
             request.authenticators = []
             return False
         
-        if request.data.get("_mutable", None):
+        try:
             request.data._mutable = True
             del request.data["signature"]
             request.data._mutable = False
-        else: 
+        except:
             del request.data["signature"]
 
         timestamp = int(time()) * 1000

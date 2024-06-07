@@ -114,34 +114,17 @@ class BotSerializer(serializers.ModelSerializer):
                 quote_token=quote_token,
                 amount=amount,
                 price=str(price),
-                is_buyer=True,
+                is_buyer=price <= int(validated_data["price"]),
                 expiry=expiry,
                 chain_id=int(validated_data["chain_id"]),
                 signature=signature,
             )
             for price in range(
-                int(validated_data["price"]),
-                (int(validated_data["lower_bound"])) - 1,
-                -int(validated_data["step"]),
-            )
-        ] + [
-            Maker(
-                bot=bot,
-                base_token=base_token,
-                quote_token=quote_token,
-                amount=amount,
-                price=str(price),
-                is_buyer=False,
-                expiry=expiry,
-                chain_id=int(validated_data["chain_id"]),
-                signature=signature,
-            )
-            for price in range(
-                int(validated_data["price"]) + int(validated_data["step"]),
+                int(validated_data["lower_bound"]),
                 (int(validated_data["upper_bound"])) + 1,
                 int(validated_data["step"]),
             )
-        ]
+        ] 
 
         for order in orders:
             _, order.order_hash = compute_order_hash(

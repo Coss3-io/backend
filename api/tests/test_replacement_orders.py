@@ -209,8 +209,8 @@ class ReplacementOrdersCreationTestCase(APITestCase):
 
         response = self.client.post(reverse("api:bot"), data=data)
         data = response.json()
-        base_token_amount = "{0:f}".format(Decimal("7566e18"))
-        quote_token_amount = "{0:f}".format(Decimal("123718140e18"))
+        base_token_amount = "{0:f}".format(Decimal("7644e18"))
+        quote_token_amount = "{0:f}".format(Decimal("122941260e18"))
 
         self.assertEqual(
             response.status_code, HTTP_200_OK, "The request should succeed"
@@ -224,6 +224,177 @@ class ReplacementOrdersCreationTestCase(APITestCase):
             quote_token_amount,
             data["quote_token_amount"],
             "The computed quote token amount needed should be identical",
+        )
+
+    def test_create_a_bot_specific_values_2(self):
+        """Test to create a bot with not round values to check the app behaviour"""
+
+        timestamp = int(time())
+        data = {
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 1337,
+            "expiry": 2114380800,
+            "signature": "0xd8778514349cea777e47362782c3b4724576bddc3aaa9997c32b641e3613f7a245723166eca951cd4b706d42931be170a7e416c7e7eae9ad6eaef8820d29cbc71c",
+            "is_buyer": False,
+            "step": "{0:f}".format(Decimal("3e17")),
+            "price": "{0:f}".format(Decimal("1e18")),
+            "maker_fees": "{0:f}".format(Decimal("50")),
+            "upper_bound": "{0:f}".format(Decimal("15e17")),
+            "lower_bound": "{0:f}".format(Decimal("5e17")),
+            "amount": "{0:f}".format(Decimal("2e18")),
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
+        }
+
+        response = self.client.post(reverse("api:bot"), data=data)
+        base_token_amount = Decimal("0")
+        quote_token_amount = Decimal("0")
+
+        User.objects.get(address=Address(data.get("address", "")))
+        orders = self.client.get(
+            reverse("api:orders"),
+            data={
+                "base_token": data.get("base_token"),
+                "quote_token": data.get("quote_token"),
+                "chain_id": data.get("chain_id"),
+            },
+        ).json()
+
+        self.assertEqual(
+            response.status_code, HTTP_200_OK, "The bot creation should work properly"
+        )
+
+        prices = [
+            str(int(price))
+            for price in range(
+                int(data.get("lower_bound", 0)),
+                int(data.get("upper_bound", 0)) + 1,
+                int(data.get("step", 0)),
+            )
+        ]
+
+        for order in orders:
+            self.assertEqual(
+                order["chain_id"],
+                data.get("chain_id", ""),
+                "The chain_id on the returned order should match the bot creator chain_id",
+            )
+
+            self.assertEqual(
+                order["address"],
+                Address(data.get("address", "")),
+                "The address on the returned order should match the bot creator address",
+            )
+
+            self.assertEqual(
+                order.get("expiry"),
+                data.get("expiry"),
+                "The expiry field should be part of the orders",
+            )
+
+            self.assertEqual(
+                order.get("signature"),
+                data.get("signature"),
+                "The signature of the replacement orders should be reported into the orders",
+            )
+
+            if Decimal(order.get("price")) <= Decimal(data.get("price", 0)):
+                self.assertEqual(
+                    order.get("is_buyer"),
+                    True,
+                    "If the price of the order is below the thresold price, the order should be a buyer",
+                )
+                quote_token_amount += (
+                    Decimal(order.get("amount"))
+                    * Decimal(order.get("price"))
+                    / Decimal("1e18")
+                ).quantize(Decimal("1."))
+            else:
+                self.assertEqual(
+                    order.get("is_buyer"),
+                    False,
+                    "If the price is strictly above the threesold price, the order should be a sell",
+                )
+                base_token_amount += Decimal(order.get("amount"))
+
+            self.assertEqual(
+                order["bot"].get("step"),
+                data.get("step"),
+                "The step field should be reported into the orders created",
+            )
+
+            self.assertEqual(
+                order["bot"].get("maker_fees"),
+                data.get("maker_fees"),
+                "The maker_fees field should be reported into the orders created",
+            )
+
+            self.assertIsNotNone(
+                prices.index(order.get("price")),
+                "The price of the order should be in the prices list",
+            )
+            prices.pop(prices.index(order.get("price")))
+
+            self.assertEqual(
+                order["bot"].get("lower_bound"),
+                data.get("lower_bound"),
+                "The orders lower bound should match the bot lower bound",
+            )
+            self.assertEqual(
+                order.get("amount"),
+                data.get("amount"),
+                "The orders amount should match the bot amount",
+            )
+            self.assertEqual(
+                order.get("base_token"),
+                Address(data.get("base_token", "")),
+                "The orders base_token should match the bot base_token",
+            )
+            self.assertEqual(
+                order.get("quote_token"),
+                Address(data.get("quote_token", "")),
+                "The orders quote_token should match the bot quote_token",
+            )
+
+        self.assertListEqual(
+            prices, [], "All the prices of the range should be into the orders"
+        )
+
+        self.assertEqual(
+            response.json()["bot_hash"],
+            "0x9f9e0282f709b1c57775b34cb9460af387accfc90d3d9fbbcd181a73118c6bb1",
+            "The bot hash should match the one computed on chain",
+        )
+
+        data["address"] = Address(data.get("address", ""))
+        data["base_token"] = Address(data.get("base_token", ""))
+        data["quote_token"] = Address(data.get("quote_token", ""))
+
+        bot_data = response.json()
+        bot_timestamp = bot_data["timestamp"]
+        del bot_data["timestamp"]
+        data["is_buyer"] = int(not data["is_buyer"])
+        data.update(
+            {
+                "bot_hash": str(
+                    Web3.to_hex(
+                        Web3.keccak(encode_order(data | {"replace_order": True}))
+                    )
+                ),
+                "base_token_amount": "{0:f}".format(base_token_amount),
+                "quote_token_amount": "{0:f}".format(quote_token_amount),
+                "fees_earned": "0",
+            }
+        )
+        del data["is_buyer"]
+        self.assertDictEqual(
+            bot_data,
+            data,
+            "The returned bot data should hold all the bot informations",
+        )
+
+        self.assertAlmostEqual(
+            timestamp, bot_timestamp, delta=3, msg="The two timestamps should be equal"
         )
 
     def test_sending_a_date_on_bot_creation_is_ignored(self):

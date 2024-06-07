@@ -335,36 +335,25 @@ class BotView(APIView):
 
         data = await sync_to_async(lambda: bot.data)()
 
+        base_token_amount = Decimal("0")
+        quote_token_amount = Decimal("0")
+
+        for price in range(
+            int(request.data["lower_bound"]),
+            (int(request.data["upper_bound"])) + 1,
+            int(request.data["step"]),
+        ):
+            if price <= Decimal(request.data["price"]):
+                quote_token_amount += Decimal(
+                    int(request.data["amount"]) * price
+                ) / Decimal("1e18")
+            else:
+                base_token_amount += Decimal(request.data["amount"])
         data.update(
             {
                 "signature": request.data["signature"],
-                "quote_token_amount": str(
-                    sum(
-                        [
-                            (
-                                Decimal(int(request.data["amount"]) * price)
-                                / Decimal("1e18")
-                            ).quantize(Decimal("1."))
-                            for price in range(
-                                int(request.data["price"]),
-                                (int(request.data["lower_bound"])) - 1,
-                                -int(request.data["step"]),
-                            )
-                        ]
-                    )
-                ),
-                "base_token_amount": str(
-                    sum(
-                        [
-                            int(request.data["amount"])
-                            for _ in range(
-                                int(request.data["price"]) + int(request.data["step"]),
-                                (int(request.data["upper_bound"])) + 1,
-                                int(request.data["step"]),
-                            )
-                        ]
-                    )
-                ),
+                "quote_token_amount": "{0:f}".format(quote_token_amount.quantize(Decimal("1."))),
+                "base_token_amount": "{0:f}".format(base_token_amount.quantize(Decimal("1."))),
             }
         )
 

@@ -439,8 +439,8 @@ class TakerSerializer(serializers.ModelSerializer):
     def validate_amount(self, data: str) -> str:
         return validate_decimal_integer(data, "amount")
 
-    def validate_base_fees(self, data: str) -> str:
-        return validate_decimal_integer(data, "base_fees")
+    def validate_fees(self, data: str) -> str:
+        return validate_decimal_integer(data, "fees")
 
     def to_representation(self, instance):
         data = super().to_representation(instance)

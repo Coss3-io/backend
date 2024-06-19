@@ -107,7 +107,7 @@ class WatchTowerView(APIView):
         )
         bot_update = []
         maker_ws = {}
-
+        
         async for maker in makers:
             channel = f"{str(maker.chain_id).lower()}{str(maker.base_token).lower()}{str(maker.quote_token.lower())}"
             amount = Decimal(trades[maker.order_hash]["amount"])
@@ -172,11 +172,20 @@ class WatchTowerView(APIView):
                                     / Decimal("1e18")
                                 )
                     else:
-                        maker.filled = F("filled") + trades[maker.order_hash]["amount"]
-                        temp_maker_ws["filled"] = "{0:f}".format(
-                            Decimal(temp_maker_ws["filled"])
-                            + Decimal(trades[maker.order_hash]["amount"])
-                        )
+                        if (
+                        maker.filled + Decimal(trades[maker.order_hash]["amount"])
+                        == maker.amount
+                        ):
+                            maker.filled = maker.amount
+                            maker.status = Maker.FILLED
+                            temp_maker_ws["filled"] = temp_maker_ws["amount"]
+                            temp_maker_ws["status"] = "FILLED"
+                        else:
+                            maker.filled = F("filled") + trades[maker.order_hash]["amount"]
+                            temp_maker_ws["filled"] = "{0:f}".format(
+                                Decimal(temp_maker_ws["filled"])
+                                + Decimal(trades[maker.order_hash]["amount"])
+                            )
                         if maker.is_buyer:
                             if maker.bot.maker_fees > Decimal("2000"):
                                 fees = maker.bot.maker_fees * amount / Decimal("1e18")
@@ -223,6 +232,7 @@ class WatchTowerView(APIView):
                         maker.filled = maker.amount
                         maker.status = Maker.FILLED
                         temp_maker_ws["filled"] = temp_maker_ws["amount"]
+                        temp_maker_ws["status"] = "FILLED"
                     else:
                         maker.filled = F("filled") + trades[maker.order_hash]["amount"]
                         temp_maker_ws["filled"] = "{0:f}".format(

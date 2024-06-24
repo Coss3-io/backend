@@ -496,7 +496,9 @@ class WebsocketFramesTestCase(APITestCase):
                     "block": block,
                     "amount": trades[self.data["order_hash"]]["amount"],
                     "price": self.data["price"],
-                    "fees": trades[self.data["order_hash"]]["fees"],
+                    "fees": "{0:f}".format(
+                        Decimal(trades[self.data["order_hash"]]["fees"]) * 2
+                    ),
                     "is_buyer": trades[self.data["order_hash"]]["is_buyer"],
                     "base_fees": trades[self.data["order_hash"]]["base_fees"],
                     "address": taker_address,
@@ -552,8 +554,14 @@ class WebsocketFramesTestCase(APITestCase):
                 {
                     "block": block,
                     "amount": trades[maker.order_hash]["amount"],
-                    "price": "{0:f}".format(maker.price),
-                    "fees": trades[maker.order_hash]["fees"],
+                    "price": "{0:f}".format(
+                        Decimal(
+                            maker.price / ((Decimal("1000") + maker.bot.maker_fees)/1000)
+                        ).quantize(Decimal("1."))
+                    ),
+                    "fees": "{0:f}".format(
+                        Decimal(trades[maker.order_hash]["fees"]) * 2
+                    ),
                     "is_buyer": trades[maker.order_hash]["is_buyer"],
                     "base_fees": trades[maker.order_hash]["base_fees"],
                     "address": taker_address,
@@ -592,7 +600,7 @@ class WebsocketFramesTestCase(APITestCase):
             message,
             "The websocket of the regular order should contain all the infos needed",
         )
-
+        
         self.assertDictEqual(
             bot_data,
             bot_message,
@@ -651,8 +659,8 @@ class WebsocketFramesTestCase(APITestCase):
         chain_id = 31337
         base_token = Address(self.bot.get("base_token"))
         quote_token = Address(self.bot.get("quote_token"))
-        
-        makers = [] 
+
+        makers = []
         async for maker in Maker.objects.filter(bot=self.bot_instance):
             makers.append(maker)
 
@@ -688,7 +696,7 @@ class WebsocketFramesTestCase(APITestCase):
             [self.bot_instance.bot_hash],
             "The websocket should sent the bot as deleted",
         )
-        
+
         self.assertListEqual(
             loads(message)[WStypes.DEL_MAKERS],
             [maker.order_hash for maker in makers],

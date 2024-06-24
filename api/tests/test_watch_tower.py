@@ -110,7 +110,7 @@ class MakerCommitTestCase(APITestCase):
 
         self.assertEqual(
             taker.fees,
-            Decimal(trades[self.data["order_hash"]]["fees"]),
+            Decimal(trades[self.data["order_hash"]]["fees"]) * 2,
             "the fees of the taker object should match the one sent",
         )
 
@@ -323,7 +323,7 @@ class MakerCommitTestCase(APITestCase):
 
         self.assertEqual(
             taker.fees,
-            Decimal(trades[self.data["order_hash"]]["fees"]),
+            Decimal(trades[self.data["order_hash"]]["fees"]) * 2,
             "the fees of the taker object should match the one sent",
         )
 
@@ -375,7 +375,7 @@ class MakerCommitTestCase(APITestCase):
 
         self.assertEqual(
             taker2.fees,
-            Decimal(trades2[data["order_hash"]]["fees"]),
+            Decimal(trades2[data["order_hash"]]["fees"]) * 2,
             "the fees of the taker object should match the one sent",
         )
 

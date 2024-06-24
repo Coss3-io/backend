@@ -107,7 +107,8 @@ class WatchTowerView(APIView):
         )
         bot_update = []
         maker_ws = {}
-        
+        taker_price = ""
+
         async for maker in makers:
             channel = f"{str(maker.chain_id).lower()}{str(maker.base_token).lower()}{str(maker.quote_token.lower())}"
             amount = Decimal(trades[maker.order_hash]["amount"])
@@ -120,21 +121,6 @@ class WatchTowerView(APIView):
                 if channel not in maker_ws:
                     maker_ws[channel] = []
 
-                takers[channel].append(
-                    {
-                        "maker_id": maker.id,
-                        "block": block,
-                        "amount": trades[maker.order_hash]["amount"],
-                        "price": "{0:f}".format(maker.price),
-                        "fees": trades[maker.order_hash]["fees"],
-                        "is_buyer": trades[maker.order_hash]["is_buyer"],
-                        "base_fees": trades[maker.order_hash]["base_fees"],
-                        "address": user.address,
-                        "maker_hash": maker.order_hash,
-                        "chain_id": maker.chain_id,
-                    }
-                )
-
                 if maker.bot is not None:
                     if maker.is_buyer == trades[maker.order_hash]["is_buyer"]:
                         maker.filled = F("filled") - trades[maker.order_hash]["amount"]
@@ -143,6 +129,10 @@ class WatchTowerView(APIView):
                             - Decimal(trades[maker.order_hash]["amount"])
                         )
                         if maker.is_buyer:
+                            taker_price = "{0:f}".format(
+                                Decimal(maker.price * 1000 / (maker.bot.maker_fees + 1000)).quantize(Decimal("1."))
+                            )
+
                             if maker.bot.maker_fees > Decimal("2000"):
                                 fees = maker.bot.maker_fees * amount / Decimal("1e18")
                             else:
@@ -159,6 +149,10 @@ class WatchTowerView(APIView):
                                     / Decimal("1e18")
                                 )
                         else:
+                            taker_price = "{0:f}".format(
+                                Decimal(maker.price * (maker.bot.maker_fees + 1000) / 1000).quantize(Decimal("1."))
+                            )
+
                             if maker.bot.maker_fees > Decimal("2000"):
                                 fees = maker.bot.maker_fees * amount / Decimal("1e18")
                             else:
@@ -173,20 +167,25 @@ class WatchTowerView(APIView):
                                 )
                     else:
                         if (
-                        maker.filled + Decimal(trades[maker.order_hash]["amount"])
-                        == maker.amount
+                            maker.filled + Decimal(trades[maker.order_hash]["amount"])
+                            == maker.amount
                         ):
                             maker.filled = maker.amount
                             maker.status = Maker.FILLED
                             temp_maker_ws["filled"] = temp_maker_ws["amount"]
                             temp_maker_ws["status"] = "FILLED"
                         else:
-                            maker.filled = F("filled") + trades[maker.order_hash]["amount"]
+                            maker.filled = (
+                                F("filled") + trades[maker.order_hash]["amount"]
+                            )
                             temp_maker_ws["filled"] = "{0:f}".format(
                                 Decimal(temp_maker_ws["filled"])
                                 + Decimal(trades[maker.order_hash]["amount"])
                             )
                         if maker.is_buyer:
+                            taker_price = "{0:f}".format(
+                                Decimal(maker.price * 1000 / (maker.bot.maker_fees + 1000)).quantize(Decimal("1."))
+                            )
                             if maker.bot.maker_fees > Decimal("2000"):
                                 fees = maker.bot.maker_fees * amount / Decimal("1e18")
                             else:
@@ -200,6 +199,9 @@ class WatchTowerView(APIView):
                                     / Decimal("1e18")
                                 )
                         else:
+                            taker_price = "{0:f}".format(
+                                Decimal(maker.price * (maker.bot.maker_fees + 1000) / 1000).quantize(Decimal("1."))
+                            )
                             if maker.bot.maker_fees > Decimal("2000"):
                                 fees = maker.bot.maker_fees * amount / Decimal("1e18")
                             else:
@@ -225,6 +227,7 @@ class WatchTowerView(APIView):
                     )
                     bot_update.append(maker.bot)
                 else:
+                    taker_price = "{0:f}".format(maker.price)
                     if (
                         maker.filled + Decimal(trades[maker.order_hash]["amount"])
                         == maker.amount
@@ -252,6 +255,22 @@ class WatchTowerView(APIView):
                     )
 
                 maker_ws[channel].append(temp_maker_ws)
+                takers[channel].append(
+                    {
+                        "maker_id": maker.id,
+                        "block": block,
+                        "amount": trades[maker.order_hash]["amount"],
+                        "price": taker_price,
+                        "fees": "{0:f}".format(
+                            Decimal(trades[maker.order_hash]["fees"]) * 2
+                        ),
+                        "is_buyer": trades[maker.order_hash]["is_buyer"],
+                        "base_fees": trades[maker.order_hash]["base_fees"],
+                        "address": user.address,
+                        "maker_hash": maker.order_hash,
+                        "chain_id": maker.chain_id,
+                    }
+                )
             except KeyError as e:
                 return Response(
                     {"error": [errors.Order.TRADE_DATA_ERROR]},

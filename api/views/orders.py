@@ -130,6 +130,7 @@ class MakerView(APIView):
             queryset.filter(
                 Q(user=request.user) | Q(bot__user=request.user),
             )
+            .filter(Q(status=Maker.OPEN) | Q(bot__isnull=False))
             .select_related("user", "bot", "bot__user")
             .prefetch_related("takers")
             .annotate(
@@ -220,7 +221,9 @@ class TakerView(APIView):
 
             if request.user.id:
                 queryset = queryset.filter(user=request.user)
-            queryset = queryset.order_by("-timestamp").select_related("maker")
+            queryset = queryset.order_by("-timestamp").select_related(
+                "maker", "maker__bot"
+            )
 
         data = await sync_to_async(lambda: TakerSerializer(queryset, many=True).data)()
         return Response(data, status=status.HTTP_200_OK)
@@ -352,8 +355,12 @@ class BotView(APIView):
         data.update(
             {
                 "signature": request.data["signature"],
-                "quote_token_amount": "{0:f}".format(quote_token_amount.quantize(Decimal("1."))),
-                "base_token_amount": "{0:f}".format(base_token_amount.quantize(Decimal("1."))),
+                "quote_token_amount": "{0:f}".format(
+                    quote_token_amount.quantize(Decimal("1."))
+                ),
+                "base_token_amount": "{0:f}".format(
+                    base_token_amount.quantize(Decimal("1."))
+                ),
             }
         )
 

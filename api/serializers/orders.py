@@ -124,7 +124,7 @@ class BotSerializer(serializers.ModelSerializer):
                 (int(validated_data["upper_bound"])) + 1,
                 int(validated_data["step"]),
             )
-        ] 
+        ]
 
         for order in orders:
             _, order.order_hash = compute_order_hash(
@@ -444,5 +444,21 @@ class TakerSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        data["price"] = "{0:f}".format(instance.maker.price)
+        if instance.maker.bot is not None:
+            if instance.maker.is_buyer:
+                data["price"] = "{0:f}".format(
+                    Decimal(
+                        (instance.maker.price)
+                        / Decimal((1000 + instance.maker.bot.maker_fees) / 1000)
+                    ).quantize(Decimal("1."))
+                )
+            else:
+                data["price"] = "{0:f}".format(
+                    Decimal(
+                        (instance.maker.price)
+                        * Decimal((1000 + instance.maker.bot.maker_fees) / 1000)
+                    ).quantize(Decimal("1."))
+                )
+        else:
+            data["price"] = "{0:f}".format(instance.maker.price)
         return data

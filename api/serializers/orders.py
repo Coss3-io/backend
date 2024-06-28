@@ -445,7 +445,7 @@ class TakerSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         data = super().to_representation(instance)
         if instance.maker.bot is not None:
-            if instance.maker.is_buyer:
+            if not instance.is_buyer:
                 data["price"] = "{0:f}".format(
                     Decimal(
                         (instance.maker.price)

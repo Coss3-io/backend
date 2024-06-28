@@ -130,7 +130,7 @@ class WatchTowerView(APIView):
                         )
                         if maker.is_buyer:
                             taker_price = "{0:f}".format(
-                                Decimal(maker.price * 1000 / (maker.bot.maker_fees + 1000)).quantize(Decimal("1."))
+                                Decimal(maker.price * (maker.bot.maker_fees + 1000) / 1000).quantize(Decimal("1."))
                             )
 
                             if maker.bot.maker_fees > Decimal("2000"):
@@ -150,7 +150,7 @@ class WatchTowerView(APIView):
                                 )
                         else:
                             taker_price = "{0:f}".format(
-                                Decimal(maker.price * (maker.bot.maker_fees + 1000) / 1000).quantize(Decimal("1."))
+                                Decimal(maker.price * 1000 / (maker.bot.maker_fees + 1000)).quantize(Decimal("1."))
                             )
 
                             if maker.bot.maker_fees > Decimal("2000"):

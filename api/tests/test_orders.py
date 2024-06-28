@@ -1832,16 +1832,17 @@ class MakerOrderRetrievingTestCase(APITestCase):
             "The retrieving of all the orders should work",
         )
 
+        data = deepcopy(response.json())
+        local_data = deepcopy(self.user_2_pair_2_orders + self.user_2_pair_1_orders)
+
+        for d in data:
+            del d["timestamp"]
+        for d in local_data:
+            del d["timestamp"]
+
         self.assertListEqual(
-            sorted([hash(frozenset(item.items())) for item in response.json()]),
-            sorted(
-                [
-                    hash(frozenset(item.items()))
-                    for item in reversed(
-                        self.user_2_pair_2_orders + self.user_2_pair_1_orders
-                    )
-                ]
-            ),
+            sorted([hash(frozenset(item.items())) for item in data]),
+            sorted([hash(frozenset(item.items())) for item in reversed(local_data)]),
             "The returned user orders should match the orders in DB",
         )
 
@@ -2409,15 +2410,13 @@ class MakerOrderRetrievingTestCase(APITestCase):
             2,
             "Two order should be returned, the regular maker and the filled bot maker",
         )
-        
+
         if response.json()[0]["bot"]:
             bot_order, _ = response.json()
         else:
             _, bot_order = response.json()
 
         self.assertEqual(bot_order["status"], "FILLED")
-
-
 
 
 class MakerAPILogInTestCase(APITestCase):
@@ -3173,7 +3172,7 @@ class TakerRetrievalTestCase(APITestCase):
             "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
         }
         self.client.post(reverse("api:bot"), data=self.bot_data)
-        self.bot_maker = Maker.objects.filter(user__isnull=True).first()
+        self.bot_maker = Maker.objects.filter(user__isnull=True, bot__isnull=False).first()
 
     def test_anon_users_can_see_takers_orders(self):
         """The anonymous users should be able to see taker orders"""
@@ -3509,7 +3508,6 @@ class TakerRetrievalTestCase(APITestCase):
             fees=self.taker_details["fees"],
             is_buyer=self.taker_details["is_buyer"],
         )
-        self.bot_taker.maker.is_buyer = True
         self.bot_taker.maker.save()
 
         self.client.force_authenticate(user=self.taker_user)  # type: ignore
@@ -3544,14 +3542,14 @@ class TakerRetrievalTestCase(APITestCase):
                 "{0:f}".format(
                     Decimal(
                         (self.bot_taker.maker.price)
-                        / Decimal((1000 + self.bot_taker.maker.bot.maker_fees) / 1000)
+                        * Decimal((1000 + self.bot_taker.maker.bot.maker_fees) / 1000)
                     ).quantize(Decimal("1."))
                 )
-                if self.bot_taker.maker.is_buyer
+                if self.bot_taker.is_buyer
                 else "{0:f}".format(
                     Decimal(
                         (self.bot_taker.maker.price)
-                        * Decimal((1000 + self.bot_taker.maker.bot.maker_fees) / 1000)
+                        / Decimal((1000 + self.bot_taker.maker.bot.maker_fees) / 1000)
                     ).quantize(Decimal("1."))
                 )
             ),

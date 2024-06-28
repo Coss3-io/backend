@@ -299,7 +299,6 @@ class WatchTowerView(APIView):
 
         if bot_update:
             await Bot.objects.abulk_update(bot_update, ["fees_earned"])  # type: ignore
-
         for channel_name in maker_ws:
             for data in takers[channel_name]:
                 del data["maker_id"]

@@ -556,7 +556,8 @@ class WebsocketFramesTestCase(APITestCase):
                     "amount": trades[maker.order_hash]["amount"],
                     "price": "{0:f}".format(
                         Decimal(
-                            maker.price / ((Decimal("1000") + maker.bot.maker_fees)/1000)
+                            maker.price
+                            / ((Decimal("1000") + maker.bot.maker_fees) / 1000)
                         ).quantize(Decimal("1."))
                     ),
                     "fees": "{0:f}".format(
@@ -600,12 +601,88 @@ class WebsocketFramesTestCase(APITestCase):
             message,
             "The websocket of the regular order should contain all the infos needed",
         )
-        
+
         self.assertDictEqual(
             bot_data,
             bot_message,
             "The websocket of the bot order should contain all the infos needed",
         )
+
+    async def test_websocket_reverse_trade_prices(self):
+        """Checks the websocket frame is sent well on order update"""
+
+        taker_address = Address("0xf17f52151EbEF6C7334FAD080c5704D77216b733")
+        buy_maker = await Maker.objects.select_related("bot").aget(
+            price=Decimal("9e17")
+        )
+        sell_maker = await Maker.objects.select_related("bot").aget(
+            price=Decimal("11e17")
+        )
+        block = 19
+        chain_id = 31337
+        communicator = WebsocketCommunicator(
+            ws_asgi_app,
+            f"/ws/trade/{chain_id}/{buy_maker.base_token}/{buy_maker.quote_token}",
+        )
+        connected, _ = await communicator.connect()
+        self.assertTrue(connected, "The websocket should be connected on test startup")
+
+        buy_maker.filled = buy_maker.amount / 2
+        sell_maker.filled = sell_maker.amount / 2
+        await buy_maker.asave()
+        await sell_maker.asave()
+
+        trades = {
+            buy_maker.order_hash: {
+                "amount": "{0:f}".format(Decimal("73e16")),
+                "base_fees": True,
+                "fees": "{0:f}".format(Decimal("365e15")),
+                "is_buyer": True,
+            },
+            sell_maker.order_hash: {
+                "amount": "{0:f}".format(Decimal("73e16")),
+                "base_fees": True,
+                "fees": "{0:f}".format(Decimal("360e15")),
+                "is_buyer": False,
+            },
+        }
+
+        with patch("api.views.watch_tower.WatchTowerView.permission_classes", []):
+            response = await self.async_client.post(  # type: ignore
+                reverse("api:wt"),
+                content_type="application/json",
+                data={
+                    "taker": taker_address,
+                    "block": block,
+                    "trades": trades,
+                    "chain_id": chain_id,
+                },
+            )
+            self.assertEqual(
+                response.status_code, HTTP_200_OK, "The request should work"
+            )
+
+        buy_taker_price = Decimal(
+            buy_maker.price
+            * (Decimal("1000") + buy_maker.bot.maker_fees)
+            / Decimal("1000")
+        ).quantize(Decimal("1."))
+
+        sell_taker_price = Decimal(
+            sell_maker.price
+            / ((Decimal("1000") + sell_maker.bot.maker_fees) / Decimal("1000"))
+        ).quantize(Decimal("1."))
+
+        bot_message = await communicator.receive_from()
+        bot_message = loads(bot_message)
+
+        if bot_message[WStypes.NEW_TAKERS][0]["is_buyer"]:
+            buy_taker_ws, sell_taker_ws = bot_message[WStypes.NEW_TAKERS]
+        else:
+            sell_taker_ws, buy_taker_ws = bot_message[WStypes.NEW_TAKERS]
+
+        self.assertEqual(buy_taker_ws["price"], "{0:f}".format(buy_taker_price))
+        self.assertEqual(sell_taker_ws["price"], "{0:f}".format(sell_taker_price))
 
     async def test_websocket_frame_maker_verification_deletion(self):
         """checks the websocket frames are sent well when a maker order gets deleted during verification"""

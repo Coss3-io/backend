@@ -489,6 +489,103 @@ class MakerCommitTestCase(APITestCase):
             maker2.filled, maker2.amount, "the second maker order should be filled"
         )
 
+    def test_reverse_trade_creation(self):
+        """Checks the websocket frame is sent well on order update"""
+
+        self.bot = {
+            "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "chain_id": 31337,
+            "expiry": 2114380800,
+            "signature": "0x0e4b8968194fe008b2766a7c2920dc5784cc23f2ec785fb605c51d48f18295121ee57d4f0c33250554b2ac1980ea4c9067ef1680b08195a768b2a1239cff6b851b",
+            "is_buyer": False,
+            "step": "{0:f}".format(Decimal("1e17")),
+            "price": "{0:f}".format(Decimal("1e18")),
+            "maker_fees": "{0:f}".format(Decimal("50")),
+            "upper_bound": "{0:f}".format(Decimal("15e17")),
+            "lower_bound": "{0:f}".format(Decimal("5e17")),
+            "amount": "{0:f}".format(Decimal("2e18")),
+            "base_token": "0xF25186B5081Ff5cE73482AD761DB0eB0d25abfBF",
+            "quote_token": "0x345CA3e014Aaf5dcA488057592ee47305D9B3e10",
+        }
+        response = self.client.post(reverse("api:bot"), data=self.bot)
+        self.assertEqual(
+            response.status_code, HTTP_200_OK, "The bot should be succesfully created"
+        )
+
+        taker_address = Address("0xf17f52151EbEF6C7334FAD080c5704D77216b733")
+        buy_maker = Maker.objects.select_related("bot").get(
+            price=Decimal("9e17"), bot__isnull=False
+        )
+        sell_maker = Maker.objects.select_related("bot").get(
+            price=Decimal("11e17"), bot__isnull=False
+        )
+        block = 19
+        chain_id = 31337
+
+        buy_maker.filled = buy_maker.amount / 2
+        sell_maker.filled = buy_maker.amount / 2
+        buy_taker_price = Decimal(
+            buy_maker.price
+            * (Decimal("1000") + buy_maker.bot.maker_fees)
+            / Decimal("1000")
+        ).quantize(Decimal("1."))
+        sell_taker_price = Decimal(
+            sell_maker.price
+            * Decimal("1000")
+            / (Decimal("1000") + sell_maker.bot.maker_fees)
+        ).quantize(Decimal("1."))
+        buy_maker.save()
+        sell_maker.save()
+
+        trades = {
+            sell_maker.order_hash: {
+                "amount": "{0:f}".format(Decimal("73e16")),
+                "base_fees": True,
+                "fees": "{0:f}".format(Decimal("365e15")),
+                "is_buyer": False,
+            },
+            buy_maker.order_hash: {
+                "amount": "{0:f}".format(Decimal("73e16")),
+                "base_fees": True,
+                "fees": "{0:f}".format(Decimal("360e15")),
+                "is_buyer": True,
+            },
+        }
+
+        with patch("api.views.watch_tower.WatchTowerView.permission_classes", []):
+            response = self.client.post(
+                reverse("api:wt"),
+                format='json',
+                data={
+                    "taker": taker_address,
+                    "block": block,
+                    "trades": trades,
+                    "chain_id": chain_id,
+                },
+            )
+            self.assertEqual(
+                response.status_code, HTTP_200_OK, "The request should work"
+            )
+
+        response = self.client.get(
+            reverse("api:taker"), data={"all": True, "chain_id": 31337}
+        )
+        if response.json()[0]["is_buyer"]:
+            buy_taker, sell_taker = response.json()
+        else:
+            sell_taker, buy_taker = response.json()
+
+        self.assertEqual(
+            "{0:f}".format(Decimal(buy_taker["price"])),
+            "{0:f}".format(buy_taker_price),
+            "The buy taker price should be higher than the maker price",
+        )
+        self.assertEqual(
+            "{0:f}".format(Decimal(sell_taker["price"])),
+            "{0:f}".format(sell_taker_price),
+            "The sell taker price should be lower than the maker price",
+        )
+
     def test_matching_an_order_without_trades_fails(self):
         """Checks creating a matching without trade field fails"""
 
@@ -1952,9 +2049,7 @@ class OrderVerificationTestCase(APITestCase):
                     "token": self.bot_data.get("quote_token"),
                     "chainId": self.data.get("chain_id"),
                     "orders": {
-                        self.bot_data["address"]: "{0:f}".format(
-                        Decimal("1e16")
-                        )
+                        self.bot_data["address"]: "{0:f}".format(Decimal("1e16"))
                     },
                 },
             )
@@ -1979,9 +2074,7 @@ class OrderVerificationTestCase(APITestCase):
                     "token": self.bot_data.get("quote_token"),
                     "chainId": self.data.get("chain_id"),
                     "orders": {
-                        self.bot_data["address"]: "{0:f}".format(
-                        Decimal("1e16")
-                        )
+                        self.bot_data["address"]: "{0:f}".format(Decimal("1e16"))
                     },
                 },
             )
@@ -2010,7 +2103,7 @@ class OrderVerificationTestCase(APITestCase):
                 reverse("api:wt-verification"),
                 format="json",
                 data={
-                    #"token": self.data.get("quote_token"),
+                    # "token": self.data.get("quote_token"),
                     "chainId": self.data.get("chain_id"),
                     "orders": {
                         self.maker_seller.user.address: "{0:f}".format(
@@ -2075,7 +2168,7 @@ class OrderVerificationTestCase(APITestCase):
                 format="json",
                 data={
                     "token": self.data.get("quote_token"),
-                    #"chainId": self.data.get("chain_id"),
+                    # "chainId": self.data.get("chain_id"),
                     "orders": {
                         self.maker_seller.user.address: "{0:f}".format(
                             Decimal(self.data.get("amount", 0)) - Decimal("24")
